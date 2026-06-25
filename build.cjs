@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.0 exact dashboard grid build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.1 guard dashboard exact grid build complete. Copied ${count} files to dist/.`);

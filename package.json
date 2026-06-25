@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-exact-dashboard-grid-rebuild",
-  "version": "3.0.0",
+  "name": "co-pilot-security-guard-dashboard-exact-grid",
+  "version": "3.0.1",
   "private": true,
-  "description": "Clean Bolt/GitHub package with exact grid-based modern dashboard layout and bottom-right build badge.",
+  "description": "Clean v3 Guard Dashboard exact grid and sidebar cleanup.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

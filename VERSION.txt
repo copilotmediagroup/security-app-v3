@@ -1,22 +1,26 @@
 Co Pilot Security
-Version: 3.0.0
-Build Name: EXACT DASHBOARD GRID REBUILD
+Version: 3.0.1
+Build Name: GUARD DASHBOARD EXACT GRID
 Date: 2026-06-24
 
 Summary:
-- Clean package intended for a fresh Bolt project / cleared GitHub repository.
-- Codes the exact grid layout specification from the dashboard breakdown.
-- 220px left sidebar + flexible dashboard content.
-- KPI row with 4 equal cards.
-- Main dashboard grid: wide left canvas + 340px right rail.
-- Top panel row: Dispatch Overview + Priority Queue.
-- Large Dispatch Command Map as visual anchor.
-- Recent Activity table.
-- Right rail: Active Patrols, Messages, Notifications, System Status.
-- Hard bottom-right badge restored and reinforced.
+- Built from clean v3.0.0 exact dashboard grid rebuild.
+- Fixed duplicate Settings in the left sidebar.
+- Settings now appears once in the Account section.
+- Logout is now only in the bottom sidebar footer.
+- Removed sidebar horizontal overflow/scrollbar.
+- Guard Dashboard now has the proper exact grid:
+  - Header
+  - 4 KPI cards
+  - Current Assignment
+  - Job Flow
+  - Route / GPS map
+  - Today’s Activity
+  - Right rail: Open Job, Messages, Notifications, Status
+- Bottom-right badge remains active.
 
 Badge:
-v3.0.0 EXACT DASHBOARD GRID REBUILD
+v3.0.1 GUARD DASHBOARD EXACT GRID
 
 SQL:
 No new SQL required.

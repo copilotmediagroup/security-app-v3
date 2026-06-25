@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.0',
-  label: 'v3.0.0 EXACT DASHBOARD GRID REBUILD'
+  version: '3.0.1',
+  label: 'v3.0.1 GUARD DASHBOARD EXACT GRID'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -48,7 +48,9 @@ const NAV = {
     ['activity-log', '▦', 'Activity Log'],
     ['proof-review', '⬆', 'Proof Review'],
     ['report-builder', '▣', 'Report Builder'],
-    ['report-archive', '☰', 'Report Archive']
+    ['report-archive', '☰', 'Report Archive'],
+    ['heading', '', 'Account'],
+    ['settings', '⚙', 'Settings']
   ],
   guard: [
     ['dashboard', '⌂', 'Dashboard'],
@@ -468,9 +470,8 @@ function renderSidebar() {
       }).join('')}
     </div>
     <div class="sidebar-footer">
-      <button class="nav-item" data-view="settings"><i>⚙</i><span>Settings</span></button>
-      <button class="nav-item" data-action="logout"><i>↪</i><span>Logout</span></button>
-      <span class="version-mini">v3.0.0</span>
+      <button class="nav-item logout-item" data-action="logout"><i>↪</i><span>Logout</span></button>
+      <span class="version-mini">v3.0.1</span>
     </div>
   </aside>`;
 }
@@ -624,6 +625,145 @@ function adminDashboard() {
   </div>`;
 }
 
+
+function guardCurrentRequest() {
+  return activeRequests()[0] || state.patrolRequests[0] || null;
+}
+
+function guardJobFlow(req) {
+  const proof = req ? proofForRequest(req.id)[0] : null;
+  const steps = req ? [
+    ['Accepted', req.accepted_at || req.assigned_at, ['accepted','in_progress','completed'].includes(String(req.status)), '✓'],
+    ['On The Way', req.accepted_at || req.assigned_at, ['accepted','in_progress','completed'].includes(String(req.status)), '➜'],
+    ['Share GPS', req.started_at || req.accepted_at, ['accepted','in_progress','completed'].includes(String(req.status)), '⌖'],
+    ['Arrived', req.started_at, ['in_progress','completed'].includes(String(req.status)), '⌾'],
+    ['Checking', req.started_at, String(req.status) === 'in_progress' || String(req.status) === 'completed', '◫'],
+    ['Upload Proof', proof?.created_at || proof?.uploaded_at, Boolean(proof), '⬆'],
+    ['Complete', req.completed_at, String(req.status) === 'completed', '✓']
+  ] : [];
+  return `<section class="panel panel-pad guard-flow-panel">
+    <div class="panel-head"><div><h2>Job Flow</h2><p>Field workflow status</p></div></div>
+    ${steps.length ? `<div class="guard-flow">
+      ${steps.map(([label,time,done,icon], idx) => {
+        const current = !done && steps.slice(0, idx).every(s => s[2]);
+        return `<div class="guard-step ${done ? 'done' : current ? 'current' : 'wait'}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${esc(fmtTime(time))}</small></div>`;
+      }).join('')}
+    </div>
+    <div class="guard-flow-footer"><span><i></i>Status: ${esc(statusText(req.status))}</span><small>Updated ${esc(timeAgo(req.updated_at || req.created_at))}</small></div>` : `<div class="empty">No active workflow yet.</div>`}
+  </section>`;
+}
+
+function guardCurrentAssignment(req) {
+  if (!req) {
+    return `<section class="panel panel-pad guard-current-card"><div class="empty"><strong>No Current Assignment</strong><br>When Dispatch assigns a patrol, it will appear here.</div></section>`;
+  }
+  return `<section class="panel panel-pad guard-current-card">
+    <div class="panel-head"><div><h2>Current Assignment</h2><p>${esc(requestTitle(req))}</p></div>${statusChip(req.status)}</div>
+    <div class="guard-current-main">
+      <div class="guard-shield">🛡</div>
+      <div>
+        <h3>${esc(propertyLabel(req))}</h3>
+        <p>${esc(propertyAddress(req))}</p>
+        <span>${esc(requestClientName(req))}</span>
+      </div>
+    </div>
+    <div class="guard-tags">
+      <span>Since ${esc(fmtTime(req.assigned_at || req.accepted_at || req.created_at))}</span>
+      <span>${esc(req.priority || 'Normal')}</span>
+      <span>${esc(req.patrol_type || 'Standard')}</span>
+    </div>
+    <div class="guard-actions">
+      <button class="primary-button" data-view="active-job">Open Active Job</button>
+      <button class="ghost-button" data-view="route-gps">Open Route / GPS</button>
+      <button class="ghost-button" data-view="upload-proof">Upload Proof</button>
+    </div>
+  </section>`;
+}
+
+function guardActivityTable(req) {
+  const activity = req ? state.patrolActivity.filter(item => String(item.request_id) === String(req.id)).slice(0, 4) : [];
+  const fallback = req ? [
+    { title:'Assignment Opened', details:`${propertyLabel(req)} patrol ready`, created_at:req.created_at },
+    { title:'Guard Assigned', details:`${requestGuardName(req)} assigned to request`, created_at:req.assigned_at || req.created_at },
+    { title:'GPS Ready', details:'Route and proof workflow available', created_at:req.updated_at || req.created_at }
+  ] : [];
+  const rows = activity.length ? activity : fallback;
+  return `<section class="panel panel-pad">
+    <div class="panel-head"><div><h2>Today’s Activity</h2><p>Latest guard timeline</p></div><button class="ghost-button" data-view="activity-log">View all</button></div>
+    <div class="activity-table">
+      <div class="activity-head"><span>Event</span><span>Details</span><span>Person</span><span>Time</span></div>
+      ${rows.length ? rows.map(item => `<div class="activity-row"><strong><span class="event-pill">✓</span>${esc(item.title || item.event_type || 'Activity')}</strong><span>${esc(item.details || item.message || '')}</span><span>${esc(requestGuardName(req || {}))}</span><span>${esc(timeAgo(item.created_at))}</span></div>`).join('') : `<div class="activity-row"><strong><span class="event-pill">✓</span>Dashboard loaded</strong><span>Guard grid active</span><span>Guard</span><span>Now</span></div>`}
+    </div>
+  </section>`;
+}
+
+function guardRightRail(req) {
+  const messages = state.messageThreads.slice(0, 3);
+  const notes = state.notifications.slice(0, 3);
+  return `<aside class="dashboard-right">
+    <section class="panel panel-pad">
+      <div class="panel-head"><div><h2>Open Job</h2><p>Current patrol focus</p></div><button class="ghost-button" data-view="active-job">View</button></div>
+      ${req ? `<div class="open-job-box"><strong>${esc(requestTitle(req))}</strong><p>${esc(propertyLabel(req))}</p><span>${esc(statusText(req.status))}</span><button class="primary-button" data-view="active-job">Continue Job</button></div>` : `<div class="empty">No open job.</div>`}
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="panel-head"><div><h2>Messages</h2><p>Dispatch communication</p></div><button class="ghost-button" data-view="messages">View all</button></div>
+      <div class="feed-list">${messages.length ? messages.map(t => feedRow(initials(t.subject || t.title || 'D'), t.subject || t.title || 'Conversation', t.last_message_preview || 'No messages yet', fmtTime(t.updated_at || t.created_at))).join('') : `<div class="empty">No messages yet.</div>`}</div>
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="panel-head"><div><h2>Notifications</h2><p>New assignments and updates</p></div><button class="ghost-button" data-view="notifications">View all</button></div>
+      <div class="feed-list">${notes.length ? notes.map(n => feedRow((n.title || 'N').slice(0,1), n.title || n.event_type || 'Notification', n.message || n.details || '', timeAgo(n.created_at), 'blue')).join('') : `<div class="empty">No notifications.</div>`}</div>
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="panel-head"><div><h2>Status</h2><p>All systems operational</p></div><button class="ghost-button">Refresh</button></div>
+      <div class="guard-status-grid">
+        <div><strong>${esc(activeRequests().length)}</strong><span>Open Jobs</span></div>
+        <div><strong>0</strong><span>Incidents</span></div>
+        <div class="ring"><strong>100%</strong><span>GPS</span></div>
+      </div>
+    </section>
+  </aside>`;
+}
+
+function guardDashboardExact() {
+  const req = guardCurrentRequest();
+  const active = activeRequests();
+  const inProgress = state.patrolRequests.filter(r => String(r.status) === 'in_progress');
+  return `<div class="dashboard guard-dashboard-exact">
+    <header class="dashboard-header">
+      <div class="title-block"><h1>Guard Dashboard</h1><p>Real-time overview of your assignments, patrols, and communications.</p></div>
+      <div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">🔔${unreadNotificationsCount() ? `<b>${esc(unreadNotificationsCount())}</b>` : ''}</button><button class="header-button">☷</button></div>
+    </header>
+
+    <section class="kpi-row">
+      ${kpiCard('▤', 'Open Assignments', active.length, active.length ? 'Current field jobs' : 'No pending assignments', '#2f83ff')}
+      ${kpiCard('●', 'In Progress', inProgress.length, 'Patrols in motion', '#37dc72')}
+      ${kpiCard('☵', 'Unread Messages', unreadMessagesCount(), 'Dispatch conversations', '#b05cff')}
+      ${kpiCard('▣', 'Proof Uploaded', state.proofItems.length, 'Guard uploads available', '#ffb53d')}
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="dashboard-left">
+        <div class="top-panel-grid guard-top-grid">
+          ${guardCurrentAssignment(req)}
+          ${guardJobFlow(req)}
+        </div>
+
+        <section class="panel map-card">
+          <div class="panel-head"><div><h2>Route / GPS</h2><p>Live view of patrol route and location.</p></div><div class="map-head-actions"><button class="ghost-button" data-view="active-job">Open Active Job</button><button class="primary-button" data-view="route-gps">Route / GPS</button><button class="ghost-button">⛶</button></div></div>
+          ${mapArea()}
+        </section>
+
+        ${guardActivityTable(req)}
+      </div>
+
+      ${guardRightRail(req)}
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -695,7 +835,7 @@ function renderRoleView() {
     if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
   }
   if (state.role === 'guard') {
-    if (state.view === 'dashboard') return compactDashboard('guard');
+    if (state.view === 'dashboard') return guardDashboardExact();
     if (state.view === 'active-job') return tableView('Active Job', 'Current guard assignments.', state.patrolRequests);
     if (state.view === 'route-gps') return compactDashboard('guard');
     if (state.view === 'upload-proof') return proofUploadView();
