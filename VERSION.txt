@@ -1,19 +1,17 @@
 Co Pilot Security
-Version: 3.0.23
-Build Name: NOTIFICATIONS POLISH
+Version: 3.0.24
+Build Name: CLIENT DASHBOARD REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.22.
-- Polishes the Notifications page after visual testing.
-- Right detail rail now scrolls cleanly and has bottom padding so the version badge does not cover content.
-- Notification rows have better spacing and a cleaner selected state.
-- Detail cards, message box, metadata grid, and action buttons are tighter.
-- Preserves search, filters, summary cards, grouped feed, acknowledge/read actions, and quick actions.
+- Built from v3.0.23.
+- Rebuilt the Client Dashboard into a premium command-center layout.
+- Added KPI cards for Properties, Active Patrols, Open Requests, and Reports Ready.
+- Added large Live Client Patrol Map, Recent Activity table, and right-side cards for Messages, Notifications, and Recent Reports.
 - No new SQL required.
 
 Badge:
-v3.0.23 NOTIFICATIONS POLISH
+v3.0.24 CLIENT DASHBOARD REDESIGN
 
 SQL:
 No new SQL required.

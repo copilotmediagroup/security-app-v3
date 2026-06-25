@@ -1,15 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.23",
-  "buildName": "NOTIFICATIONS POLISH",
-  "type": "notifications-polish",
+  "version": "3.0.24",
+  "buildName": "CLIENT DASHBOARD REDESIGN",
+  "type": "client-dashboard-redesign",
   "sql_required": false,
   "features": [
-    "Polished Notifications right detail rail so it scrolls cleanly",
-    "Added bottom padding to prevent version badge overlap",
-    "Tightened notification detail cards and action buttons",
-    "Improved notification row spacing and selected-state styling",
-    "Kept search, filters, grouped feed, read/acknowledge actions, and detail rail",
+    "Redesigned Client Dashboard to match the premium command-center mockup",
+    "Added Client Dashboard KPI cards: Properties, Active Patrols, Open Requests, Reports Ready",
+    "Added large Live Client Patrol Map section with legend and Open Map button",
+    "Added Recent Activity table with patrol/job updates",
+    "Added right rail cards for Messages, Notifications, and Recent Reports",
     "No new SQL required"
   ]
 }

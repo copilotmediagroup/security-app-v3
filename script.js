@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.23',
-  label: 'v3.0.23 NOTIFICATIONS POLISH'
+  version: '3.0.24',
+  label: 'v3.0.24 CLIENT DASHBOARD REDESIGN'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -2477,6 +2477,89 @@ function guardRouteGpsLiveView() {
   </div>`;
 }
 
+
+function clientPendingDispatchRequests() {
+  return state.patrolRequests.filter(r => String(r.status || 'pending_dispatch') === 'pending_dispatch');
+}
+function clientRecentReportRecords() {
+  const reports = [...(state.patrolReports || [])].sort((a,b) => new Date(b.released_at || b.created_at || 0) - new Date(a.released_at || a.created_at || 0));
+  if (reports.length) return reports.slice(0, 3);
+  return completedRequests().slice(0, 3).map(req => ({ request_id: req.id, title: `${propertyLabel(req)} Report`, released_at: req.updated_at || req.created_at }));
+}
+function clientReportRow(report = {}) {
+  const req = report.request_id ? state.patrolRequests.find(r => String(r.id) === String(report.request_id)) : null;
+  const title = report.title || report.name || propertyLabel(req || {}) || 'Patrol Report';
+  const sub = req ? `${statusText(req.status)} • ${fmtDate(report.released_at || report.created_at || req.updated_at || req.created_at)}` : fmtDate(report.released_at || report.created_at);
+  return `<button type="button" class="client-report-row" data-view="reports"><i>▣</i><span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span><em>${esc(fmtTime(report.released_at || report.created_at || req?.updated_at || req?.created_at))}</em></button>`;
+}
+function clientMessageFeedRows(limit = 2) {
+  const rows = (state.messageThreads || []).slice(0, limit);
+  return rows.length ? rows.map(t => `<button type="button" class="client-feed-row" data-view="messages"><i>${esc(initials(t.subject || t.title || 'D'))}</i><span><strong>${esc(t.subject || t.title || 'Conversation')}</strong><small>${esc(t.last_message_preview || 'No messages yet')}</small></span><em>${esc(fmtTime(t.updated_at || t.created_at))}</em></button>`).join('') : '<div class="empty">No messages yet.</div>';
+}
+function clientNotificationFeedRows(limit = 3) {
+  const rows = notificationsList().slice(0, limit);
+  return rows.length ? rows.map(n => `<button type="button" class="client-feed-row" data-view="notifications"><i class="${esc(notificationAccentClass(n))}">${esc(notificationIcon(n))}</i><span><strong>${esc(n._title)}</strong><small>${esc(n._body || notificationCategoryLabel(n))}</small></span><em>${esc(n._time)}</em></button>`).join('') : '<div class="empty">No notifications.</div>';
+}
+function clientActivityEntries() {
+  const reqRows = state.patrolRequests.map(req => ({
+    type: 'request',
+    timestamp: req.updated_at || req.created_at,
+    event: req.status === 'completed' ? 'Patrol completed' : req.status === 'in_progress' ? 'Patrol started' : req.status === 'accepted' ? 'Guard accepted patrol' : req.status === 'assigned' ? 'Guard assigned' : 'Patrol requested',
+    property: propertyLabel(req),
+    person: requestGuardName(req) !== 'Unassigned' ? requestGuardName(req) : requestClientName(req),
+    status: req.status || 'pending_dispatch'
+  }));
+  const alertRows = notificationsList().slice(0, 3).map(n => ({
+    type: 'notification',
+    timestamp: n._created,
+    event: n._title,
+    property: relatedRequestForNotification(n) ? propertyLabel(relatedRequestForNotification(n)) : notificationCategoryLabel(n),
+    person: n.source || 'Operations',
+    status: n._category === 'message' ? 'assigned' : 'completed'
+  }));
+  return [...reqRows, ...alertRows].sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)).slice(0, 5);
+}
+function clientActivityRow(entry = {}) {
+  return `<div class="client-activity-row"><span>${esc(fmtDate(entry.timestamp))}</span><strong>${esc(entry.event)}</strong><span>${esc(entry.property)}</span><span>${esc(entry.person)}</span><span>${statusChip(entry.status)}</span></div>`;
+}
+function clientDashboardView() {
+  const propertiesCount = state.properties.length;
+  const activePatrolsCount = clientOpenRequests().filter(r => ['assigned','accepted','in_progress'].includes(String(r.status || ''))).length;
+  const openRequestsCount = clientPendingDispatchRequests().length;
+  const reportsReadyCount = reportsReady().length || state.patrolReports.length;
+  const reportRows = clientRecentReportRecords();
+  const activityRows = clientActivityEntries();
+  return `<div class="dashboard client-dashboard-shell">
+    <header class="dashboard-header">
+      <div class="title-block"><h1>Client Dashboard</h1><p>Modern client command center for patrol visibility, requests, reports, and communication.</p></div>
+      <div class="header-actions"><button class="header-button">⌕</button><button class="header-button">🔔</button><button class="header-button">☼</button><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div>
+    </header>
+    <section class="kpi-row client-kpi-row">
+      ${kpiCard('▦', 'Properties', propertiesCount, `${propertiesCount ? propertiesCount : '0'} total properties`, '#2f83ff')}
+      ${kpiCard('◈', 'Active Patrols', activePatrolsCount, `${activePatrolsCount} in motion`, '#37dc72')}
+      ${kpiCard('☰', 'Open Requests', openRequestsCount, `${openRequestsCount} needs attention`, '#b05cff')}
+      ${kpiCard('▣', 'Reports Ready', reportsReadyCount, `${reportsReadyCount} available`, '#ffb53d')}
+    </section>
+    <section class="client-dashboard-grid">
+      <div class="client-dashboard-main">
+        <section class="panel client-map-card">
+          <div class="panel-head client-map-head"><div><h2>Live Client Patrol Map</h2><p>Real-time view of active patrols and property locations.</p></div><div class="client-map-head-actions"><div class="map-head-legend"><span><i style="--dot:#37dc72"></i>Active Patrol</span><span><i style="--dot:#2e7dff"></i>Guard</span><span><i style="--dot:#ff5973"></i>Alert</span></div><button class="primary-button" data-view="patrol-requests">Open Map</button></div></div>
+          ${mapArea()}
+        </section>
+        <section class="panel panel-pad client-activity-card">
+          <div class="panel-head"><div><h2>Recent Activity</h2><p>Latest patrols and property updates across your portfolio.</p></div><button class="ghost-button" data-view="patrol-requests">View all activity</button></div>
+          <div class="client-activity-table"><div class="client-activity-head"><span>Time</span><span>Event</span><span>Property</span><span>Guard / Unit</span><span>Status</span></div>${activityRows.length ? activityRows.map(clientActivityRow).join('') : '<div class="empty">No recent activity.</div>'}<div class="client-activity-footer">Showing ${activityRows.length ? `1 to ${activityRows.length}` : '0'} of ${state.patrolRequests.length || 0} results</div></div>
+        </section>
+      </div>
+      <aside class="client-dashboard-right">
+        <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Messages</h2><p>Inbox</p></div><button class="ghost-button" data-view="messages">View all</button></div><div class="client-feed-list">${clientMessageFeedRows(2)}</div></section>
+        <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Notifications</h2><p>Alerts and updates</p></div><button class="ghost-button" data-view="notifications">View all</button></div><div class="client-feed-list">${clientNotificationFeedRows(3)}</div></section>
+        <section class="panel panel-pad client-side-card client-reports-card"><div class="panel-head"><div><h2>Recent Reports</h2><p>Latest client-facing patrol reports.</p></div><button class="ghost-button" data-view="reports">View all</button></div><div class="client-report-list">${reportRows.length ? reportRows.map(clientReportRow).join('') : '<div class="empty">No reports ready.</div>'}</div></section>
+      </aside>
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -2682,7 +2765,7 @@ function renderRoleView() {
     if (state.view === 'upload-proof') return proofUploadView();
   }
   if (state.role === 'client') {
-    if (state.view === 'dashboard') return compactDashboard('client');
+    if (state.view === 'dashboard') return clientDashboardView();
     if (state.view === 'properties') return cardsView('Properties', 'Client properties.', state.properties);
     if (state.view === 'patrol-requests') return clientPatrolRequestsView();
     if (state.view === 'reports') return cardsView('Reports', 'Released client reports.', state.patrolReports);

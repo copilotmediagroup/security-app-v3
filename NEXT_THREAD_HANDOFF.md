@@ -1,11 +1,8 @@
-# Next Thread Handoff — Co Pilot Security v3.0.23
+# Next Thread Handoff — Co Pilot Security v3.0.24
 
-Latest build: v3.0.23 NOTIFICATIONS POLISH
+Latest build: v3.0.24 CLIENT DASHBOARD REDESIGN
 
 ## What changed
-- Built from v3.0.22.
-- Polished the Notifications page.
-- Right detail rail scrolls cleanly and no longer gets covered by the version badge.
-- Notification rows and selected state are cleaner.
-- Detail card spacing and action buttons are tighter.
+- Rebuilt the Client Dashboard into a premium command-center layout.
+- Added KPI cards, large map, recent activity, and right-side cards.
 - No new SQL required.

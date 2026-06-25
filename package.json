@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-notifications-polish",
-  "version": "3.0.23",
+  "name": "co-pilot-security-client-dashboard-redesign",
+  "version": "3.0.24",
   "private": true,
-  "description": "Polishes the Notifications redesign with cleaner right rail scrolling, tighter detail cards, and improved notification row spacing.",
+  "description": "Redesigns the Client Dashboard into a premium command-center layout with live patrol map, recent activity, messages, notifications, and reports.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

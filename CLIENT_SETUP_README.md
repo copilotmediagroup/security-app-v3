@@ -1,16 +1,13 @@
-# Co Pilot Security v3.0.23 — Notifications Polish
+# Co Pilot Security v3.0.24 — Client Dashboard Redesign
 
 ## What changed
-- Polished the Notifications redesign from v3.0.22.
-- Right detail rail now scrolls cleanly.
-- Added bottom padding so the build badge does not cover the lower-right detail content.
-- Improved notification row spacing and selected-row styling.
-- Tightened detail cards, metadata, message box, and action buttons.
+- Rebuilt the `Client Dashboard` to match the new premium layout direction.
+- Added:
+  - KPI cards
+  - large live patrol map section
+  - recent activity table
+  - right rail for messages, notifications, and recent reports
+- Preserved the same dark command-center app style.
 
-## Preserved
-- Search and filters.
-- Summary KPI cards.
-- Grouped notification feed.
-- Detail rail actions.
-- Local read/acknowledge behavior.
-- No new SQL required.
+## SQL
+No new SQL required.
