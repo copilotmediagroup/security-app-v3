@@ -1,44 +1,38 @@
-# Next Thread Handoff — Co Pilot Security v3.0.11
+# Next Thread Handoff — Co Pilot Security v3.0.12
 
-Latest build: **v3.0.11 DISPATCH ASSIGN NOW**
+Latest build: **v3.0.12 ACTIVE JOB STAGE BUTTONS**
 
-## Current rule
-User has no Bolt tokens. Do not suggest Bolt AI prompts. Continue only by creating complete GitHub-ready ZIP replacement packages.
+## Current app direction
+- Continue building from the latest uploaded ZIP only.
+- No Bolt AI prompts; no tokens available.
+- Create complete GitHub-ready ZIP replacement packages.
+- Keep the app modern, dark, squared, premium SaaS / command-center style.
+- Preserve same Supabase config unless user explicitly changes it.
+- No new SQL unless clearly required.
 
-## What was built in v3.0.11
-- Built from **v3.0.10 CLIENT PATROL REQUEST FLOW**.
-- Added a Dispatch/Admin dashboard shortcut panel called **Assign Now**.
-- Pending client patrol requests now appear directly on Dispatch Dashboard.
-- Each pending request shows:
-  - Request number
-  - Property name
-  - Property address
-  - Priority/time
-  - Guard selector
-  - **Assign Now** button
-- **Assign Now** is functional. It calls existing Supabase RPC:
-  - `cp_admin_assign_patrol_request`
-  - arguments: `p_request_id`, `p_guard_id`
-- After successful assignment, app data reloads and request should move from `pending_dispatch` to `assigned`.
-- The selected guard should then see the assigned job on Guard Dashboard / Active Job.
+## What was built in v3.0.12
+- Guard Active Job workflow button state behavior was corrected.
+- Workflow buttons now act like a single-selected stage group:
+  - Default dark state when not current.
+  - Green when that stage/action is the current selected stage.
+  - All other stage/action buttons return to default when one is clicked.
+- Previous stages no longer stay green after moving forward.
+- The current stage uses green instead of blue.
+- Removed the default blue primary styling from **Mark On The Way**.
 
-## Preserved
-- Client Request Patrol page from v3.0.10.
-- Guard Active Job workflow page from v3.0.9.
-- Online/offline map marker visibility rules from v3.0.7/v3.0.8.
-- Same Supabase backend/config.
-- Bottom-right badge.
-- No new SQL required if consolidated RPCs are installed.
+## Preserved from prior versions
+- v3.0.11 Dispatch Dashboard **Assign Now** shortcut.
+- v3.0.10 Client Patrol Request flow.
+- v3.0.9 Guard Active Job workflow layout.
+- v3.0.7/v3.0.8 marker visibility rules:
+  - Offline hides guard and property markers.
+  - Online shows guard marker only.
+  - Property marker shows only during active job.
+  - Completed job removes red property marker.
 
-## Test flow
-1. Login as Client.
-2. Go to Patrol Requests.
-3. Submit a patrol request.
-4. Login as Dispatch/Admin.
-5. Dashboard should show pending request under Assign Now.
-6. Choose guard and click Assign Now.
-7. Login as Guard.
-8. Assigned job should appear in Guard Dashboard / Active Job workflow.
-
-## Next likely screen
-After Assign Now works, continue refining Dispatch Board / Pending Dispatch details or Guard workflow proof/report handoff.
+## Next likely test
+- Login as Client and request patrol.
+- Login as Dispatch and use **Assign Now**.
+- Login as Guard and open **Active Job**.
+- Confirm each workflow button turns green only when it is the current selected stage.
+- Confirm all other workflow buttons remain default.

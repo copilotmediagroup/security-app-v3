@@ -1,19 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.11",
-  "buildName": "DISPATCH ASSIGN NOW",
-  "type": "dispatch-dashboard-assign-now-shortcut",
+  "version": "3.0.12",
+  "buildName": "ACTIVE JOB STAGE BUTTONS",
+  "type": "active-job-stage-button-state-flow",
   "sql_required": false,
   "features": [
-    "Dispatch Dashboard now includes an Assign Now shortcut panel",
-    "Pending client patrol requests show directly on Dispatch Dashboard",
-    "Each pending request shows request number, property, address, priority/time, guard selector, and Assign Now button",
-    "Assign Now calls existing Supabase RPC cp_admin_assign_patrol_request",
-    "Successful assignment refreshes app data and moves request to assigned status",
-    "Selected guard should see the assigned job in Guard Dashboard / Active Job workflow",
-    "No new SQL required if existing consolidated assignment RPC is installed",
+    "Guard Active Job workflow stage/action buttons now follow single-active-button behavior",
+    "Only the current workflow stage turns green",
+    "All other workflow stage/action buttons remain default",
+    "Previous completed stages no longer stay green",
+    "Removed default blue primary action button behavior from Mark On The Way",
+    "Current stage uses green to match requested online/offline-style toggle behavior",
+    "Preserves Dispatch Dashboard Assign Now shortcut",
     "Preserves Client Patrol Request flow",
-    "Preserves Guard Active Job workflow",
-    "Preserves map marker visibility rules"
+    "Preserves Guard Active Job workflow layout",
+    "Preserves map marker visibility rules",
+    "No new SQL required"
   ]
 }

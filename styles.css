@@ -2002,7 +2002,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .active-stepper::before {
   content: ""; position: absolute; left: 7%; right: 7%; top: 34px; height: 2px;
-  background: linear-gradient(90deg, rgba(46,125,255,.8), rgba(114,171,233,.20));
+  background: rgba(114,171,233,.18);
   z-index: 0;
 }
 .active-step {
@@ -2022,11 +2022,11 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .active-step strong { font-size: 12px; text-align: center; line-height: 1.2; }
 .active-step small { color: var(--muted); font-size: 11px; font-weight: 900; }
-.active-step.done i { background: rgba(55,220,114,.62); border-color: rgba(55,220,114,.55); }
-.active-step.done { border-color: rgba(55,220,114,.20); }
-.active-step.current { border-color: rgba(46,125,255,.55); background: rgba(18,52,95,.68); box-shadow: 0 0 30px rgba(46,125,255,.12); }
-.active-step.current i { background: linear-gradient(180deg, #3e8cff, #1f65db); border-color: rgba(143,202,255,.52); box-shadow: 0 0 0 8px rgba(46,125,255,.15), 0 0 28px rgba(46,125,255,.28); }
-.active-step.wait { opacity: .78; }
+.active-step.default-stage { opacity: .86; }
+.active-step.default-stage i { background: rgba(117,139,164,.24); border-color: rgba(255,255,255,.10); box-shadow: 0 0 0 7px rgba(46,125,255,.04); }
+.active-step.current-stage { border-color: rgba(55,220,114,.62); background: rgba(16,78,45,.52); box-shadow: 0 0 34px rgba(55,220,114,.16); }
+.active-step.current-stage i { background: linear-gradient(180deg, #39dd7b, #159a54); border-color: rgba(144,255,181,.62); box-shadow: 0 0 0 8px rgba(55,220,114,.16), 0 0 30px rgba(55,220,114,.32); }
+.active-step.current-stage small { color: #91f8b7; }
 .active-workflow-status {
   margin-top: 18px; border-top: 1px solid rgba(114,171,233,.12); padding-top: 16px;
 }
@@ -2040,8 +2040,8 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   display: inline-flex; justify-content: center; align-items: center; gap: 8px; padding: 0 10px;
 }
 .active-job-action i { font-style: normal; color: #8ac7ff; }
-.active-job-action.primary { background: linear-gradient(180deg, #2f78ff, #195bd7); border-color: rgba(122,186,255,.40); }
-.active-job-action.primary i { color: #fff; }
+.active-job-action.current-stage { background: linear-gradient(180deg, #36d978, #158d50); border-color: rgba(141,255,180,.52); color: #fff; box-shadow: 0 0 0 4px rgba(55,220,114,.10), 0 16px 32px rgba(0,0,0,.22); }
+.active-job-action.current-stage i { color: #fff; }
 .active-job-action:hover,
 .active-step:hover { transform: translateY(-1px); border-color: rgba(114,171,233,.36); }
 

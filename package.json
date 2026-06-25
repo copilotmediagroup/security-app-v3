@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-assign-now",
-  "version": "3.0.11",
+  "name": "co-pilot-security-active-job-stage-buttons",
+  "version": "3.0.12",
   "private": true,
-  "description": "Adds a functional Dispatch Dashboard Assign Now shortcut for pending patrol requests.",
+  "description": "Updates Guard Active Job workflow buttons so only the current selected stage turns green.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

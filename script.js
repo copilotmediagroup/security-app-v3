@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.11',
-  label: 'v3.0.11 DISPATCH ASSIGN NOW'
+  version: '3.0.12',
+  label: 'v3.0.12 ACTIVE JOB STAGE BUTTONS'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1511,7 +1511,6 @@ function activeJobSummaryCard(req) {
 }
 function activeJobWorkflowPanel(req) {
   const stage = guardWorkflowStage(req);
-  const currentIdx = guardWorkflowIndex(stage);
   const steps = [
     ['accepted', '✓', 'Accepted'],
     ['on_way', '▣', 'On The Way'],
@@ -1520,18 +1519,19 @@ function activeJobWorkflowPanel(req) {
     ['upload_proof', '⇧', 'Upload Proof'],
     ['complete', '✓', 'Complete']
   ];
+  const actionClass = actionStage => `active-job-action${stage === actionStage ? ' current-stage' : ''}`;
   return `<section class="panel panel-pad active-workflow-panel">
-    <div class="panel-head"><div><h2>Workflow Progress</h2><p>Tap the next step as the patrol moves forward.</p></div></div>
+    <div class="panel-head"><div><h2>Workflow Progress</h2><p>Tap the stage the patrol is currently in. Only the active stage turns green.</p></div></div>
     <div class="active-stepper">
-      ${steps.map(([key, icon, label], idx) => `<button type="button" class="active-step ${idx < currentIdx ? 'done' : idx === currentIdx ? 'current' : 'wait'}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="${esc(key)}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${idx < currentIdx ? 'Done' : idx === currentIdx ? 'Current' : 'Pending'}</small></button>`).join('')}
+      ${steps.map(([key, icon, label]) => `<button type="button" class="active-step ${stage === key ? 'current-stage' : 'default-stage'}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="${esc(key)}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${stage === key ? 'Current' : 'Default'}</small></button>`).join('')}
     </div>
     <div class="active-workflow-status"><strong>Current Status: <b>${esc(guardWorkflowStageText(stage))}</b></strong><p>${esc(guardWorkflowInstruction(stage))}</p></div>
     <div class="active-job-action-row">
-      <button type="button" class="active-job-action primary" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
-      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
-      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
-      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Open Upload Proof</button>
-      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
+      <button type="button" class="${actionClass('on_way')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
+      <button type="button" class="${actionClass('arrived')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
+      <button type="button" class="${actionClass('checking')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
+      <button type="button" class="${actionClass('upload_proof')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Open Upload Proof</button>
+      <button type="button" class="${actionClass('complete')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
     </div>
   </section>`;
 }
