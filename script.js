@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T09-52-v3033';
+const CP_DEV_CACHE_BUST = '2026-06-25T14-20-v3034';
 const BUILD = {
-  version: '3.0.33',
-  label: 'v3.0.33 BADGE VERSION SYNC FIX'
+  version: '3.0.34',
+  label: 'v3.0.34 REQUEST PATROL MOCKUP MATCH'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -3634,13 +3634,13 @@ function clientPrioritySegment() {
 }
 function clientRequestServiceCards() {
   const services = [
-    ['Check doors', true, '▥'],
-    ['Check perimeter', true, '◇'],
-    ['Check windows', true, '▦'],
-    ['Photo proof required', true, '▣'],
-    ['Lock up if needed', false, '⌘']
+    ['Check doors', true],
+    ['Check perimeter', true],
+    ['Check windows', true],
+    ['Photo proof required', true],
+    ['Lock up if needed', false]
   ];
-  return `<div class="client-request-services"><span>Requested Services</span>${services.map(([label, checked, icon]) => `<label><input type="checkbox" name="requested_services" value="${esc(label)}" ${checked ? 'checked' : ''}><b><i>${esc(icon)}</i>${esc(label)}</b></label>`).join('')}</div>`;
+  return `<div class="client-request-services mockup-services"><span>Requested Services</span>${services.map(([label, checked]) => `<label><input type="checkbox" name="requested_services" value="${esc(label)}" ${checked ? 'checked' : ''}><b>${esc(label)}</b></label>`).join('')}</div>`;
 }
 function clientRequestTypeCounts() {
   const requests = clientRecentRequests();
@@ -3669,12 +3669,12 @@ function clientScheduleFields() {
 function clientRequestSummary(property) {
   const cfg = clientRequestTypeConfig();
   const when = state.clientRequestType === 'immediate' ? 'ASAP' : state.clientRequestType === 'vacation' ? 'Date range' : state.clientRequestType === 'recurring' ? 'Repeating schedule' : 'Future date/time';
-  return `<section class="panel panel-pad client-request-summary-card"><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list command"><span>Type</span><strong>${esc(cfg.label)}</strong><span>Property</span><strong>${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong>${esc(when)}</strong><span>Duration</span><strong>60 minutes (est.)</strong><span>Services</span><strong class="summary-icons"><i>▥</i><i>◇</i><i>▦</i><i>▣</i></strong><span>Special Instructions</span><strong>Yes / Optional</strong></div></section>`;
+  return `<section class="panel panel-pad client-request-summary-card"><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list command"><span>Type</span><strong>${esc(cfg.label)}</strong><span>Priority</span><strong><em class="mockup-priority">Normal</em></strong><span>Property</span><strong>${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong>${esc(when)}</strong><span>Duration</span><strong>60 minutes (est.)</strong><span>Services</span><strong class="summary-icons"><i>▥</i><i>◇</i><i>▦</i><i>▣</i></strong><span>Special Instructions</span><strong>Yes / Optional</strong></div></section>`;
 }
 function clientRequestPropertyPanel(property) {
   if (!property) return `<section class="panel panel-pad client-selected-request-property"><div class="empty">Add a property before requesting patrol.</div></section>`;
   const image = propertyImageValue(property);
-  return `<section class="panel panel-pad client-selected-request-property"><div class="panel-head"><div><h2>Selected Property</h2></div></div><div class="client-request-property-hero"><div>${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><aside><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small><em>${clientPropertyStatusChip(property)}</em></aside></div><button type="button" class="ghost-button wide" data-view="properties">View Property</button></section>`;
+  return `<section class="panel panel-pad client-selected-request-property mockup-selected-property"><div class="panel-head"><div><h2>Selected Property</h2></div></div><div class="client-request-property-hero"><div>${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><aside><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small><em>${clientPropertyStatusChip(property)}</em></aside></div><button type="button" class="ghost-button wide" data-view="properties">View Property <span>↗</span></button></section>`;
 }
 function clientRequestHistoryRows() {
   let rows = clientRecentRequests();

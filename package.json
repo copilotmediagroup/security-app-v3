@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-badge-version-sync-fix",
-  "version": "3.0.33",
+  "name": "co-pilot-security-request-patrol-mockup-match",
+  "version": "3.0.34",
   "private": true,
-  "description": "Fixes stale badge issue by syncing script.js BUILD label and forcing cache-busted asset URLs.",
+  "description": "Polishes Client Patrol Requests page to match the provided command-center mockup while preserving v3.0.33 badge sync fix.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,15 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.33",
-  "buildName": "BADGE VERSION SYNC FIX",
-  "type": "badge-version-sync-cache-fix",
+  "version": "3.0.34",
+  "buildName": "REQUEST PATROL MOCKUP MATCH",
+  "type": "client-request-patrol-mockup-match",
   "sql_required": false,
   "features": [
-    "Fixes issue where badge still showed v3.0.31 because script.js BUILD label was not updated",
-    "Forces bottom-right badge to show v3.0.33 BADGE VERSION SYNC FIX",
-    "Adds stronger cache-busted asset URLs in index.html",
-    "Makes ensureBadge recreate and overwrite the badge every second",
-    "Preserves v3.0.32 Client Patrol Requests command-center page changes",
+    "Polishes Client Patrol Requests page to more closely match the provided mockup",
+    "Widens and tightens right-side rail cards",
+    "Compacts KPI cards and request type cards",
+    "Improves Request Details grid spacing",
+    "Simplifies Requested Services checkboxes to match mockup",
+    "Improves selected property card image/text layout",
+    "Improves upload/dropzone and submit/save action placement",
+    "Preserves v3.0.33 badge/cache sync fix",
     "No new SQL required"
   ]
 }
