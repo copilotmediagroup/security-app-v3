@@ -2623,3 +2623,30 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .completed-job-row { grid-template-columns: 1fr; gap: 8px; }
   .completed-proof-grid { grid-template-columns:1fr; }
 }
+
+
+/* Guard Route / GPS live page */
+.guard-route-gps-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--gap);
+  align-items: start;
+}
+.guard-route-gps-main .guard302-map-card { min-height: 0; }
+.guard-route-gps-main .guard302-leaflet-wrap { min-height: 440px; }
+.guard-route-gps-main .guard302-leaflet-map,
+.guard-route-gps-main .guard302-map-fallback,
+.guard-route-gps-main .guard302-marker-overlay { min-height: 440px; }
+.guard-route-gps-rail { display: grid; gap: var(--gap); }
+.guard-route-gps-help-list { display: grid; gap: 12px; }
+.guard-route-gps-help-list div {
+  border: 1px solid rgba(113, 169, 232, .10);
+  border-radius: 9px;
+  background: rgba(8, 22, 38, .50);
+  padding: 12px 13px;
+}
+.guard-route-gps-help-list strong { display: block; font-size: 13px; margin-bottom: 4px; }
+.guard-route-gps-help-list span { color: var(--muted); font-size: 13px; line-height: 1.45; display: block; }
+@media (max-width: 1180px) {
+  .guard-route-gps-layout { grid-template-columns: 1fr; }
+}

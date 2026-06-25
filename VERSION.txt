@@ -1,18 +1,18 @@
 Co Pilot Security
-Version: 3.0.16
-Build Name: COMPLETED PROOF DISPLAY
+Version: 3.0.17
+Build Name: ROUTE GPS LIVE MAP
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.15.
-- Fixes proof uploaded from the inline Active Job flow not appearing on the Completed page.
-- After the guard confirms the upload preview, the proof is now uploaded and saved to the job display cache.
-- Completed jobs now use robust proof matching and show proof counts/previews for photo or video proof.
-- Keeps Completed page filters: Today, This Week, This Month, This Year.
+- Built from v3.0.16.
+- Guard Route / GPS page now uses the same active live map component as the Guard Dashboard.
+- Route / GPS now initializes the same Leaflet live street map and fallback street grid.
+- Same online/offline behavior, marker behavior, clickable guard/property cards, and X close buttons.
+- Property marker appears only when the guard is online and has an active job.
 - No new SQL required.
 
 Badge:
-v3.0.16 COMPLETED PROOF DISPLAY
+v3.0.17 ROUTE GPS LIVE MAP
 
 SQL:
 No new SQL required.

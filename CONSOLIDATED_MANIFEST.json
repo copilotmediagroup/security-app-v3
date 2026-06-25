@@ -1,15 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.16",
-  "buildName": "COMPLETED PROOF DISPLAY",
-  "type": "guard-completed-proof-display-fix",
+  "version": "3.0.17",
+  "buildName": "ROUTE GPS LIVE MAP",
+  "type": "guard-route-gps-live-map",
   "sql_required": false,
   "features": [
-    "Inline proof upload now records uploaded proof metadata after preview confirmation",
-    "Completed jobs proof count uses robust request matching",
-    "Completed job details show proof previews from uploaded photo/video items",
-    "Local browser cache backs up proof display if Supabase app data does not return proofItems immediately",
-    "Preserves Completed filters: Today, This Week, This Month, This Year",
+    "Guard Route / GPS page now uses the same live interactive map module as the Guard Dashboard",
+    "Leaflet live map and fallback street grid now initialize on Route / GPS view",
+    "Same online/offline behavior as dashboard map",
+    "Same blue guard marker, red property marker, marker-click cards, and X close controls",
+    "Property marker only appears for active jobs while guard is online",
     "No new SQL required"
   ]
 }

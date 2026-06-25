@@ -1,16 +1,13 @@
-# Co Pilot Security v3.0.16 — Completed Proof Display
+# Co Pilot Security v3.0.17 — Route / GPS Live Map
 
 ## What changed
-- Corrected the inline proof flow intent:
-  - Guard taps `Upload Proof` inside Active Job.
-  - Device/browser picker opens.
-  - Guard selects photo/video.
-  - Preview confirmation appears.
-  - Guard confirms.
-  - Proof is now uploaded and saved to the job.
-  - Guard stays inside Active Job and can complete the job.
-- Completed jobs now show the uploaded proof count and preview tiles.
-- Added a local display backup so uploaded proof can still show on Completed even if Supabase app data does not immediately return proof items for the guard role.
+- Guard `Route / GPS` page now uses the same live interactive map as the Guard Dashboard.
+- Same Leaflet map / fallback street-grid behavior.
+- Same marker rules:
+  - online shows guard marker
+  - active job + online shows property marker
+  - offline hides both
+- Same marker click cards and X close.
 
 ## SQL
 No new SQL required.

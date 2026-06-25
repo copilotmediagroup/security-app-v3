@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-completed-proof-display",
-  "version": "3.0.16",
+  "name": "co-pilot-security-route-gps-live-map",
+  "version": "3.0.17",
   "private": true,
-  "description": "Fixes inline proof upload display on Guard Completed jobs by caching uploaded proof metadata and using robust proof matching.",
+  "description": "Makes the Guard Route / GPS page use the same live interactive map component and behavior as the Guard Dashboard.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

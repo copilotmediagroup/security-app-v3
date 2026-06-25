@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.16',
-  label: 'v3.0.16 COMPLETED PROOF DISPLAY'
+  version: '3.0.17',
+  label: 'v3.0.17 ROUTE GPS LIVE MAP'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1980,6 +1980,29 @@ function guardActiveJobWorkflowView() {
   </div>`;
 }
 
+
+function guardRouteGpsLiveView() {
+  const req = guard302CurrentRequest();
+  return `<div class="dashboard guard-route-gps-page">
+    <header class="dashboard-header active-job-header"><div class="title-block"><h1>Route / GPS</h1><p>Live location sharing, route status, and active patrol map.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header>
+    <section class="guard-route-gps-layout">
+      <div class="guard-route-gps-main">${guard302Map(req)}</div>
+      <aside class="guard-route-gps-rail">
+        ${guard302CurrentAssignment(req)}
+        <section class="panel panel-pad guard-route-gps-help">
+          <div class="guard302-card-head"><div><h2>Map Behavior</h2></div></div>
+          <div class="guard-route-gps-help-list">
+            <div><strong>Online</strong><span>Shows your blue pulse marker.</span></div>
+            <div><strong>Active Job</strong><span>Shows the red property marker only while an active job exists.</span></div>
+            <div><strong>Offline</strong><span>Hides both guard and property markers.</span></div>
+            <div><strong>Marker Click</strong><span>Click a marker to open its detail card, then close with X.</span></div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -2132,7 +2155,7 @@ function renderRoleView() {
     if (state.view === 'dashboard') return guardDashboardMockup302();
     if (state.view === 'active-job') return guardActiveJobWorkflowView();
     if (state.view === 'completed') return guardCompletedJobsView();
-    if (state.view === 'route-gps') return compactDashboard('guard');
+    if (state.view === 'route-gps') return guardRouteGpsLiveView();
     if (state.view === 'upload-proof') return proofUploadView();
   }
   if (state.role === 'client') {
@@ -2154,14 +2177,14 @@ function renderAppShell() {
 
 
 function scheduleGuardLeafletMap() {
-  if (state.role === 'guard' && ['dashboard','active-job'].includes(state.view)) {
+  if (state.role === 'guard' && ['dashboard','active-job','route-gps'].includes(state.view)) {
     requestAnimationFrame(() => {
       [75, 450, 1200, 2500].forEach(delay => setTimeout(initGuardLeafletMap, delay));
     });
   }
 }
 function scheduleGuardGpsPrep() {
-  if (state.role !== 'guard' || !['dashboard','active-job'].includes(state.view)) return;
+  if (state.role !== 'guard' || !['dashboard','active-job','route-gps'].includes(state.view)) return;
   if (!liveGps.online) return;
   const req = guard302CurrentRequest();
   if (!req) return;
@@ -2179,7 +2202,7 @@ function scheduleGuardGpsPrep() {
     try {
       await geocodePropertyIfNeeded(req);
     } finally {
-      if (state.role === 'guard' && ['dashboard','active-job'].includes(state.view)) render();
+      if (state.role === 'guard' && ['dashboard','active-job','route-gps'].includes(state.view)) render();
     }
   }, 250);
 }
