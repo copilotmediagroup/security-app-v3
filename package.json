@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-completed-jobs-filters",
-  "version": "3.0.15",
+  "name": "co-pilot-security-completed-proof-display",
+  "version": "3.0.16",
   "private": true,
-  "description": "Adds a Guard Completed sidebar page with Today/This Week/This Month/This Year filters. Defaults to today's completed jobs.",
+  "description": "Fixes inline proof upload display on Guard Completed jobs by caching uploaded proof metadata and using robust proof matching.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

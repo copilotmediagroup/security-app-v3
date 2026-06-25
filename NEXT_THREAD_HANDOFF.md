@@ -1,10 +1,11 @@
-# Next Thread Handoff — Co Pilot Security v3.0.15
+# Next Thread Handoff — Co Pilot Security v3.0.16
 
-Latest build: v3.0.15 COMPLETED JOBS FILTERS
+Latest build: v3.0.16 COMPLETED PROOF DISPLAY
 
 ## What changed
-- Added a Guard sidebar item called Completed.
-- Default filter only shows today's completed jobs.
-- Added filters for Today / This Week / This Month / This Year.
-- Added a completed jobs history screen with stats, list view, and right-side detail rail.
+- Built from v3.0.15.
+- Fixes uploaded proof not showing on the Guard Completed page.
+- Inline proof upload now returns uploaded proof metadata and stores it for display.
+- `proofForRequest` now matches proof records more robustly and merges Supabase proof items with local inline-upload proof cache.
+- Completed page proof count and preview tiles now show uploaded photo/video proof.
 - No new SQL required.

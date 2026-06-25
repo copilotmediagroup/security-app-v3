@@ -1,16 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.15",
-  "buildName": "COMPLETED JOBS FILTERS",
-  "type": "guard-completed-jobs-sidebar-filter-page",
+  "version": "3.0.16",
+  "buildName": "COMPLETED PROOF DISPLAY",
+  "type": "guard-completed-proof-display-fix",
   "sql_required": false,
   "features": [
-    "Added Guard sidebar 'Completed' page",
-    "Default filter shows today's completed jobs only",
-    "Filters: Today, This Week, This Month, This Year",
-    "Completed job stats cards",
-    "Completed job list with clickable detail panel",
-    "Proof count and proof preview tiles",
+    "Inline proof upload now records uploaded proof metadata after preview confirmation",
+    "Completed jobs proof count uses robust request matching",
+    "Completed job details show proof previews from uploaded photo/video items",
+    "Local browser cache backs up proof display if Supabase app data does not return proofItems immediately",
+    "Preserves Completed filters: Today, This Week, This Month, This Year",
     "No new SQL required"
   ]
 }

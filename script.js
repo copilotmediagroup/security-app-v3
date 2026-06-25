@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.15',
-  label: 'v3.0.15 COMPLETED JOBS FILTERS'
+  version: '3.0.16',
+  label: 'v3.0.16 COMPLETED PROOF DISPLAY'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -181,7 +181,71 @@ function guardById(id) { return state.guards.find(item => String(item.id) === St
 function clientById(id) { return state.clients.find(item => String(item.id) === String(id)) || {}; }
 function requestById(id) { return state.patrolRequests.find(item => String(item.id) === String(id)) || null; }
 function reportByRequestId(id) { return state.patrolReports.find(item => String(item.request_id) === String(id)) || null; }
-function proofForRequest(id) { return state.proofItems.filter(item => String(item.request_id) === String(id)); }
+function proofRequestIdValue(item = {}) {
+  return item.request_id || item.patrol_request_id || item.patrolRequestId || item.requestId || item.request?.id || '';
+}
+function proofUrlValue(item = {}) {
+  return item.public_url || item.publicUrl || item.file_url || item.fileUrl || item.url || item.signed_url || item.storage_url || '';
+}
+function localProofCacheKey() {
+  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
+  return `cp_security_inline_proof_cache_${who}`;
+}
+function readLocalProofItems() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(localProofCacheKey()) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function writeLocalProofItems(items = []) {
+  try { localStorage.setItem(localProofCacheKey(), JSON.stringify(items.slice(0, 250))); } catch {}
+}
+function addLocalProofItems(requestId, items = []) {
+  const existing = readLocalProofItems();
+  const stamped = items.map((item, idx) => ({
+    id: item.id || item.proof?.id || `local-${requestId}-${Date.now()}-${idx}`,
+    request_id: item.request_id || item.proof?.request_id || requestId,
+    bucket_id: item.bucket_id || item.proof?.bucket_id || 'patrol-proof',
+    object_path: item.object_path || item.proof?.object_path || '',
+    file_name: item.file_name || item.proof?.file_name || 'Proof file',
+    file_type: item.file_type || item.proof?.file_type || '',
+    file_size: item.file_size || item.proof?.file_size || 0,
+    public_url: proofUrlValue(item) || proofUrlValue(item.proof || {}),
+    note: item.note || item.proof?.note || '',
+    uploaded_at: item.uploaded_at || item.proof?.uploaded_at || new Date().toISOString(),
+    created_at: item.created_at || item.proof?.created_at || new Date().toISOString(),
+    local_cached: true
+  }));
+  const merged = [...stamped, ...existing];
+  const seen = new Set();
+  const deduped = [];
+  for (const item of merged) {
+    const key = String(item.id || item.object_path || item.public_url || `${item.request_id}-${item.file_name}-${item.uploaded_at}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  writeLocalProofItems(deduped);
+}
+function proofIdentity(item = {}) {
+  return String(item.id || item.object_path || proofUrlValue(item) || `${proofRequestIdValue(item)}-${item.file_name || ''}-${item.uploaded_at || item.created_at || ''}`);
+}
+function proofForRequest(id) {
+  const target = String(id || '');
+  const combined = [...(state.proofItems || []), ...readLocalProofItems()];
+  const seen = new Set();
+  return combined
+    .filter(item => String(proofRequestIdValue(item)) === target)
+    .filter(item => {
+      const key = proofIdentity(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => new Date(b.uploaded_at || b.created_at || 0) - new Date(a.uploaded_at || a.created_at || 0));
+}
 function requestTitle(req = {}) { return `Request #${String(req.request_number || req.id || '').slice(0, 8)}`; }
 function propertyLabel(req = {}) {
   const p = propertyById(req.property_id);
@@ -359,10 +423,12 @@ async function rejectSignup(kind, id) {
   toast(`${kind === 'guard' ? 'Guard' : 'Client'} rejected.`, 'success');
 }
 
+
 async function uploadProofFiles(requestId, files = [], note = '') {
   if (!requestId) throw new Error('Active job missing.');
   const list = Array.from(files || []);
   if (!list.length) throw new Error('Choose at least one photo or video.');
+  const uploaded = [];
 
   for (const file of list) {
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : '';
@@ -371,7 +437,7 @@ async function uploadProofFiles(requestId, files = [], note = '') {
     const objectPath = `${requestId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safe}`;
     await supabase.uploadStorageObject('patrol-proof', objectPath, file, { upsert: false });
     const publicUrl = supabase.getPublicUrl('patrol-proof', objectPath);
-    await supabase.rpc('cp_guard_register_patrol_proof', {
+    const result = await supabase.rpc('cp_guard_register_patrol_proof', {
       p_request_id: requestId,
       p_bucket_id: 'patrol-proof',
       p_object_path: objectPath,
@@ -381,7 +447,24 @@ async function uploadProofFiles(requestId, files = [], note = '') {
       p_public_url: publicUrl,
       p_note: note
     });
+    const proof = result?.proof || {};
+    uploaded.push({
+      ...proof,
+      request_id: proof.request_id || requestId,
+      bucket_id: proof.bucket_id || 'patrol-proof',
+      object_path: proof.object_path || objectPath,
+      file_name: proof.file_name || safe,
+      file_type: proof.file_type || file.type || kind,
+      file_size: proof.file_size || file.size || 0,
+      public_url: proof.public_url || publicUrl,
+      note: proof.note || note,
+      uploaded_at: proof.uploaded_at || new Date().toISOString(),
+      created_at: proof.created_at || new Date().toISOString()
+    });
   }
+
+  addLocalProofItems(requestId, uploaded);
+  return uploaded;
 }
 
 async function uploadProof(form) {
@@ -1533,7 +1616,7 @@ async function confirmInlineProofUpload() {
   await loadData();
   state.view = 'active-job';
   render();
-  toast('Proof uploaded. You can now complete the job.', 'success');
+  toast('Proof uploaded and saved to this job. You can now complete the job.', 'success');
 }
 function guardWorkflowProofProgress(req) {
   const count = req ? proofForRequest(req.id).length : 0;
@@ -1831,7 +1914,7 @@ function completedJobRow(req = {}, selected = false) {
   </button>`;
 }
 function completedProofPreview(item = {}) {
-  const url = item.public_url || item.file_url || item.url || '';
+  const url = proofUrlValue(item);
   const name = item.file_name || 'Proof file';
   const isVideo = String(item.file_type || '').startsWith('video/');
   if (!url) return `<div class="completed-proof-tile empty"><span>${esc(name)}</span></div>`;
