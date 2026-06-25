@@ -1,18 +1,28 @@
-# Co Pilot Security v3.0.37 — Client Messages Redesign
+# Co Pilot Security v3.0.38 — Settings Page Redesign
 
 ## What changed
-- Rebuilt the Client `Messages` page to match the Guard messaging screen.
-- Added:
-  - Dispatch Inbox
-  - Search and filters
-  - Dispatch / Client conversation
-  - Message stream
-  - Compose box
-  - Quick replies
-  - Conversation details rail
-  - Linked property/request context
-  - Recent alerts and reports
+- Rebuilt the `Settings` page using the selected image 2 direction.
+- Added top tab bar:
+  - Profile
+  - Company
+  - Notifications
+  - Security
+  - Billing
+  - Integrations
+- Added main profile area:
+  - Profile Information
+  - Device-only profile photo upload
+  - Change Password
+  - Communication Preferences
+- Added right rail:
+  - Account Summary
+  - Company Information
+  - Preferences
+  - Quick Actions
 
-## Development behavior
-- Uses local browser storage for the Dispatch / Client conversation during development.
-- No new SQL required.
+## Media rules
+- No photo URL field.
+- Profile photo is uploaded from device only.
+
+## SQL
+No new SQL required.

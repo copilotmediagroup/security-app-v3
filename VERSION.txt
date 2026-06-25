@@ -1,20 +1,20 @@
 Co Pilot Security
-Version: 3.0.37
-Build Name: CLIENT MESSAGES REDESIGN
+Version: 3.0.38
+Build Name: SETTINGS PAGE REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.36.
-- Rebuilt the Client Messages page to match the same premium message layout used by Guard.
-- Client now has Dispatch Inbox, conversation stream, compose box, quick replies, and conversation details rail.
-- Added local Dispatch / Client message thread storage for development testing.
-- Client can send messages to Dispatch from the Messages page.
-- Quick response buttons now work for client messages.
-- Right rail shows linked property/request context, client status, quick responses, recent alerts, and recent reports.
+- Built from v3.0.37.
+- Rebuilt the Settings page to match the selected image 2 design direction.
+- Added top settings tabs: Profile, Company, Notifications, Security, Billing, and Integrations.
+- Added Profile Information, profile photo device upload, Change Password, and Communication Preferences sections.
+- Added right rail with Account Summary, Company Information, Preferences, and Quick Actions.
+- Profile photo is device-upload only. No URL field is shown.
+- Preserved v3.0.37 Client Messages redesign.
 - No new SQL required.
 
 Badge:
-v3.0.37 CLIENT MESSAGES REDESIGN
+v3.0.38 SETTINGS PAGE REDESIGN
 
 SQL:
 No new SQL required.

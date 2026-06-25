@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T15-12-v3037';
+const CP_DEV_CACHE_BUST = '2026-06-25T15-38-v3038';
 const BUILD = {
-  version: '3.0.37',
-  label: 'v3.0.37 CLIENT MESSAGES REDESIGN'
+  version: '3.0.38',
+  label: 'v3.0.38 SETTINGS PAGE REDESIGN'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -52,7 +52,8 @@ const state = {
   clientReportSearch: '',
   clientReportStatusFilter: 'all',
   clientReportPropertyFilter: 'all',
-  clientReportPage: 1
+  clientReportPage: 1,
+  settingsTab: 'profile'
 };;
 const liveGps = {
   online: false,
@@ -3942,9 +3943,128 @@ function clientPatrolRequestsView() {
 }
 
 
+
+function settingsProfileName() {
+  return state.profile?.display_name || state.profile?.name || (state.profile?.email ? String(state.profile.email).split('@')[0] : '') || roleLabel(state.role);
+}
+function settingsProfileEmail() {
+  return state.profile?.email || activeGuardEmail() || 'user@example.com';
+}
+function settingsProfileInitials() {
+  return initials(settingsProfileName());
+}
+function settingsCompanyName() {
+  if (state.role === 'client') return state.clients[0]?.company_name || state.clients[0]?.business_name || state.profile?.company_name || 'Client Property Group';
+  if (state.role === 'guard') return 'Co Pilot Security Guard Team';
+  return 'Co Pilot Security Operations';
+}
+function settingsPhone() {
+  return state.profile?.phone || state.profile?.phone_number || state.clients[0]?.phone || '(702) 555-0198';
+}
+function settingsMemberSince() {
+  return fmtDate(state.profile?.created_at || state.clients[0]?.created_at || state.guards[0]?.created_at || new Date().toISOString());
+}
+function settingsAccountId() {
+  const raw = state.profile?.id || state.profile?.auth_user_id || state.clients[0]?.id || state.guards[0]?.id || '0001257';
+  return `${roleLabel(state.role).slice(0,3).toUpperCase()}-${String(raw).slice(0,8).toUpperCase()}`;
+}
+function settingsPhotoUrl() {
+  return state.profile?.photo_url || state.profile?.avatar_url || state.profile?.profile_photo_url || getGuardPhotoUrl() || '';
+}
+function settingsTabs() {
+  const tabs = [
+    ['profile','♙','Profile'],
+    ['company','▦','Company'],
+    ['notifications','♧','Notifications'],
+    ['security','◈','Security'],
+    ['billing','▣','Billing'],
+    ['integrations','⌘','Integrations']
+  ];
+  return `<nav class="settings-tabs">${tabs.map(([id, icon, label]) => `<button type="button" class="${state.settingsTab === id ? 'active' : ''}" data-settings-tab="${esc(id)}"><span>${esc(icon)}</span>${esc(label)}</button>`).join('')}</nav>`;
+}
+function settingsProfileContent() {
+  const photo = settingsPhotoUrl();
+  return `<div class="settings-main-stack">
+    <section class="panel panel-pad settings-profile-card">
+      <div class="settings-section-head"><div><h2>Profile Information</h2><p>Update your personal information and how we contact you.</p></div><button class="primary-button" data-action="save-settings">Save Changes</button></div>
+      <div class="settings-profile-grid">
+        <div class="settings-form-grid">
+          <label>Full Name<input type="text" value="${esc(settingsProfileName())}" placeholder="Full name"></label>
+          <label>Job Title<input type="text" value="${esc(state.role === 'client' ? 'Property Manager' : roleLabel(state.role))}" placeholder="Job title"></label>
+          <label>Email Address<input type="email" value="${esc(settingsProfileEmail())}" placeholder="email@example.com"></label>
+          <label>Preferred Contact Method<select><option>Email</option><option>SMS</option><option>Phone</option></select></label>
+          <label>Phone Number<input type="tel" value="${esc(settingsPhone())}" placeholder="Phone number"></label>
+          <label>Secondary Phone (Optional)<input type="tel" value="" placeholder="Optional secondary phone"></label>
+          <label>Time Zone<select><option>(GMT-07:00) Pacific Time (US & Canada)</option><option>(GMT-08:00) Alaska</option><option>(GMT-06:00) Mountain Time</option><option>(GMT-05:00) Central Time</option><option>(GMT-04:00) Eastern Time</option></select></label>
+          <label>Language<select><option>English (US)</option><option>Spanish</option></select></label>
+        </div>
+        <aside class="settings-photo-panel">
+          <p>Profile Photo</p>
+          <div class="settings-avatar" data-settings-photo-preview>${photo ? `<img src="${esc(photo)}" alt="${esc(settingsProfileName())}">` : `<span>${esc(settingsProfileInitials())}</span>`}<em>📷</em></div>
+          <label class="settings-upload-button"><input type="file" accept="image/*" data-settings-photo-file><strong>Upload Photo</strong></label>
+          <small>JPG, PNG up to 2MB. Device upload only.</small>
+        </aside>
+      </div>
+    </section>
+    <section class="panel panel-pad settings-password-card">
+      <div class="settings-section-head"><div><h2>Change Password</h2><p>Ensure your account is using a strong password.</p></div></div>
+      <div class="settings-password-grid"><label>Current Password<div><input type="password" placeholder="Enter current password"><span>⊙</span></div></label><label>New Password<div><input type="password" placeholder="Enter new password"><span>⊙</span></div></label><label>Confirm New Password<div><input type="password" placeholder="Confirm new password"><span>⊙</span></div></label><button class="primary-button" data-action="update-settings-password">Update Password</button></div>
+    </section>
+    <section class="panel panel-pad settings-comm-card">
+      <div class="settings-section-head"><div><h2>Communication Preferences</h2><p>Choose what updates and alerts you want to receive.</p></div></div>
+      <div class="settings-pref-grid">
+        ${settingsPrefCard('♧','Patrol Updates','Receive updates when a patrol is started, completed, or canceled.', true)}
+        ${settingsPrefCard('✉','Report Notifications','Get notified when new reports are ready to view.', true)}
+        ${settingsPrefCard('☵','Message Alerts','Receive alerts for new messages from dispatch.', true)}
+        ${settingsPrefCard('⚠','Security Alerts','Important security alerts and incident notifications.', false)}
+        ${settingsPrefCard('▦','Scheduled Reminders','Reminders for upcoming patrols and schedules.', true)}
+        ${settingsPrefCard('📣','Marketing & News','Product updates, tips, and promotional offers.', false)}
+      </div>
+    </section>
+  </div>`;
+}
+function settingsPrefCard(icon, title, text, checked) {
+  return `<label class="settings-pref-card"><input type="checkbox" ${checked ? 'checked' : ''}><i>${esc(icon)}</i><span><strong>${esc(title)}</strong><small>${esc(text)}</small></span></label>`;
+}
+function settingsPlaceholderContent(kind = 'company') {
+  const data = {
+    company: ['Company Information', 'Manage company name, business contact details, account address, and linked property ownership.', 'Edit Company Info'],
+    notifications: ['Notification Preferences', 'Control patrol alerts, message alerts, report notifications, and incident escalation preferences.', 'Save Notification Settings'],
+    security: ['Security Settings', 'Manage passwords, two-factor authentication, session timeouts, and login alerts.', 'Update Security'],
+    billing: ['Payment & Billing', 'Manage invoices, billing contacts, payment methods, subscription plan, and export receipts.', 'Open Billing Center'],
+    integrations: ['Integrations', 'Connect dispatch tools, API keys, webhooks, and future third-party security integrations.', 'Manage Integrations']
+  }[kind] || ['Settings', 'Manage account settings.', 'Save'];
+  return `<div class="settings-main-stack"><section class="panel panel-pad settings-placeholder-card"><div class="settings-section-head"><div><h2>${esc(data[0])}</h2><p>${esc(data[1])}</p></div><button class="primary-button" data-action="save-settings">${esc(data[2])}</button></div><div class="settings-placeholder-grid">${['Account Details','Permissions','Preferences','Audit Trail'].map((label, idx) => `<article><i>${['▦','◈','☰','☷'][idx]}</i><strong>${esc(label)}</strong><small>${esc(data[1])}</small></article>`).join('')}</div></section></div>`;
+}
+function settingsMainContent() {
+  if (state.settingsTab === 'profile') return settingsProfileContent();
+  return settingsPlaceholderContent(state.settingsTab || 'company');
+}
+function settingsAccountSummary() {
+  return `<section class="panel panel-pad settings-rail-card"><h2>Account Summary</h2><div class="settings-meta-list"><span>Account Type</span><strong>${esc(roleLabel(state.role))}</strong><span>Status</span><strong class="green-dot"><i></i>Active</strong><span>Member Since</span><strong>${esc(settingsMemberSince())}</strong><span>Last Login</span><strong>${esc(fmtDate(new Date().toISOString()))}</strong></div><button class="ghost-button wide" data-action="settings-login-history">View Login History <span>↗</span></button></section>`;
+}
+function settingsCompanyCard() {
+  const firstProperty = state.properties[0];
+  return `<section class="panel panel-pad settings-rail-card"><h2>Company Information</h2><div class="settings-company-mini"><i>▦</i><div><strong>${esc(settingsCompanyName())}</strong><small>${esc(firstProperty ? propertyDisplayAddress(firstProperty) : 'Business address not saved')}</small><small>${esc(settingsPhone())}</small></div></div><button class="ghost-button wide" data-settings-tab="company">Edit Company Info</button></section>`;
+}
+function settingsPreferencesCard() {
+  return `<section class="panel panel-pad settings-rail-card"><h2>Preferences</h2><div class="settings-meta-list"><span>Date Format</span><strong>MM/DD/YYYY</strong><span>Time Format</span><strong>12 Hour (AM/PM)</strong><span>Currency</span><strong>USD ($)</strong><span>Distance Unit</span><strong>Miles</strong></div><button class="ghost-button wide" data-settings-tab="profile">Edit Preferences</button></section>`;
+}
+function settingsQuickActions() {
+  const actions = [
+    ['Manage Users','guards','♙'],
+    ['View API Keys','settings','⌘'],
+    ['Download Data','settings','⇩'],
+    ['Delete Account','settings','🗑']
+  ];
+  return `<section class="panel panel-pad settings-rail-card"><h2>Quick Actions</h2><div class="settings-quick-list">${actions.map(([label, view, icon], idx) => `<button type="button" class="${idx === 3 ? 'danger' : ''}" ${idx < 2 ? `data-view="${esc(view)}"` : 'data-action="settings-quick-action"'}><span>${esc(icon)}</span>${esc(label)}<em>›</em></button>`).join('')}</div></section>`;
+}
 function settingsView() {
-  const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'User';
-  return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Settings</h1><p>Account and app status.</p></div></header><section class="page-panel"><div class="top-panel-grid"><div><p class="eyebrow">Account</p><h2>${esc(name)}</h2><p style="color:var(--muted)">${esc(state.profile?.email || '')}</p><p>${statusChip(state.role)}</p></div><div><p class="eyebrow">Build</p><h2>${esc(BUILD.label)}</h2><p style="color:var(--muted)">Bottom-right badge is hard coded and refreshed after every render.</p></div></div></section></div>`;
+  return `<div class="dashboard settings-shell">
+    <header class="dashboard-header"><div class="title-block"><h1>Settings</h1><p>Manage your account, company, notifications, and preferences.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div></header>
+    ${settingsTabs()}
+    <section class="settings-layout"><main>${settingsMainContent()}</main><aside class="settings-rail">${settingsAccountSummary()}${settingsCompanyCard()}${settingsPreferencesCard()}${settingsQuickActions()}</aside></section>
+  </div>`;
 }
 
 
@@ -4421,6 +4541,23 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.settingsTab) {
+      state.settingsTab = button.dataset.settingsTab;
+      render();
+      return;
+    }
+    if (button.dataset.action === 'save-settings') {
+      toast('Settings saved for this development session.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'update-settings-password') {
+      toast('Password update workflow will connect to auth next.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'settings-login-history' || button.dataset.action === 'settings-quick-action') {
+      toast('Settings action queued for the next build.', 'success');
+      return;
+    }
     if (button.dataset.action === 'export-client-reports') {
       toast('Reports export is queued for the next reporting build.', 'success');
       return;
@@ -4732,6 +4869,20 @@ document.addEventListener('change', event => {
     if (!file || !preview) return;
     const url = URL.createObjectURL(file);
     preview.innerHTML = file.type.startsWith('video/') ? `<video src="${esc(url)}" muted controls playsinline></video><span>${esc(file.name)}</span>` : `<img src="${esc(url)}" alt="Reference preview"><span>${esc(file.name)}</span>`;
+  }
+  if (input && input.hasAttribute('data-settings-photo-file')) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast('Profile photo must be an image file.');
+      input.value = '';
+      return;
+    }
+    const preview = document.querySelector('[data-settings-photo-preview]');
+    if (preview) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<img src="${esc(url)}" alt="Profile photo preview"><em>📷</em>`;
+    }
   }
 });
 

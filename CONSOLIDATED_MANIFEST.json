@@ -1,17 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.37",
-  "buildName": "CLIENT MESSAGES REDESIGN",
-  "type": "client-messages-redesign",
+  "version": "3.0.38",
+  "buildName": "SETTINGS PAGE REDESIGN",
+  "type": "settings-page-redesign",
   "sql_required": false,
   "features": [
-    "Rebuilt Client Messages page to use the same premium layout as Guard messages",
-    "Client now gets Dispatch Inbox, conversation stream, compose box, quick replies, and right detail rail",
-    "Added local Dispatch / Client thread storage for development testing",
-    "Client can send messages to Dispatch channel from the Messages page",
-    "Quick response buttons work for client messaging",
-    "Right rail links to active patrol request/property, recent alerts, and recent reports",
-    "Preserved v3.0.36 Reports page and previous badge/cache fixes",
+    "Rebuilt Settings page to match selected image 2 design direction",
+    "Added top settings tabs: Profile, Company, Notifications, Security, Billing, Integrations",
+    "Added Profile Information form, profile photo device upload, Change Password panel, and Communication Preferences",
+    "Added right rail: Account Summary, Company Information, Preferences, and Quick Actions",
+    "Profile photo is device-upload only with no URL field",
+    "Preserved v3.0.37 Client Messages redesign",
     "No new SQL required"
   ]
 }

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-messages-redesign",
-  "version": "3.0.37",
+  "name": "co-pilot-security-settings-page-redesign",
+  "version": "3.0.38",
   "private": true,
-  "description": "Builds the Client Messages page to match the Guard/Dispatch messaging layout with Dispatch channel, conversation stream, compose box, quick replies, and detail rail.",
+  "description": "Redesigns the Settings page into a premium command-center profile, account, notification, security, billing, and integrations layout.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
