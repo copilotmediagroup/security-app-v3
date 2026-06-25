@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-real-map-init-fix-button-labels",
-  "version": "3.0.5",
+  "name": "co-pilot-security-marker-visibility-flow",
+  "version": "3.0.7",
   "private": true,
-  "description": "Fix Leaflet map initialization/blank map, fallback map, and Online/Offline button labels.",
+  "description": "Guard map marker visibility flow: offline hides all markers; online shows guard only; property appears only for active jobs.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

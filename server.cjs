@@ -48,4 +48,4 @@ http.createServer((req, res) => {
     });
     res.end(data);
   });
-}).listen(port, () => console.log(`Co Pilot Security v3.0.0 running on http://localhost:${port}`));
+}).listen(port, () => console.log(`Co Pilot Security v3.0.7 running on http://localhost:${port}`));

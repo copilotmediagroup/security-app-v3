@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.5',
-  label: 'v3.0.5 REAL MAP INIT FIX'
+  version: '3.0.7',
+  label: 'v3.0.7 MARKER VISIBILITY FLOW'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -51,7 +51,8 @@ const liveGps = {
   gpsMode: 'idle',
   leafletMap: null,
   leafletLayer: null,
-  mapNotice: 'Go Online to start live GPS tracking.'
+  mapNotice: 'Click Online to show guard GPS. Property appears only during an active job.',
+  propertyPrepKey: ''
 }
 
 const NAV = {
@@ -391,6 +392,7 @@ async function uploadProof(form) {
 function renderLoading() {
   app.innerHTML = `<div class="auth-shell"><div class="auth-card"><section class="auth-hero"><div class="brand-row"><div class="logo-box">CP</div><div><strong>Co Pilot</strong><small>Security</small></div></div><h1>Loading Command Center</h1><p>Connecting to Supabase.</p></section><section class="auth-panel"><div class="auth-box"><p class="eyebrow">Loading</p><h2>Preparing app</h2><p class="auth-note">Loading your role, patrol data, messages, notifications, and reports.</p></div></section></div></div>`;
   ensureBadge();
+  scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
 }
 
@@ -494,7 +496,7 @@ function renderSidebar() {
     </div>
     <div class="sidebar-footer">
       <button class="nav-item logout-item" data-action="logout"><i>↪</i><span>Logout</span></button>
-      <span class="version-mini">v3.0.1</span>
+      <span class="version-mini">${esc(BUILD.label)}</span>
     </div>
   </aside>`;
 }
@@ -840,9 +842,11 @@ function mapPercentForPoint(lat, lng, bounds) {
 }
 function currentMapBounds() {
   const points = [];
-  if (Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) points.push([liveGps.guardLat, liveGps.guardLng]);
-  if (Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) points.push([liveGps.propertyLat, liveGps.propertyLng]);
-  for (const p of liveGps.routePoints || []) {
+  const includeGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  const includeProperty = liveGps.online && Boolean(guard302CurrentRequest()) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
+  if (includeGuard) points.push([liveGps.guardLat, liveGps.guardLng]);
+  if (includeProperty) points.push([liveGps.propertyLat, liveGps.propertyLng]);
+  for (const p of (includeProperty ? liveGps.routePoints : []) || []) {
     if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) points.push([p.lat, p.lng]);
   }
   if (!points.length) {
@@ -968,9 +972,25 @@ async function fetchRouteIfPossible() {
 }
 async function syncGpsForCurrentJob() {
   const req = guard302CurrentRequest();
-  if (req) await geocodePropertyIfNeeded(req);
+  if (!liveGps.online || !req) {
+    liveGps.propertyLat = null;
+    liveGps.propertyLng = null;
+    liveGps.propertyAddress = '';
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    if (liveGps.online && !req) liveGps.mapNotice = 'Guard is online. Property marker appears only after Dispatch assigns an active job.';
+    render();
+    return;
+  }
+  await geocodePropertyIfNeeded(req);
   if (Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.propertyLat)) {
     await fetchRouteIfPossible();
+  } else {
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    liveGps.mapNotice = 'Active job loaded. Property marker is available while GPS is online.';
   }
   render();
 }
@@ -984,7 +1004,7 @@ function setGuardOnline() {
   liveGps.online = true;
   liveGps.gpsMode = 'online';
   liveGps.selectedMapCard = null;
-  liveGps.mapNotice = 'Waiting for live GPS permission/location...';
+  liveGps.mapNotice = 'Online requested. Waiting for browser GPS permission/location...';
   render();
   liveGps.watchId = navigator.geolocation.watchPosition(async position => {
     liveGps.guardLat = position.coords.latitude;
@@ -997,7 +1017,7 @@ function setGuardOnline() {
     await syncGpsForCurrentJob();
   }, error => {
     liveGps.online = false;
-    liveGps.gpsMode = 'offline';
+    liveGps.gpsMode = 'idle';
     liveGps.selectedMapCard = null;
     liveGps.mapNotice = error?.message || 'Location permission denied or unavailable.';
     render();
@@ -1015,11 +1035,25 @@ function setGuardOffline() {
   liveGps.online = false;
   liveGps.gpsMode = 'offline';
   liveGps.selectedMapCard = null;
+  liveGps.guardLat = null;
+  liveGps.guardLng = null;
+  liveGps.accuracy = null;
+  liveGps.currentAddress = 'Location not active';
+  liveGps.propertyLat = null;
+  liveGps.propertyLng = null;
+  liveGps.propertyAddress = '';
   liveGps.routePoints = [];
-  liveGps.mapNotice = 'Guard is offline. Live location tracking stopped.';
+  liveGps.routeDistanceMiles = null;
+  liveGps.routeEtaMin = null;
+  liveGps.mapNotice = 'Guard is offline. Guard and property markers are hidden.';
   render();
 }
 function openMapCard(type) {
+  const req = guard302CurrentRequest();
+  const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  const hasProperty = liveGps.online && Boolean(req);
+  if (type === 'guard' && !hasGuard) return;
+  if (type === 'property' && !hasProperty) return;
   liveGps.selectedMapCard = type;
   render();
 }
@@ -1029,7 +1063,7 @@ function closeMapCard() {
 }
 
 function guard302CurrentRequest() {
-  return activeRequests()[0] || state.patrolRequests[0] || null;
+  return activeRequests()[0] || null;
 }
 
 function guard302Flow(req) {
@@ -1085,7 +1119,12 @@ function guard302CurrentAssignment(req) {
 
 function guard302Map(req) {
   const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
-  const hasProperty = Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
+  const showProperty = liveGps.online && Boolean(req);
+  const hasPropertyCoords = showProperty && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
+  const bounds = currentMapBounds();
+  const guardPct = hasGuard ? mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds) : null;
+  const propertyPct = hasPropertyCoords ? mapPercentForPoint(liveGps.propertyLat, liveGps.propertyLng, bounds) : { x: 76, y: 37 };
+  const fallbackRoute = showProperty ? routeSvgPath(bounds) : '';
   return `<section class="panel panel-pad guard302-map-card">
     <div class="guard302-card-head"><div><h2>Route / GPS <span class="guard302-live ${liveGps.online ? 'on' : ''}">${liveGps.online ? 'Live' : 'Offline'}</span></h2></div></div>
     <div class="guard302-leaflet-wrap">
@@ -1093,21 +1132,24 @@ function guard302Map(req) {
       <div class="guard302-map-fallback" id="guard302-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        <small>Loading live street map layer...</small>
+        ${fallbackRoute ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(fallbackRoute)}"></path></svg>` : ''}
+        ${hasGuard ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${guardPct.x.toFixed(2)}%;top:${guardPct.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
+        ${showProperty ? `<button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" style="left:${propertyPct.x.toFixed(2)}%;top:${propertyPct.y.toFixed(2)}%" aria-label="Open property card"><span></span></button>` : ''}
+        <small>${liveGps.online ? 'Loading live street map layer...' : 'Offline. Markers hidden until guard goes Online.'}</small>
       </div>
+      ${(showProperty && !hasPropertyCoords) ? `<div class="guard302-marker-overlay"><button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" style="left:${propertyPct.x.toFixed(2)}%;top:${propertyPct.y.toFixed(2)}%" aria-label="Open property card"><span></span></button></div>` : ''}
       ${liveGps.selectedMapCard === 'guard' && hasGuard ? guard302GuardCard(req) : ''}
-      ${liveGps.selectedMapCard === 'property' && hasProperty ? guard302PropertyCard(req) : ''}
+      ${liveGps.selectedMapCard === 'property' && showProperty ? guard302PropertyCard(req) : ''}
       <div class="guard302-map-status">${esc(liveGps.mapNotice)} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
     </div>
     <div class="guard302-map-stats">
-      <div><small>ETA to Property</small><strong>${esc(liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
-      <div><small>Distance</small><strong>${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+      <div><small>ETA to Property</small><strong>${esc(showProperty && liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(showProperty && liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
       <div><small>Accuracy</small><strong>${esc(liveGps.accuracy ? '±' + Math.round(liveGps.accuracy) + ' ft' : '—')} <i></i></strong></div>
     </div>
     <div class="guard302-map-actions">
-      <button type="button" data-action="guard-online">Share My Location <span>⌁</span></button>
-      <button type="button" data-action="map-card" data-card="guard">Guard Card <span>▣</span></button>
-      <button type="button" data-action="map-card" data-card="property">Property Card <span>⌂</span></button>
+      <button type="button" class="guard302-online ${liveGps.gpsMode === 'online' ? 'active' : ''}" data-action="guard-online">Online</button>
+      <button type="button" class="guard302-offline ${liveGps.gpsMode === 'offline' ? 'active' : ''}" data-action="guard-offline">Offline</button>
     </div>
   </section>`;
 }
@@ -1334,10 +1376,32 @@ function renderAppShell() {
 function scheduleGuardLeafletMap() {
   if (state.role === 'guard' && state.view === 'dashboard') {
     requestAnimationFrame(() => {
-      setTimeout(initGuardLeafletMap, 75);
-      setTimeout(initGuardLeafletMap, 450);
+      [75, 450, 1200, 2500].forEach(delay => setTimeout(initGuardLeafletMap, delay));
     });
   }
+}
+function scheduleGuardGpsPrep() {
+  if (state.role !== 'guard' || state.view !== 'dashboard') return;
+  if (!liveGps.online) return;
+  const req = guard302CurrentRequest();
+  if (!req) return;
+  const key = String(req.id || req.property_id || propertyAddress(req) || 'current');
+  const existing = getPropertyCoords(req);
+  if (existing) {
+    liveGps.propertyLat = existing.lat;
+    liveGps.propertyLng = existing.lng;
+    liveGps.propertyAddress = propertyAddress(req);
+    return;
+  }
+  if (liveGps.propertyPrepKey === key || liveGps.geocodeBusy) return;
+  liveGps.propertyPrepKey = key;
+  setTimeout(async () => {
+    try {
+      await geocodePropertyIfNeeded(req);
+    } finally {
+      if (state.role === 'guard' && state.view === 'dashboard') render();
+    }
+  }, 250);
 }
 function leafletDivIcon(cls, html = '') {
   return L.divIcon({
@@ -1364,7 +1428,7 @@ function initGuardLeafletMap() {
   if (!el) return;
 
   if (!window.L) {
-    showMapFallback('Leaflet did not load yet. Showing fallback street grid.');
+    showMapFallback('Leaflet did not load yet. Showing fallback street grid with clickable markers.');
     return;
   }
 
@@ -1380,9 +1444,10 @@ function initGuardLeafletMap() {
       liveGps.leafletLayer = null;
     }
 
+    const req = guard302CurrentRequest();
     const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
-    const hasProperty = Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
-    const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : hasProperty ? [liveGps.propertyLat, liveGps.propertyLng] : [36.1699, -115.1398];
+    const hasProperty = liveGps.online && Boolean(req) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
+    const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : [36.1699, -115.1398];
 
     const map = L.map(el, {
       zoomControl: true,
@@ -1450,7 +1515,7 @@ function initGuardLeafletMap() {
       if (hasTiles) hideMapFallback();
     }, 1100);
   } catch (err) {
-    showMapFallback('Map could not initialize. Showing fallback street grid.');
+    showMapFallback('Map could not initialize. Showing fallback street grid with clickable markers.');
   }
 }
 
@@ -1460,6 +1525,7 @@ function render() {
   else if (!state.profile) renderPublic();
   else renderAppShell();
   ensureBadge();
+  scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
 }
 

@@ -1,21 +1,21 @@
 Co Pilot Security
-Version: 3.0.5
-Build Name: REAL MAP INIT FIX
+Version: 3.0.7
+Build Name: MARKER VISIBILITY FLOW
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.4.
-- Fixes blank map by forcing Leaflet initialization after every Guard Dashboard render.
-- Adds retry initialization after render.
-- Adds a real-looking fallback street grid with street names if Leaflet or map tiles fail/are slow.
-- Buttons now say Online and Offline instead of Go Online and Go Offline.
-- Online button stays green while online.
-- Offline button turns red when offline is clicked.
-- Guard marker remains hidden while offline and appears when online.
+- Built from v3.0.6.
+- Corrects Guard Dashboard marker visibility flow.
+- When guard is offline, both blue guard marker and red property marker are hidden.
+- When guard goes online, only the blue guard marker appears after GPS location is available.
+- Red property marker appears only when the guard is online and has an active assigned/accepted/in-progress job.
+- Completed jobs no longer keep the property marker visible.
+- Removed the old fallback that used the first patrol request as a fake/current job.
+- Offline clears property coordinates, route, ETA, distance, and open marker cards.
 - Bottom-right badge remains active.
 
 Badge:
-v3.0.5 REAL MAP INIT FIX
+v3.0.7 MARKER VISIBILITY FLOW
 
 SQL:
 No new SQL required.

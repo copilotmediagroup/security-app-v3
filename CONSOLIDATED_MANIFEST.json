@@ -1,16 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.5",
-  "buildName": "REAL MAP INIT FIX",
-  "type": "map-init-fix-button-labels",
+  "version": "3.0.7",
+  "buildName": "MARKER VISIBILITY FLOW",
+  "type": "guard-map-marker-visibility-flow",
   "sql_required": false,
   "features": [
-    "Forced Leaflet init after Guard Dashboard render",
-    "Retry map initialization",
-    "Fallback street grid with street names",
-    "Online/Offline labels",
-    "Online green only while online",
-    "Offline red when clicked",
+    "Offline hides both guard and property markers",
+    "Online shows guard marker only after browser GPS provides guard location",
+    "Property marker appears only while guard is online and has an active job",
+    "Completed jobs no longer keep the red property marker visible",
+    "Removed fallback to first patrol request for Guard Dashboard map",
+    "Offline clears property coordinates, route, ETA, distance, and open cards",
+    "Property card remains marker-click only and closes with X",
     "Bottom-right badge preserved"
   ]
 }

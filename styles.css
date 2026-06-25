@@ -1831,3 +1831,99 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .guard302-map-status{
   z-index:500!important;
 }
+
+
+/* v3.0.6 Guard Map Marker/Card Fix */
+.guard302-map-actions{
+  grid-template-columns:1fr 1fr!important;
+}
+.guard302-map-actions .guard302-online,
+.guard302-map-actions .guard302-offline{
+  border-radius:7px!important;
+}
+.guard302-map-fallback{
+  z-index:320!important;
+  pointer-events:auto!important;
+}
+.guard302-map-fallback.loaded{
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.guard302-leaflet-map{
+  z-index:3!important;
+}
+.guard302-fallback-route{
+  position:absolute;
+  inset:0;
+  z-index:4;
+  width:100%;
+  height:100%;
+  overflow:visible;
+  pointer-events:none;
+}
+.guard302-fallback-route path{
+  fill:none;
+  stroke:#2e88ff;
+  stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  stroke-dasharray:3 2;
+  filter:drop-shadow(0 0 5px rgba(46,136,255,.72));
+  animation:routeDash303 2.8s linear infinite;
+}
+.guard302-marker-overlay{
+  position:absolute;
+  inset:0;
+  z-index:340;
+  pointer-events:none;
+}
+.guard302-fallback-marker{
+  position:absolute;
+  z-index:6;
+  width:32px;
+  height:32px;
+  border:0;
+  border-radius:50%;
+  padding:0;
+  background:transparent;
+  transform:translate(-50%,-50%);
+  pointer-events:auto;
+}
+.guard302-fallback-marker span{
+  width:24px;
+  height:24px;
+  display:block;
+  margin:4px;
+  border-radius:50%;
+  border:4px solid #071321;
+  position:relative;
+}
+.guard302-fallback-marker.guard span{
+  background:#2e88ff;
+  box-shadow:0 0 0 10px rgba(46,136,255,.16),0 0 28px rgba(46,136,255,.72);
+}
+.guard302-fallback-marker.property span{
+  background:#ff4565;
+  box-shadow:0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
+}
+.guard302-fallback-marker span:after{
+  content:"";
+  position:absolute;
+  inset:-15px;
+  border-radius:50%;
+  border:2px solid rgba(46,136,255,.48);
+  animation:pulse303 1.7s ease-out infinite;
+}
+.guard302-fallback-marker.property span:after{
+  border-color:rgba(255,69,101,.48);
+}
+.guard302-fallback-marker:hover span{
+  transform:scale(1.06);
+}
+.guard302-card-close:hover{
+  background:rgba(18,44,74,.96)!important;
+  color:#fff!important;
+}
+
+
+/* v3.0.7 Marker Visibility Flow: property marker is controlled in script.js by online + active job only. */

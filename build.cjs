@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.5 real map init fix build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.7 marker visibility flow build complete. Copied ${count} files to dist/.`);
