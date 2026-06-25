@@ -1,14 +1,23 @@
-# Co Pilot Security v3.0.19 — Map Text Stamps
+# Co Pilot Security v3.0.32 — Request Patrol Command Center
 
 ## What changed
-- Removed the separate timestamp block from the Route / GPS Map Behavior panel.
-- Added timestamps directly onto each text card:
-  - Online card: `Online since`
-  - Active Job card: `Checked`
-  - Offline card: `Last offline`
-  - Marker Click card: `Last GPS update`
+- Rebuilt the Client Patrol Requests page using the command-center layout direction.
+- Form structure:
+  - Property selector
+  - Request Type selector
+  - Priority segmented control
+  - Dynamic schedule fields
+  - Special Instructions
+  - Requested Services cards
+  - Device-only Reference Photo / Video upload
+  - Submit Request / Save Draft actions
+- The Request Type dropdown is synced with the top request type cards.
+- Priority uses Normal / High / Emergency segment buttons.
+- Requested Services checkboxes are aligned inside clean service cards.
 
-## Preserved
-- Guard stays Online across logout/login until Offline is clicked.
-- Route / GPS live map behavior remains the same.
-- No new SQL required.
+## Media rules
+- No photo/video URL input anywhere.
+- Reference photo/video must be uploaded from device.
+
+## SQL
+No new SQL required.

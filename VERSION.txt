@@ -1,21 +1,21 @@
 Co Pilot Security
-Version: 3.0.19
-Build Name: MAP TEXT STAMPS
-Date: 2026-06-24
+Version: 3.0.32
+Build Name: REQUEST PATROL COMMAND CENTER
+Date: 2026-06-25
 
 Summary:
-- Built from v3.0.18.
-- Route / GPS Map Behavior no longer has a separate timestamp block.
-- Timestamps now live directly inside the actual text cards:
-  - Online: Online Since
-  - Active Job: Checked
-  - Offline: Last Offline
-  - Marker Click: Last GPS Update
-- Persistent Online status remains preserved across logout/login until Offline is clicked.
+- Built from v3.0.31.
+- Rebuilt the Client Patrol Requests page into the command-center design shown in the mockup.
+- Added form-level Request Type selector synced with the request type cards.
+- Converted Priority into a segmented Normal / High / Emergency control.
+- Reorganized the request form into clean developer-style grid rows.
+- Requested Services are now properly aligned service cards with icons.
+- Reference Photo / Video upload remains device-only and has no URL input anywhere.
+- Submit Request is clearer and the request summary rail stays intact.
 - No new SQL required.
 
 Badge:
-v3.0.19 MAP TEXT STAMPS
+v3.0.32 REQUEST PATROL COMMAND CENTER
 
 SQL:
 No new SQL required.

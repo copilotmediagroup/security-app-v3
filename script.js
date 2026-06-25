@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.19',
-  label: 'v3.0.19 MAP TEXT STAMPS'
+  version: '3.0.31',
+  label: 'v3.0.31 PATROL REQUESTS POLISH'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -31,7 +31,20 @@ const state = {
   selectedThreadId: '',
   thanks: null,
   completedFilter: 'today',
-  selectedCompletedRequestId: ''
+  selectedCompletedRequestId: '',
+  messageSearch: '',
+  messageFilter: 'all',
+  notificationSearch: '',
+  notificationFilter: 'all',
+  selectedNotificationId: '',
+  clientPropertySearch: '',
+  clientPropertyFilter: 'all',
+  clientSelectedPropertyId: '',
+  clientPropertyTab: 'overview',
+  clientPropertyView: 'list',
+  clientPatrolPrefillPropertyId: '',
+  clientRequestType: 'immediate',
+  clientRequestHistoryFilter: 'all'
 };;
 const liveGps = {
   online: false,
@@ -58,7 +71,8 @@ const liveGps = {
   onlineSince: null,
   offlineAt: null,
   statusChangedAt: null,
-  restoredFromStorage: false
+  restoredFromStorage: false,
+  clientSelectedPropertyId: ''
 }
 
 const NAV = {
@@ -145,6 +159,170 @@ function toast(message, type = 'error') {
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 5600);
+}
+
+function notificationStorageKey() { return 'cp_security_notification_read_map_v1'; }
+function readNotificationReadMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(notificationStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeNotificationReadMap(map = {}) {
+  try { localStorage.setItem(notificationStorageKey(), JSON.stringify(map)); } catch {}
+}
+function notificationId(note = {}) {
+  return String(note.id || note.notification_id || note.reference_id || `${note.title || note.event_type || 'notification'}-${note.created_at || ''}-${note.message || note.details || ''}`);
+}
+function notificationBody(note = {}) { return note.message || note.details || note.body || ''; }
+function notificationTitle(note = {}) { return note.title || note.event_type || 'Notification'; }
+function notificationCategory(note = {}) {
+  const text = `${notificationTitle(note)} ${notificationBody(note)}`.toLowerCase();
+  if (/message|dispatch/.test(text)) return 'message';
+  if (/system|maintenance|settings|preference|platform/.test(text)) return 'system';
+  if (/route|gps/.test(text)) return 'route';
+  if (/proof|upload/.test(text)) return 'proof';
+  return 'patrol';
+}
+function notificationSeverity(note = {}) {
+  const text = `${notificationTitle(note)} ${notificationBody(note)}`.toLowerCase();
+  if (/high|urgent|critical|alert|alarm|incident/.test(text)) return 'high';
+  if (/new|assignment|patrol|dispatch/.test(text)) return 'medium';
+  return 'normal';
+}
+function notificationMeta(note = {}) {
+  const map = readNotificationReadMap();
+  const id = notificationId(note);
+  const localReadAt = map[id] || null;
+  const category = notificationCategory(note);
+  const severity = notificationSeverity(note);
+  const created = note.created_at || note.updated_at || new Date().toISOString();
+  const readAt = localReadAt || note.read_at || null;
+  return {
+    ...note,
+    _id: id,
+    _title: notificationTitle(note),
+    _body: notificationBody(note),
+    _category: category,
+    _severity: severity,
+    _created: created,
+    _readAt: readAt,
+    _isUnread: !readAt,
+    _timeAgo: timeAgo(created),
+    _time: fmtTime(created),
+    _date: fmtDate(created)
+  };
+}
+function notificationsList() {
+  return (state.notifications || []).map(notificationMeta).sort((a,b) => new Date(b._created || 0) - new Date(a._created || 0));
+}
+function unreadNotificationsCount() { return notificationsList().filter(n => n._isUnread).length; }
+function notificationCounts() {
+  const rows = notificationsList();
+  return {
+    total: rows.length,
+    unread: rows.filter(n => n._isUnread).length,
+    patrol: rows.filter(n => ['patrol','route','proof'].includes(n._category)).length,
+    messages: rows.filter(n => n._category === 'message').length,
+    system: rows.filter(n => n._category === 'system').length
+  };
+}
+function filteredNotifications() {
+  let rows = notificationsList();
+  const q = String(state.notificationSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(n => `${n._title} ${n._body}`.toLowerCase().includes(q));
+  const f = state.notificationFilter;
+  if (f === 'unread') rows = rows.filter(n => n._isUnread);
+  if (f === 'patrol') rows = rows.filter(n => ['patrol','route','proof'].includes(n._category));
+  if (f === 'messages') rows = rows.filter(n => n._category === 'message');
+  if (f === 'system') rows = rows.filter(n => n._category === 'system');
+  return rows;
+}
+function selectedNotification() {
+  const all = filteredNotifications();
+  const any = notificationsList();
+  let note = all.find(n => String(n._id) === String(state.selectedNotificationId)) || any.find(n => String(n._id) === String(state.selectedNotificationId));
+  if (!note) note = all[0] || any[0] || null;
+  if (note && String(state.selectedNotificationId) !== String(note._id)) state.selectedNotificationId = note._id;
+  return note;
+}
+function markNotificationReadById(id) {
+  if (!id) return;
+  const map = readNotificationReadMap();
+  map[String(id)] = new Date().toISOString();
+  writeNotificationReadMap(map);
+}
+function markAllNotificationsRead() {
+  const map = readNotificationReadMap();
+  const now = new Date().toISOString();
+  notificationsList().forEach(n => { map[n._id] = map[n._id] || now; });
+  writeNotificationReadMap(map);
+}
+function notificationIcon(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return '◔';
+  if (cat === 'system') return '⚙';
+  if (cat === 'route') return '⌖';
+  if (cat === 'proof') return '⬆';
+  return '✓';
+}
+function notificationAccentClass(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return 'message';
+  if (cat === 'system') return 'system';
+  if (cat === 'route') return 'route';
+  if (cat === 'proof') return 'proof';
+  return 'patrol';
+}
+function notificationCategoryLabel(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return 'Dispatch';
+  if (cat === 'system') return 'System';
+  if (cat === 'route') return 'Route';
+  if (cat === 'proof') return 'Proof';
+  return 'Patrol';
+}
+function notificationPriorityLabel(note = {}) {
+  const sev = note._severity || notificationSeverity(note);
+  if (sev === 'high') return 'High Priority';
+  if (sev === 'medium') return 'New';
+  return 'Normal';
+}
+function notificationReferenceId(note = {}) {
+  const date = new Date(note._created || Date.now());
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  const hm = String(date.getHours()).padStart(2,'0') + String(date.getMinutes()).padStart(2,'0');
+  return note.reference_id || `${String(notificationCategoryLabel(note)).toUpperCase()}-${y}${m}${d}-${hm}`;
+}
+function relatedRequestForNotification(note = {}) {
+  if (!note) return null;
+  return state.patrolRequests.find(r => String(r.id || '') === String(note.request_id || ''))
+    || activeRequests()[0]
+    || completedRequests()[0]
+    || null;
+}
+function groupedNotifications(rows = []) {
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startYesterday = startToday - 86400000;
+  const groups = [];
+  const todayRows = rows.filter(n => new Date(n._created).getTime() >= startToday);
+  const yesterdayRows = rows.filter(n => {
+    const t = new Date(n._created).getTime();
+    return t >= startYesterday && t < startToday;
+  });
+  const olderRows = rows.filter(n => new Date(n._created).getTime() < startYesterday);
+  if (todayRows.length) groups.push({ label: `Today — ${today.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}`, rows: todayRows });
+  if (yesterdayRows.length) {
+    const y = new Date(startYesterday);
+    groups.push({ label: `Yesterday — ${y.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}`, rows: yesterdayRows });
+  }
+  if (olderRows.length) groups.push({ label: 'Earlier', rows: olderRows });
+  return groups;
 }
 function friendly(err) {
   const raw = String(err?.message || err || 'Unknown error');
@@ -363,9 +541,8 @@ function reportsReady() { return completedRequests().filter(r => !reportByReques
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
 function clientApprovals() { return state.clientSignups.filter(c => !c.status || String(c.status) === 'pending'); }
 function unreadMessagesCount() { return state.messageThreads.filter(t => Number(t.unread_count || 0) > 0).length; }
-function unreadNotificationsCount() { return state.notifications.filter(n => !n.read_at).length; }
 function activeAlertCount() {
-  const alertNotes = state.notifications.filter(n => /alert|alarm|urgent|priority|incident|battery/i.test(`${n.title || ''} ${n.message || ''}`));
+  const alertNotes = notificationsList().filter(n => /alert|alarm|urgent|priority|incident|battery/i.test(`${n._title || ''} ${n._body || ''}`));
   return alertNotes.length || activeRequests().filter(r => /high|urgent/i.test(String(r.priority || ''))).length;
 }
 
@@ -387,10 +564,194 @@ async function loadData() {
   state.patrolActivity = data.patrolActivity || [];
   state.messageThreads = data.messageThreads || [];
   state.messages = data.messages || [];
+  syncDispatchGuardMessages();
   state.status = 'Connected';
   if (!state.view) state.view = 'dashboard';
 }
 
+
+function guardRankStorageKey() { return 'cp_security_guard_ranks_v1'; }
+function readGuardRankMap() {
+  try { const parsed = JSON.parse(localStorage.getItem(guardRankStorageKey()) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
+}
+function writeGuardRankMap(map = {}) {
+  try { localStorage.setItem(guardRankStorageKey(), JSON.stringify(map)); } catch {}
+}
+function guardRankKeys(item = {}) {
+  return [item.id, item.auth_user_id, item.user_id, item.profile_id, String(item.email || '').trim().toLowerCase(), item.signup_id].filter(Boolean).map(v => String(v));
+}
+function guardRankFor(item = {}) {
+  const map = readGuardRankMap();
+  for (const key of guardRankKeys(item)) if (map[key]) return map[key];
+  return item.rank || item.guard_rank || item.job_title || 'Guard';
+}
+function saveGuardRank(item = {}, rank = 'Guard') {
+  const map = readGuardRankMap();
+  for (const key of guardRankKeys(item)) map[key] = rank;
+  writeGuardRankMap(map);
+}
+function dispatchGuardMessageStoreKey() { return 'cp_security_dispatch_guard_messages_v1'; }
+function readDispatchGuardMessageStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(dispatchGuardMessageStoreKey()) || '{}');
+    return {
+      threads: Array.isArray(parsed.threads) ? parsed.threads : [],
+      messages: Array.isArray(parsed.messages) ? parsed.messages : []
+    };
+  } catch {
+    return { threads: [], messages: [] };
+  }
+}
+function writeDispatchGuardMessageStore(store = { threads: [], messages: [] }) {
+  try { localStorage.setItem(dispatchGuardMessageStoreKey(), JSON.stringify(store)); } catch {}
+}
+function messageGuardKey(guard = {}) {
+  return String(guard.id || guard.auth_user_id || guard.user_id || guard.profile_id || String(guard.email || '').trim().toLowerCase() || '').trim();
+}
+function dispatchThreadIdForGuard(guard = {}) {
+  return `dispatch-guard-${messageGuardKey(guard).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+function activeDispatchLabel() { return 'Dispatch'; }
+function syncDispatchGuardMessages() {
+  if (!['admin','guard'].includes(state.role)) return;
+  const store = readDispatchGuardMessageStore();
+  const guards = (state.guards || []).filter(g => !['inactive','disabled','rejected','pending'].includes(String(g.status || 'active').toLowerCase()));
+  const now = new Date().toISOString();
+  for (const guard of guards) {
+    const id = dispatchThreadIdForGuard(guard);
+    let thread = store.threads.find(t => String(t.id) === String(id));
+    if (!thread) {
+      thread = {
+        id,
+        type: 'dispatch_guard',
+        title: guard.name || guard.display_name || guard.email || 'Guard',
+        guard_id: guard.id || '',
+        guard_email: String(guard.email || '').trim().toLowerCase(),
+        guard_name: guard.name || guard.display_name || guard.email || 'Guard',
+        created_at: now,
+        updated_at: now,
+        last_message_preview: 'No messages yet',
+        unread_admin: 0,
+        unread_guard: 0
+      };
+      store.threads.push(thread);
+    } else {
+      thread.guard_id = thread.guard_id || guard.id || '';
+      thread.guard_email = thread.guard_email || String(guard.email || '').trim().toLowerCase();
+      thread.guard_name = guard.name || guard.display_name || guard.email || thread.guard_name || 'Guard';
+      thread.title = thread.guard_name;
+    }
+  }
+  writeDispatchGuardMessageStore(store);
+  const relevant = store.threads.filter(thread => {
+    if (state.role === 'admin') return true;
+    const rec = activeGuardRecord();
+    const activeKeys = [messageGuardKey(rec || {}), String(activeGuardEmail() || '').trim().toLowerCase(), String(state.profile?.id || ''), String(state.profile?.auth_user_id || '')].filter(Boolean);
+    return activeKeys.some(k => k && [thread.guard_id, thread.guard_email].map(v => String(v || '')).includes(String(k)));
+  }).sort((a,b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  state.messageThreads = relevant.map(thread => ({
+    id: thread.id,
+    subject: thread.guard_name ? `${thread.guard_name}` : 'Dispatch',
+    title: thread.guard_name ? `${thread.guard_name}` : 'Dispatch',
+    updated_at: thread.updated_at,
+    created_at: thread.created_at,
+    last_message_preview: thread.last_message_preview || 'No messages yet',
+    unread_count: state.role === 'admin' ? Number(thread.unread_admin || 0) : Number(thread.unread_guard || 0),
+    guard_id: thread.guard_id,
+    guard_email: thread.guard_email,
+    guard_name: thread.guard_name
+  }));
+  state.messages = store.messages.filter(m => relevant.some(t => String(t.id) === String(m.thread_id)));
+  if ((!state.selectedThreadId || !state.messageThreads.some(t => String(t.id) === String(state.selectedThreadId))) && state.messageThreads[0]) {
+    state.selectedThreadId = state.messageThreads[0].id;
+  }
+}
+function currentMessageThread() {
+  syncDispatchGuardMessages();
+  return state.messageThreads.find(t => String(t.id) === String(state.selectedThreadId)) || state.messageThreads[0] || null;
+}
+function messagesForThread(threadId) {
+  const store = readDispatchGuardMessageStore();
+  return store.messages.filter(m => String(m.thread_id) === String(threadId)).sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+}
+function markCurrentThreadRead() {
+  const thread = currentMessageThread();
+  if (!thread) return;
+  const store = readDispatchGuardMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) return;
+  if (state.role === 'admin') raw.unread_admin = 0;
+  else raw.unread_guard = 0;
+  writeDispatchGuardMessageStore(store);
+  syncDispatchGuardMessages();
+}
+function sendDispatchGuardMessage(text) {
+  const body = String(text || '').trim();
+  if (!body) throw new Error('Type a message first.');
+  const thread = currentMessageThread();
+  if (!thread) throw new Error(state.role === 'admin' ? 'No guard threads yet.' : 'Dispatch thread not found.');
+  const store = readDispatchGuardMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) throw new Error('Conversation thread not found.');
+  const now = new Date().toISOString();
+  const msg = {
+    id: `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    thread_id: raw.id,
+    sender_role: state.role,
+    sender_name: state.role === 'admin' ? activeDispatchLabel() : activeGuardName(),
+    sender_email: String(state.profile?.email || activeGuardEmail() || '').trim().toLowerCase(),
+    body,
+    created_at: now
+  };
+  store.messages.push(msg);
+  raw.updated_at = now;
+  raw.last_message_preview = body;
+  if (state.role === 'admin') raw.unread_guard = Number(raw.unread_guard || 0) + 1;
+  else raw.unread_admin = Number(raw.unread_admin || 0) + 1;
+  if (state.role === 'admin') raw.unread_admin = 0; else raw.unread_guard = 0;
+  writeDispatchGuardMessageStore(store);
+  syncDispatchGuardMessages();
+}
+function relatedThreadGuard(thread = {}) {
+  return (state.guards || []).find(g => String(g.id || '') === String(thread.guard_id || '')) || (state.guards || []).find(g => String(g.email || '').trim().toLowerCase() === String(thread.guard_email || '').trim().toLowerCase()) || null;
+}
+function relatedThreadRequest(thread = {}) {
+  const guard = relatedThreadGuard(thread);
+  if (!guard) return null;
+  return activeRequests().find(r => String(r.guard_id || r.assigned_guard_id || '') === String(guard.id || '')) || completedRequests().find(r => String(r.guard_id || r.assigned_guard_id || '') === String(guard.id || '')) || null;
+}
+function filteredMessageThreads() {
+  syncDispatchGuardMessages();
+  let rows = [...state.messageThreads];
+  const q = String(state.messageSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(t => `${t.title || ''} ${t.subject || ''} ${t.last_message_preview || ''}`.toLowerCase().includes(q));
+  if (state.messageFilter === 'unread') rows = rows.filter(t => Number(t.unread_count || 0) > 0);
+  if (state.messageFilter === 'active-job') rows = rows.filter(t => Boolean(relatedThreadRequest(t)));
+  return rows;
+}
+function messageRolePill(thread = {}) {
+  const g = relatedThreadGuard(thread);
+  return guardRankFor(g || thread);
+}
+function guardApprovalsView() {
+  const rows = guardApprovals().map(x => ({ ...x, kind: 'guard' }));
+  const rankOptions = ['Guard', 'Sergeant', 'Field Supervisor', 'Supervisor', 'Lead Guard'];
+  return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Guard Approvals</h1><p>Approve guard applications and assign the guard rank for Dispatch workflows.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div class="cards-grid cards-grid-guard-approvals">${rows.length ? rows.map(item => `<article class="panel panel-pad guard-approval-card"><div class="guard-approval-head"><div class="avatar">${esc(initials(item.name || item.display_name || item.email || 'G'))}</div><div><h2>${esc(item.name || item.display_name || 'Guard Applicant')}</h2><p>${esc(item.email || '')}</p><small>${esc(item.phone || 'No phone listed')}</small></div><span class="rank-chip pending">Pending</span></div><div class="guard-approval-body"><div class="guard-approval-meta"><span>Requested Role</span><strong>Guard</strong><span>Notes</span><strong>${esc(item.notes || 'No notes added')}</strong></div><label class="form-field"><span>Guard Rank</span><select data-guard-rank="${esc(item.id)}">${rankOptions.map(rank => `<option value="${esc(rank)}" ${rank === guardRankFor(item) ? 'selected' : ''}>${esc(rank)}</option>`).join('')}</select></label><div class="button-row"><button class="btn success" data-approve="guard" data-id="${esc(item.id)}">Approve Guard</button><button class="btn secondary" data-reject="guard" data-id="${esc(item.id)}">Reject</button></div></div></article>`).join('') : '<div class="empty">No pending guard applications.</div>'}</div></section></div>`;
+}
+function messagesView() {
+  if (!['admin','guard'].includes(state.role)) return cardsView('Messages', 'Dispatch inbox and conversations.', state.messageThreads.map(t => ({ title: t.subject || t.title || 'Conversation', message: t.last_message_preview || 'No messages yet' })), 'message');
+  syncDispatchGuardMessages();
+  const threads = filteredMessageThreads();
+  const selected = threads.find(t => String(t.id) === String(state.selectedThreadId)) || threads[0] || null;
+  if (selected && String(state.selectedThreadId) !== String(selected.id)) state.selectedThreadId = selected.id;
+  const activeThread = selected || currentMessageThread();
+  const guard = activeThread ? relatedThreadGuard(activeThread) : null;
+  const req = activeThread ? relatedThreadRequest(activeThread) : null;
+  const msgs = activeThread ? messagesForThread(activeThread.id) : [];
+  const alerts = state.notifications.slice(0,3);
+  const proofs = req ? proofForRequest(req.id).slice(0,3) : [];
+  return `<div class="dashboard messages-shell"><header class="dashboard-header"><div class="title-block"><h1>Messages</h1><p>Real-time communication between Dispatch and guards.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="messages-layout page-panel"><aside class="messages-inbox panel"><div class="messages-inbox-head"><div><h2>Dispatch Inbox</h2></div><button class="icon-square">✎</button></div><div class="messages-search-row"><input type="search" placeholder="Search conversations..." value="${esc(state.messageSearch)}" data-message-search><button class="icon-square">⌕</button></div><div class="messages-filter-row"><button type="button" class="filter-pill ${state.messageFilter === 'all' ? 'active' : ''}" data-message-filter="all">All</button><button type="button" class="filter-pill ${state.messageFilter === 'unread' ? 'active' : ''}" data-message-filter="unread">Unread ${unreadMessagesCount() ? `<b>${esc(unreadMessagesCount())}</b>` : ''}</button><button type="button" class="filter-pill ${state.messageFilter === 'active-job' ? 'active' : ''}" data-message-filter="active-job">Active Job</button></div><div class="messages-thread-list">${threads.length ? threads.map(thread => `<button type="button" class="messages-thread-row ${activeThread && String(activeThread.id) === String(thread.id) ? 'active' : ''}" data-action="select-thread" data-thread-id="${esc(thread.id)}"><div class="thread-avatar">${esc(initials(thread.guard_name || thread.title || 'D'))}</div><div class="thread-copy"><div class="thread-top"><strong>${esc(thread.guard_name || thread.title || 'Dispatch')}</strong><em>${esc(fmtTime(thread.updated_at || thread.created_at))}</em></div><small>${esc(messageRolePill(thread))}</small><p>${esc(thread.last_message_preview || 'No messages yet')}</p></div>${Number(thread.unread_count || 0) ? `<span class="thread-unread">${esc(thread.unread_count)}</span>` : ''}</button>`).join('') : '<div class="empty">No Dispatch / guard conversations yet.</div>'}</div></aside><section class="messages-conversation panel">${activeThread ? `<div class="conversation-head"><div><h2>${esc(state.role === 'admin' ? `${activeThread.guard_name || 'Guard'} / Dispatch` : 'Guard / Dispatch')}</h2><p>${esc(state.role === 'admin' ? `${messageRolePill(activeThread)} · ${activeThread.guard_email || ''}` : 'Online communication with Dispatch')}</p></div><div class="conversation-actions"><button class="icon-square">☎</button><button class="icon-square">⌕</button><button class="icon-square">⋯</button></div></div><div class="conversation-stream">${msgs.length ? msgs.map(msg => `<div class="chat-row ${msg.sender_role === state.role ? 'me' : 'them'}"><div class="chat-bubble"><header><strong>${esc(msg.sender_role === state.role ? 'You' : (msg.sender_name || (msg.sender_role === 'admin' ? activeDispatchLabel() : activeThread.guard_name || 'Guard')))}</strong><span>${esc(fmtTime(msg.created_at))}</span></header><p>${esc(msg.body || '')}</p></div></div>`).join('') : '<div class="empty">No messages yet. Start the conversation below.</div>'}</div><form class="conversation-compose" data-form="dispatch-guard-message"><input type="hidden" name="thread_id" value="${esc(activeThread.id)}"><div class="compose-toolbar"><button type="button" class="icon-square small">📎</button><button type="button" class="icon-square small">📷</button></div><div class="compose-input-wrap"><textarea name="message" rows="3" placeholder="Type your message..."></textarea><div class="quick-actions-inline"><button type="button" class="quick-pill" data-action="quick-message" data-text="All secure at this time.">All Secure</button><button type="button" class="quick-pill" data-action="quick-message" data-text="On my way.">On My Way</button><button type="button" class="quick-pill" data-action="quick-message" data-text="Need assistance at location.">Need Assistance</button><button type="button" class="quick-pill" data-action="quick-message" data-text="En route now.">En Route</button></div></div><button type="submit" class="send-button">Send</button></form>` : `<div class="empty" style="min-height:480px;display:grid;place-items:center;">No conversation selected.</div>`}</section><aside class="messages-detail panel panel-pad">${activeThread ? `<div class="panel-head"><div><h2>Conversation Details</h2><p>${esc(state.role === 'admin' ? 'Dispatch selected guard' : 'Linked to your Dispatch channel')}</p></div></div><div class="messages-detail-stack">${req ? `<section class="detail-card"><div class="detail-card-head"><strong>Active Job (Linked)</strong><span class="rank-chip active">${esc(statusText(req.status))}</span></div><h3>${esc(propertyLabel(req))}</h3><p>${esc(propertyAddress(req))}</p><div class="detail-grid"><span>Job ID</span><strong>${esc(req.id)}</strong><span>Priority</span><strong>${esc(statusText(req.priority || 'Normal'))}</strong><span>Started</span><strong>${esc(fmtDate(req.started_at || req.accepted_at || req.assigned_at || req.created_at))}</strong></div><button type="button" class="ghost-button wide" data-view="active-job">View Active Job</button></section>` : `<section class="detail-card"><div class="detail-card-head"><strong>Active Job</strong></div><p>No active job linked right now.</p></section>`}<section class="detail-card"><div class="detail-card-head"><strong>Guard Status</strong><span class="rank-chip">${esc(guard ? guardRankFor(guard) : 'Dispatch')}</span></div><div class="detail-grid"><span>Status</span><strong>${esc(guard ? statusText(guard.status || 'active') : 'Online')}</strong><span>${state.role === 'admin' ? 'Guard' : 'Channel'}</span><strong>${esc(state.role === 'admin' ? (guard?.name || activeThread.guard_name || 'Guard') : 'Dispatch')}</strong><span>Last Message</span><strong>${esc(fmtTime(activeThread.updated_at))}</strong></div></section><section class="detail-card"><div class="detail-card-head"><strong>Quick Responses</strong></div><div class="quick-response-list"><button type="button" data-action="quick-message" data-text="All secure at this time.">All secure at this time.</button><button type="button" data-action="quick-message" data-text="On my way.">On my way.</button><button type="button" data-action="quick-message" data-text="Need assistance at location.">Need assistance at location.</button></div></section><div class="detail-split"> <section class="detail-card"><div class="detail-card-head"><strong>Recent Alerts</strong></div>${alerts.length ? alerts.map(n => `<div class="detail-line"><span>${esc(n.title || n.event_type || 'Alert')}</span><em>${esc(fmtTime(n.created_at))}</em></div>`).join('') : '<div class="detail-line"><span>No alerts</span></div>'}</section><section class="detail-card"><div class="detail-card-head"><strong>Attachments (${proofs.length})</strong></div>${proofs.length ? proofs.map(p => `<div class="detail-line"><span>${esc(p.file_name || 'Proof file')}</span><em>${esc(fmtTime(p.uploaded_at || p.created_at))}</em></div>`).join('') : '<div class="detail-line"><span>No attachments</span></div>'}</section></div></div>` : `<div class="empty">No conversation selected.</div>`}</aside></section></div>`;
+}
 async function login(form) {
   const email = form.email.value.trim().toLowerCase();
   const password = form.password.value;
@@ -501,8 +862,19 @@ async function logout() {
 }
 
 async function approveSignup(kind, id) {
+  if (kind === 'guard') {
+    const pending = state.guardSignups.find(g => String(g.id) === String(id)) || {};
+    const select = document.querySelector(`select[data-guard-rank="${String(id).replace(/"/g,'&quot;')}"]`);
+    const chosenRank = select?.value || 'Guard';
+    saveGuardRank({ id, email: pending.email, signup_id: id }, chosenRank);
+  }
   await supabase.rpc(kind === 'guard' ? 'cp_approve_guard_signup' : 'cp_approve_client_signup', { p_signup_id: id });
   await loadData();
+  if (kind === 'guard') {
+    const pending = state.guardSignups.find(g => String(g.id) === String(id));
+    const approved = (state.guards || []).find(g => pending?.email && String(g.email || '').trim().toLowerCase() === String(pending.email || '').trim().toLowerCase());
+    if (approved) saveGuardRank(approved, guardRankFor({ id, email: pending?.email, signup_id: id }));
+  }
   render();
   toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved.`, 'success');
 }
@@ -591,31 +963,74 @@ async function assignPatrolNow(requestId) {
   toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
 }
 
+
 async function submitClientPatrolRequest(form) {
   const propertyId = form.property_id?.value || '';
   const priority = form.priority?.value || 'normal';
-  const patrolType = form.patrol_type?.value || 'standard';
+  const scheduleType = form.schedule_type?.value || 'on_demand';
+  const patrolType = form.patrol_type?.value || (scheduleType === 'vacation_watch' ? 'vacation_watch' : scheduleType === 'on_demand' ? 'urgent' : 'standard');
   const proofPreference = form.proof_preference?.value || 'photo';
+  const duration = form.estimated_duration?.value || '';
   const instructions = form.instructions?.value?.trim() || '';
+  const scheduleNotes = form.schedule_notes?.value?.trim() || '';
+  const services = Array.from(form.querySelectorAll('input[name="requested_services"]:checked')).map(input => input.value);
+  const recurrenceDays = Array.from(form.querySelectorAll('input[name="recurrence_days"]:checked')).map(input => input.value);
+  const referenceFile = form.reference_photo_file?.files?.[0] || null;
   if (!propertyId) throw new Error('Choose a saved property before requesting patrol.');
+
+  const date = form.scheduled_date?.value || '';
+  const time = form.scheduled_time?.value || '';
+  const scheduledFor = (scheduleType === 'scheduled' && date && time) ? `${date}T${time}` : '';
+  const startDate = form.schedule_start_date?.value || '';
+  const endDate = form.schedule_end_date?.value || '';
+  const preferredTimeWindow = form.preferred_time_window?.value || '';
+  const recurrencePattern = form.recurrence_pattern?.value || '';
+  const referenceNote = referenceFile ? `Reference upload selected from device: ${referenceFile.name}` : '';
+  const details = [
+    instructions,
+    duration ? `Estimated duration: ${duration}` : '',
+    services.length ? `Requested services: ${services.join(', ')}` : '',
+    referenceNote,
+    scheduleNotes ? `Schedule notes: ${scheduleNotes}` : ''
+  ].filter(Boolean).join('\n');
 
   let result = null;
   try {
     result = await supabase.rpc('cp_submit_patrol_request', {
       p_property_id: propertyId,
       p_priority: priority,
-      p_instructions: instructions,
+      p_instructions: details,
       p_patrol_type: patrolType,
-      p_proof_preference: proofPreference
+      p_proof_preference: proofPreference,
+      p_schedule_type: scheduleType,
+      p_scheduled_for: scheduledFor || null,
+      p_schedule_start_date: startDate || null,
+      p_schedule_end_date: endDate || null,
+      p_preferred_time_window: preferredTimeWindow,
+      p_recurrence_pattern: recurrencePattern,
+      p_recurrence_days: recurrenceDays.join(','),
+      p_schedule_notes: scheduleNotes
     });
   } catch (err) {
     const msg = String(err?.message || err || '').toLowerCase();
     if (!(msg.includes('function') || msg.includes('argument') || msg.includes('schema cache'))) throw err;
-    result = await supabase.rpc('cp_submit_patrol_request', {
-      p_property_id: propertyId,
-      p_priority: priority,
-      p_instructions: instructions
-    });
+    try {
+      result = await supabase.rpc('cp_submit_patrol_request', {
+        p_property_id: propertyId,
+        p_priority: priority,
+        p_instructions: details,
+        p_patrol_type: patrolType,
+        p_proof_preference: proofPreference
+      });
+    } catch (err2) {
+      const msg2 = String(err2?.message || err2 || '').toLowerCase();
+      if (!(msg2.includes('function') || msg2.includes('argument') || msg2.includes('schema cache'))) throw err2;
+      result = await supabase.rpc('cp_submit_patrol_request', {
+        p_property_id: propertyId,
+        p_priority: priority,
+        p_instructions: details
+      });
+    }
   }
 
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be submitted.');
@@ -625,11 +1040,16 @@ async function submitClientPatrolRequest(form) {
   toast('Patrol request submitted to Dispatch.', 'success');
 }
 
+
 function renderLoading() {
   app.innerHTML = `<div class="auth-shell"><div class="auth-card"><section class="auth-hero"><div class="brand-row"><div class="logo-box">CP</div><div><strong>Co Pilot</strong><small>Security</small></div></div><h1>Loading Command Center</h1><p>Connecting to Supabase.</p></section><section class="auth-panel"><div class="auth-box"><p class="eyebrow">Loading</p><h2>Preparing app</h2><p class="auth-note">Loading your role, patrol data, messages, notifications, and reports.</p></div></section></div></div>`;
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  scheduleClientMapPrep();
+  scheduleClientLeafletMap();
+  scheduleClientPropertyMapPrep();
+  scheduleClientPropertyDetailMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -1332,7 +1752,19 @@ function setGuardOffline() {
   writeGuardGpsPersistedState({ online: false });
   render();
 }
-function openMapCard(type) {
+
+function openMapCard(type, propertyId = '') {
+  if (state.role === 'client' && ['dashboard','properties'].includes(state.view)) {
+    const activeReq = clientAcceptedMapRequest();
+    const entries = clientMapPropertyEntries();
+    const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    if (type === 'guard' && !hasGuard) return;
+    if (type === 'property' && !entries.length) return;
+    liveGps.clientSelectedPropertyId = propertyId || liveGps.clientSelectedPropertyId || String(activeReq?.property_id || entries[0]?.property?.id || '');
+    liveGps.selectedMapCard = type;
+    render();
+    return;
+  }
   const req = guard302CurrentRequest();
   const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
   const hasProperty = liveGps.online && Boolean(req);
@@ -1341,6 +1773,7 @@ function openMapCard(type) {
   liveGps.selectedMapCard = type;
   render();
 }
+
 function closeMapCard() {
   liveGps.selectedMapCard = null;
   render();
@@ -2114,6 +2547,351 @@ function guardRouteGpsLiveView() {
   </div>`;
 }
 
+
+function clientPendingDispatchRequests() {
+  return state.patrolRequests.filter(r => String(r.status || 'pending_dispatch') === 'pending_dispatch');
+}
+function clientRecentReportRecords() {
+  const reports = [...(state.patrolReports || [])].sort((a,b) => new Date(b.released_at || b.created_at || 0) - new Date(a.released_at || a.created_at || 0));
+  if (reports.length) return reports.slice(0, 3);
+  return completedRequests().slice(0, 3).map(req => ({ request_id: req.id, title: `${propertyLabel(req)} Report`, released_at: req.updated_at || req.created_at }));
+}
+function clientReportRow(report = {}) {
+  const req = report.request_id ? state.patrolRequests.find(r => String(r.id) === String(report.request_id)) : null;
+  const title = report.title || report.name || propertyLabel(req || {}) || 'Patrol Report';
+  const sub = req ? `${statusText(req.status)} • ${fmtDate(report.released_at || report.created_at || req.updated_at || req.created_at)}` : fmtDate(report.released_at || report.created_at);
+  return `<button type="button" class="client-report-row" data-view="reports"><i>▣</i><span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span><em>${esc(fmtTime(report.released_at || report.created_at || req?.updated_at || req?.created_at))}</em></button>`;
+}
+function clientMessageFeedRows(limit = 2) {
+  const rows = (state.messageThreads || []).slice(0, limit);
+  return rows.length ? rows.map(t => `<button type="button" class="client-feed-row" data-view="messages"><i>${esc(initials(t.subject || t.title || 'D'))}</i><span><strong>${esc(t.subject || t.title || 'Conversation')}</strong><small>${esc(t.last_message_preview || 'No messages yet')}</small></span><em>${esc(fmtTime(t.updated_at || t.created_at))}</em></button>`).join('') : '<div class="empty">No messages yet.</div>';
+}
+function clientNotificationFeedRows(limit = 3) {
+  const rows = notificationsList().slice(0, limit);
+  return rows.length ? rows.map(n => `<button type="button" class="client-feed-row" data-view="notifications"><i class="${esc(notificationAccentClass(n))}">${esc(notificationIcon(n))}</i><span><strong>${esc(n._title)}</strong><small>${esc(n._body || notificationCategoryLabel(n))}</small></span><em>${esc(n._time)}</em></button>`).join('') : '<div class="empty">No notifications.</div>';
+}
+function clientActivityEntries() {
+  const reqRows = state.patrolRequests.map(req => ({
+    type: 'request',
+    timestamp: req.updated_at || req.created_at,
+    event: req.status === 'completed' ? 'Patrol completed' : req.status === 'in_progress' ? 'Patrol started' : req.status === 'accepted' ? 'Guard accepted patrol' : req.status === 'assigned' ? 'Guard assigned' : 'Patrol requested',
+    property: propertyLabel(req),
+    person: requestGuardName(req) !== 'Unassigned' ? requestGuardName(req) : requestClientName(req),
+    status: req.status || 'pending_dispatch'
+  }));
+  const alertRows = notificationsList().slice(0, 3).map(n => ({
+    type: 'notification',
+    timestamp: n._created,
+    event: n._title,
+    property: relatedRequestForNotification(n) ? propertyLabel(relatedRequestForNotification(n)) : notificationCategoryLabel(n),
+    person: n.source || 'Operations',
+    status: n._category === 'message' ? 'assigned' : 'completed'
+  }));
+  return [...reqRows, ...alertRows].sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)).slice(0, 5);
+}
+function clientActivityRow(entry = {}) {
+  return `<div class="client-activity-row"><span>${esc(fmtDate(entry.timestamp))}</span><strong>${esc(entry.event)}</strong><span>${esc(entry.property)}</span><span>${esc(entry.person)}</span><span>${statusChip(entry.status)}</span></div>`;
+}
+
+function clientOwnedPropertyIds() {
+  return new Set((state.properties || []).map(p => String(p.id)));
+}
+function clientAcceptedMapRequest() {
+  const owned = clientOwnedPropertyIds();
+  return [...(state.patrolRequests || [])]
+    .filter(r => owned.has(String(r.property_id)) && ['accepted', 'in_progress'].includes(String(r.status || '')))
+    .sort((a, b) => new Date(b.updated_at || b.accepted_at || b.created_at || 0) - new Date(a.updated_at || a.accepted_at || a.created_at || 0))[0] || null;
+}
+function restoreClientViewOfGuardGps() {
+  const saved = readGuardGpsPersistedState();
+  if (!saved?.online) return false;
+  liveGps.online = true;
+  liveGps.gpsMode = 'online';
+  liveGps.onlineSince = saved.onlineSince || saved.statusChangedAt || saved.savedAt || liveGps.onlineSince || new Date().toISOString();
+  liveGps.statusChangedAt = saved.statusChangedAt || liveGps.onlineSince;
+  liveGps.offlineAt = saved.offlineAt || null;
+  liveGps.lastUpdate = saved.lastUpdate || null;
+  liveGps.guardLat = Number.isFinite(Number(saved.guardLat)) ? Number(saved.guardLat) : liveGps.guardLat;
+  liveGps.guardLng = Number.isFinite(Number(saved.guardLng)) ? Number(saved.guardLng) : liveGps.guardLng;
+  liveGps.accuracy = Number.isFinite(Number(saved.accuracy)) ? Number(saved.accuracy) : liveGps.accuracy;
+  liveGps.currentAddress = saved.currentAddress || liveGps.currentAddress || 'Waiting for live guard GPS update...';
+  return true;
+}
+function clientMapPropertyEntries() {
+  const activeReq = clientAcceptedMapRequest();
+  return (state.properties || []).slice(0, 12).map((property, idx) => {
+    const req = { property_id: property.id };
+    let coords = getPropertyCoords(req);
+    if ((!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) && activeReq && String(activeReq.property_id) === String(property.id) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) {
+      coords = { lat: liveGps.propertyLat, lng: liveGps.propertyLng };
+    }
+    const fallback = [
+      { x: 26, y: 64 }, { x: 42, y: 39 }, { x: 60, y: 54 }, { x: 76, y: 36 }, { x: 87, y: 60 }, { x: 30, y: 28 }
+    ][idx] || { x: 50, y: 50 };
+    return { property, coords, fallback, isActive: activeReq && String(activeReq.property_id) === String(property.id) };
+  });
+}
+function clientMapBounds(entries = []) {
+  const points = [];
+  for (const entry of entries) {
+    if (entry.coords && Number.isFinite(entry.coords.lat) && Number.isFinite(entry.coords.lng)) points.push([entry.coords.lat, entry.coords.lng]);
+  }
+  if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) points.push([liveGps.guardLat, liveGps.guardLng]);
+  for (const p of (liveGps.routePoints || [])) {
+    if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) points.push([p.lat, p.lng]);
+  }
+  if (!points.length) return { minLat: 36.07, maxLat: 36.20, minLng: -115.30, maxLng: -115.08 };
+  let minLat = Math.min(...points.map(p => p[0]));
+  let maxLat = Math.max(...points.map(p => p[0]));
+  let minLng = Math.min(...points.map(p => p[1]));
+  let maxLng = Math.max(...points.map(p => p[1]));
+  const latPad = Math.max(.006, (maxLat - minLat) * .35);
+  const lngPad = Math.max(.006, (maxLng - minLng) * .35);
+  return { minLat: minLat - latPad, maxLat: maxLat + latPad, minLng: minLng - lngPad, maxLng: maxLng + lngPad };
+}
+function clientMapRoutePath(bounds, activeEntry) {
+  if (liveGps.routePoints && liveGps.routePoints.length >= 2) {
+    return liveGps.routePoints.map((pt, idx) => {
+      const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+      return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+  if (activeEntry && activeEntry.coords && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) {
+    const g = mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds);
+    const p = mapPercentForPoint(activeEntry.coords.lat, activeEntry.coords.lng, bounds);
+    const midX = (g.x + p.x) / 2;
+    const midY = (g.y + p.y) / 2;
+    return `M ${g.x.toFixed(2)} ${g.y.toFixed(2)} C ${(midX - 10).toFixed(2)} ${(midY + 16).toFixed(2)}, ${(midX + 12).toFixed(2)} ${(midY - 14).toFixed(2)}, ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  }
+  return '';
+}
+function clientSelectedProperty() {
+  const entries = clientMapPropertyEntries();
+  const activeReq = clientAcceptedMapRequest();
+  const activePropertyId = String(activeReq?.property_id || '');
+  const selectedId = String(liveGps.clientSelectedPropertyId || activePropertyId || entries[0]?.property?.id || '');
+  return entries.find(entry => String(entry.property.id) === selectedId)?.property || entries[0]?.property || null;
+}
+function clientMapGuardCard(req) {
+  return `<div class="guard302-live-card">
+    <button type="button" class="guard302-card-close" data-action="close-map-card">×</button>
+    <div>${avatar(requestGuardName(req) || activeGuardName(), getGuardPhotoUrl())}</div>
+    <div>
+      <strong>${esc(requestGuardName(req) || activeGuardName())}</strong>
+      <small>${esc(activeGuardEmail() || 'Assigned guard')}</small>
+      <p>${esc(liveGps.currentAddress || 'Waiting for live guard GPS address...')}</p>
+      <span>${liveGps.online ? 'Accepted assignment · Live GPS visible to client' : 'GPS waiting'}${liveGps.accuracy ? ' · Accuracy ±' + Math.round(liveGps.accuracy) + ' ft' : ''}</span>
+    </div>
+  </div>`;
+}
+function clientMapPropertyCard(property) {
+  if (!property) return '';
+  const photo = property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || property.logo_url || '';
+  const label = property.label || property.name || property.property_name || 'Property';
+  const address = [property.address || property.address_line1, property.city, property.state, property.zip_code].filter(Boolean).join(', ');
+  const owner = property.owner_name || property.contact_name || state.profile?.display_name || state.profile?.name || state.profile?.email || 'Client';
+  const img = photo ? `<div class="avatar"><img src="${esc(photo)}" alt="${esc(label)}"></div>` : `<div class="avatar">${esc(initials(label || owner))}</div>`;
+  return `<div class="guard302-live-card property">
+    <button type="button" class="guard302-card-close" data-action="close-map-card">×</button>
+    <div>${img}</div>
+    <div>
+      <strong>${esc(label)}</strong>
+      <small>Client Property: ${esc(owner)}</small>
+      <p>${esc(address || 'Address unavailable')}</p>
+      <span>Your property marker · Visible in client map only</span>
+    </div>
+  </div>`;
+}
+function clientLivePatrolMapCard() {
+  const activeReq = clientAcceptedMapRequest();
+  const entries = clientMapPropertyEntries();
+  const selectedProperty = clientSelectedProperty();
+  const activeEntry = entries.find(entry => entry.isActive) || null;
+  const bounds = clientMapBounds(entries);
+  const routePath = activeReq && liveGps.online ? clientMapRoutePath(bounds, activeEntry) : '';
+  const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  return `<section class="panel panel-pad guard302-map-card client-live-map-card">
+    <div class="guard302-card-head"><div><h2>Client Patrol Map <span class="guard302-live ${hasGuard ? 'on' : ''}">${hasGuard ? 'Live' : 'Tracking Idle'}</span></h2></div></div>
+    <div class="guard302-leaflet-wrap client-leaflet-wrap">
+      <div id="client-live-leaflet-map" class="guard302-leaflet-map" data-online="${hasGuard ? '1' : '0'}"></div>
+      <div class="guard302-map-fallback" id="client-live-map-fallback">
+        <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
+        <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        ${entries.map(entry => {
+          const pos = entry.coords ? mapPercentForPoint(entry.coords.lat, entry.coords.lng, bounds) : entry.fallback;
+          return `<button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(entry.property.id)}" style="left:${pos.x.toFixed ? pos.x.toFixed(2) : pos.x}%;top:${pos.y.toFixed ? pos.y.toFixed(2) : pos.y}%" aria-label="Open property card"><span></span></button>`;
+        }).join('')}
+        ${hasGuard ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds).x.toFixed(2)}%;top:${mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds).y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
+        <small>${esc(liveGps.mapNotice || 'Client map ready.')}</small>
+      </div>
+      ${liveGps.selectedMapCard === 'guard' && hasGuard && activeReq ? clientMapGuardCard(activeReq) : ''}
+      ${liveGps.selectedMapCard === 'property' && selectedProperty ? clientMapPropertyCard(selectedProperty) : ''}
+      <div class="guard302-map-status">${esc(liveGps.mapNotice || 'Client map ready.')} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
+    </div>
+    <div class="guard302-map-stats">
+      <div><small>Tracked Property</small><strong>${esc(activeReq ? propertyLabel(activeReq) : (state.properties[0]?.label || state.properties[0]?.name || '—'))}</strong></div>
+      <div><small>ETA</small><strong>${esc(activeReq && liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(activeReq && liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+      <div><small>Accuracy</small><strong>${esc(hasGuard && liveGps.accuracy ? '±' + Math.round(liveGps.accuracy) + ' ft' : '—')} <i></i></strong></div>
+    </div>
+    <div class="guard302-map-actions client-map-note"><span>Client view only · You see only your properties. Guard appears after accepting your patrol and route updates live from the guard GPS.</span></div>
+  </section>`;
+}
+function hideClientMapFallback() {
+  const fallback = document.getElementById('client-live-map-fallback');
+  if (fallback) fallback.classList.add('loaded');
+}
+function showClientMapFallback(message = 'Live street map layer unavailable. Showing fallback street grid.') {
+  const fallback = document.getElementById('client-live-map-fallback');
+  if (fallback) {
+    fallback.classList.remove('loaded');
+    const small = fallback.querySelector('small');
+    if (small) small.textContent = message;
+  }
+}
+function initClientLeafletMap() {
+  const el = document.getElementById('client-live-leaflet-map');
+  if (!el) return;
+  if (!window.L) {
+    showClientMapFallback('Leaflet did not load yet. Showing fallback client map with clickable property markers.');
+    return;
+  }
+  if (el.dataset.ready === '1' && liveGps.leafletMap) {
+    try { liveGps.leafletMap.invalidateSize(); } catch {}
+    return;
+  }
+  try {
+    if (liveGps.leafletMap) {
+      try { liveGps.leafletMap.remove(); } catch {}
+      liveGps.leafletMap = null;
+      liveGps.leafletLayer = null;
+    }
+    const entries = clientMapPropertyEntries();
+    const activeReq = clientAcceptedMapRequest();
+    const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    const centerEntry = entries.find(entry => entry.isActive && entry.coords) || entries.find(entry => entry.coords) || null;
+    const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : centerEntry?.coords ? [centerEntry.coords.lat, centerEntry.coords.lng] : [36.1699, -115.1398];
+    const map = L.map(el, { zoomControl:true, attributionControl:false, dragging:true, scrollWheelZoom:true, doubleClickZoom:true }).setView(center, centerEntry || hasGuard ? 14 : 11);
+    liveGps.leafletMap = map;
+    el.dataset.ready = '1';
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, crossOrigin:true });
+    tiles.on('load', hideClientMapFallback);
+    tiles.on('tileerror', () => showClientMapFallback('Map tiles blocked or slow. Showing fallback client map.'));
+    tiles.addTo(map);
+    const markerGroup = L.featureGroup().addTo(map);
+    entries.forEach(entry => {
+      const lat = entry.coords?.lat;
+      const lng = entry.coords?.lng;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const propertyMarker = L.marker([lat, lng], { icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      propertyMarker.on('click', () => openMapCard('property', entry.property.id));
+    });
+    if (hasGuard) {
+      const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], { icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      guardMarker.on('click', () => openMapCard('guard'));
+    }
+    if (hasGuard && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) {
+      const coords = (liveGps.routePoints && liveGps.routePoints.length >= 2) ? liveGps.routePoints.map(p => [p.lat, p.lng]) : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + liveGps.propertyLat) / 2 + 0.003, (liveGps.guardLng + liveGps.propertyLng) / 2 - 0.003], [liveGps.propertyLat, liveGps.propertyLng]];
+      L.polyline(coords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);
+    }
+    if (markerGroup.getLayers().length > 0) {
+      try { map.fitBounds(markerGroup.getBounds(), { padding:[36,36], maxZoom:15 }); } catch {}
+    }
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 150);
+    setTimeout(() => {
+      const tilePane = el.querySelector('.leaflet-tile-pane');
+      const hasTiles = tilePane && tilePane.querySelector('img');
+      if (hasTiles) hideClientMapFallback();
+    }, 1100);
+  } catch (err) {
+    showClientMapFallback('Map could not initialize. Showing fallback client map with clickable property markers.');
+  }
+}
+function scheduleClientLeafletMap() {
+  if (state.role === 'client' && state.view === 'dashboard') {
+    requestAnimationFrame(() => {
+      [75, 450, 1200, 2500].forEach(delay => setTimeout(initClientLeafletMap, delay));
+    });
+  }
+}
+function scheduleClientMapPrep() {
+  if (state.role !== 'client' || state.view !== 'dashboard') return;
+  restoreClientViewOfGuardGps();
+  const activeReq = clientAcceptedMapRequest();
+  if (!activeReq) {
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    liveGps.propertyLat = null;
+    liveGps.propertyLng = null;
+    liveGps.propertyAddress = '';
+    liveGps.mapNotice = 'Client view only. You can see only your properties. Guard marker and route appear after a guard accepts one of your patrol requests.';
+    return;
+  }
+  const existing = getPropertyCoords(activeReq);
+  if (existing) {
+    liveGps.propertyLat = existing.lat;
+    liveGps.propertyLng = existing.lng;
+    liveGps.propertyAddress = propertyAddress(activeReq);
+  }
+  if (!liveGps.clientSelectedPropertyId) liveGps.clientSelectedPropertyId = String(activeReq.property_id || '');
+  if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng) && !liveGps.routeBusy && !liveGps.routePoints.length) {
+    setTimeout(async () => {
+      await fetchRouteIfPossible();
+      if (state.role === 'client' && state.view === 'dashboard') render();
+    }, 180);
+  } else if (!existing && !liveGps.geocodeBusy) {
+    const key = `client_${String(activeReq.id || activeReq.property_id || 'active')}`;
+    if (liveGps.propertyPrepKey !== key) {
+      liveGps.propertyPrepKey = key;
+      setTimeout(async () => {
+        await geocodePropertyIfNeeded(activeReq);
+        if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) await fetchRouteIfPossible();
+        if (state.role === 'client' && state.view === 'dashboard') render();
+      }, 250);
+    }
+  }
+  liveGps.mapNotice = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)
+    ? 'Live client map active. You can see the accepted guard marker, your property marker, and the live route line.'
+    : 'Patrol accepted. Waiting for the guard device to update live GPS.';
+}
+
+function clientDashboardView() {
+  const propertiesCount = state.properties.length;
+  const activePatrolsCount = clientOpenRequests().filter(r => ['assigned','accepted','in_progress'].includes(String(r.status || ''))).length;
+  const openRequestsCount = clientPendingDispatchRequests().length;
+  const reportsReadyCount = reportsReady().length || state.patrolReports.length;
+  const reportRows = clientRecentReportRecords();
+  const activityRows = clientActivityEntries();
+  return `<div class="dashboard client-dashboard-shell">
+    <header class="dashboard-header">
+      <div class="title-block"><h1>Client Dashboard</h1><p>Modern client command center for patrol visibility, requests, reports, and communication.</p></div>
+      <div class="header-actions"><button class="header-button">⌕</button><button class="header-button">🔔</button><button class="header-button">☼</button><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div>
+    </header>
+    <section class="kpi-row client-kpi-row">
+      ${kpiCard('▦', 'Properties', propertiesCount, `${propertiesCount ? propertiesCount : '0'} total properties`, '#2f83ff')}
+      ${kpiCard('◈', 'Active Patrols', activePatrolsCount, `${activePatrolsCount} in motion`, '#37dc72')}
+      ${kpiCard('☰', 'Open Requests', openRequestsCount, `${openRequestsCount} needs attention`, '#b05cff')}
+      ${kpiCard('▣', 'Reports Ready', reportsReadyCount, `${reportsReadyCount} available`, '#ffb53d')}
+    </section>
+    <section class="client-dashboard-grid">
+      <div class="client-dashboard-main">
+        ${clientLivePatrolMapCard()}
+        <section class="panel panel-pad client-activity-card">
+          <div class="panel-head"><div><h2>Recent Activity</h2><p>Latest patrols and property updates across your portfolio.</p></div><button class="ghost-button" data-view="patrol-requests">View all activity</button></div>
+          <div class="client-activity-table"><div class="client-activity-head"><span>Time</span><span>Event</span><span>Property</span><span>Guard / Unit</span><span>Status</span></div>${activityRows.length ? activityRows.map(clientActivityRow).join('') : '<div class="empty">No recent activity.</div>'}<div class="client-activity-footer">Showing ${activityRows.length ? `1 to ${activityRows.length}` : '0'} of ${state.patrolRequests.length || 0} results</div></div>
+        </section>
+      </div>
+      <aside class="client-dashboard-right">
+        <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Messages</h2><p>Inbox</p></div><button class="ghost-button" data-view="messages">View all</button></div><div class="client-feed-list">${clientMessageFeedRows(2)}</div></section>
+        <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Notifications</h2><p>Alerts and updates</p></div><button class="ghost-button" data-view="notifications">View all</button></div><div class="client-feed-list">${clientNotificationFeedRows(3)}</div></section>
+        <section class="panel panel-pad client-side-card client-reports-card"><div class="panel-head"><div><h2>Recent Reports</h2><p>Latest client-facing patrol reports.</p></div><button class="ghost-button" data-view="reports">View all</button></div><div class="client-report-list">${reportRows.length ? reportRows.map(clientReportRow).join('') : '<div class="empty">No reports ready.</div>'}</div></section>
+      </aside>
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -2152,12 +2930,61 @@ function cardsView(title, subtitle, rows, type = 'person') {
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;">${rows.length ? rows.map(item => `<article class="panel panel-pad"><div class="panel-head"><div><h2>${esc(item.name || item.display_name || item.email || item.title || 'Record')}</h2><p>${esc(item.email || item.phone || item.message || item.notes || '')}</p></div>${type === 'signup' ? `<div class="button-row"><button class="btn success" data-approve="${esc(item.kind)}" data-id="${esc(item.id)}">Approve</button><button class="btn secondary" data-reject="${esc(item.kind)}" data-id="${esc(item.id)}">Reject</button></div>` : ''}</div></article>`).join('') : '<div class="empty">No records found.</div>'}</div></section></div>`;
 }
 
-function messagesView() {
-  return cardsView('Messages', 'Dispatch inbox and conversations.', state.messageThreads.map(t => ({ title: t.subject || t.title || 'Conversation', message: t.last_message_preview || 'No messages yet' })), 'message');
-}
+
+
 function notificationsView() {
-  return cardsView('Notifications', 'Alerts and updates.', state.notifications.map(n => ({ title: n.title || n.event_type || 'Notification', message: n.message || n.details || '' })), 'notification');
+  const counts = notificationCounts();
+  const rows = filteredNotifications();
+  const note = selectedNotification();
+  const linkedRequest = relatedRequestForNotification(note);
+  const groups = groupedNotifications(rows);
+  const recentActivity = [...(state.patrolActivity || [])].sort((a,b) => new Date(b.created_at || b.timestamp || 0) - new Date(a.created_at || a.timestamp || 0)).slice(0,2);
+  return `<div class="dashboard notifications-shell">
+    <header class="dashboard-header">
+      <div class="title-block"><h1>Notifications</h1><p>Alerts, patrol updates, and dispatch communication.</p></div>
+      <div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div>
+    </header>
+    <section class="notifications-toolbar page-panel">
+      <div class="notifications-search"><span>⌕</span><input type="search" placeholder="Search notifications..." value="${esc(state.notificationSearch)}" data-notification-search></div>
+      <div class="notifications-filter-row">
+        <button type="button" class="filter-pill ${state.notificationFilter === 'all' ? 'active' : ''}" data-notification-filter="all">All</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'unread' ? 'active' : ''}" data-notification-filter="unread">Unread ${counts.unread ? `<b>${esc(counts.unread)}</b>` : ''}</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'patrol' ? 'active' : ''}" data-notification-filter="patrol">Patrols</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'messages' ? 'active' : ''}" data-notification-filter="messages">Messages</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'system' ? 'active' : ''}" data-notification-filter="system">System</button>
+      </div>
+      <div class="notifications-toolbar-actions">
+        <button type="button" class="ghost-button" data-action="mark-all-notifications-read">✓ Mark All Read</button>
+        <button type="button" class="ghost-button" data-action="clear-notification-filters">⟲ Clear Filters</button>
+      </div>
+    </section>
+    <section class="notifications-summary-row">
+      ${notificationSummaryCard('◔', 'Total Notifications', counts.total, '+ 18% vs yesterday', 'blue')}
+      ${notificationSummaryCard('⦿', 'Unread', counts.unread, counts.unread ? 'Requires attention' : 'All caught up', 'violet')}
+      ${notificationSummaryCard('✓', 'Patrol Updates', counts.patrol, '+ 12% vs yesterday', 'green')}
+      ${notificationSummaryCard('☵', 'Dispatch Messages', counts.messages, '+ 5% vs yesterday', 'purple')}
+    </section>
+    <section class="notifications-layout page-panel">
+      <div class="notifications-feed">
+        ${groups.length ? groups.map(group => `<div class="notifications-group"><div class="notifications-group-label">${esc(group.label)}</div><div class="notifications-group-list">${group.rows.map(item => notificationRow(item)).join('')}</div></div>`).join('') : '<div class="empty">No notifications found.</div>'}
+        <div class="notifications-load-more"><button type="button" class="ghost-button">⌄ Load more</button></div>
+      </div>
+      <aside class="notifications-detail panel panel-pad">
+        ${note ? `<div class="notifications-detail-head"><div class="detail-title-wrap"><div class="notification-orb ${esc(notificationAccentClass(note))}">${esc(notificationIcon(note))}</div><div><h2>${esc(note._title)}</h2><p>${esc(fmtDate(note._created))} (${esc(note._timeAgo)})</p></div></div><span class="severity-chip ${esc(note._severity)}">${esc(notificationPriorityLabel(note))}</span></div>
+          <div class="detail-card"><div class="detail-card-head"><strong>Message</strong></div><div class="notification-message-box">${esc(note._body || 'No message body available.')}</div><div class="detail-grid"><span>Source</span><strong>${esc(note.source || (note._category === 'message' ? 'Dispatch Center' : note._category === 'system' ? 'System Monitor' : 'Operations'))}</strong><span>Category</span><strong>${esc(notificationCategoryLabel(note))}</strong><span>Related Job</span><strong>${esc(linkedRequest ? `${propertyLabel(linkedRequest)}${propertyAddress(linkedRequest) ? ' / ' + propertyAddress(linkedRequest) : ''}` : 'None linked')}</strong><span>Reference ID</span><strong>${esc(notificationReferenceId(note))}</strong><span>Priority</span><strong>${esc(notificationPriorityLabel(note))}</strong><span>Status</span><strong>${esc(note._isUnread ? 'New' : 'Read')}</strong></div><div class="detail-action-row"><button type="button" class="primary-button" data-action="notification-open-linked-job">${esc(linkedRequest && String(linkedRequest.status) === 'completed' ? 'View Completed Job' : 'View Active Job')}</button><button type="button" class="ghost-button" data-action="notification-open-messages">Open Messages</button><button type="button" class="ghost-button" data-action="acknowledge-notification" data-notification-id="${esc(note._id)}">✓ Acknowledge</button></div></div>
+          <section class="detail-card"><div class="detail-card-head"><strong>Recent Activity</strong><button type="button" class="ghost-inline">View all</button></div>${recentActivity.length ? recentActivity.map(a => `<div class="detail-line icon"><span class="mini-icon ${esc(notificationAccentClass(note))}">${esc(notificationIcon(note))}</span><div><strong>${esc(a.event_type || a.title || 'Patrol update')}</strong><p>${esc(a.notes || a.message || propertyLabel(linkedRequest || {}))}</p></div><em>${esc(fmtTime(a.created_at || a.timestamp))}</em></div>`).join('') : '<div class="detail-line"><span>No recent activity.</span></div>'}</section>
+          <section class="detail-card"><div class="detail-card-head"><strong>Notification Preferences</strong></div><div class="preferences-row"><div><strong>Manage how and when you receive notifications.</strong><p>Patrol assignments, dispatch messages, and system updates.</p></div><button type="button" class="ghost-button" data-action="open-notification-preferences">Open Preferences</button></div></section>` : '<div class="empty">No notification selected.</div>'}
+      </aside>
+    </section>
+  </div>`;
 }
+function notificationSummaryCard(icon, label, value, sub, tone = 'blue') {
+  return `<article class="notification-summary ${esc(tone)}"><div class="summary-icon">${esc(icon)}</div><div class="summary-copy"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div></article>`;
+}
+function notificationRow(item) {
+  return `<button type="button" class="notification-row ${String(state.selectedNotificationId) === String(item._id) ? 'active' : ''} ${item._isUnread ? 'unread' : ''}" data-action="select-notification" data-notification-id="${esc(item._id)}"><div class="notification-orb ${esc(notificationAccentClass(item))}">${esc(notificationIcon(item))}</div><div class="notification-row-copy"><div class="notification-row-top"><strong>${esc(item._title)}</strong>${item._isUnread ? '<span class="notif-dot"></span>' : ''}</div><p>${esc(item._body)}</p><div class="notification-row-tags"><span class="category-pill ${esc(notificationAccentClass(item))}">${esc(notificationCategoryLabel(item))}</span>${item._severity === 'high' ? '<span class="category-pill danger">High Priority</span>' : ''}</div></div><div class="notification-row-meta"><strong>${esc(item._time)}</strong><span>${esc(item._timeAgo)}</span>${item._isUnread ? '<i></i>' : ''}</div></button>`;
+}
+
 
 function proofUploadView() {
   state.view = 'active-job';
@@ -2201,46 +3028,682 @@ function clientPropertyCardForRequest(p) {
     <span><strong>${esc(p.label || p.name || p.property_name || 'Property')}</strong><small>${esc(address || 'Address unavailable')}</small></span>
   </button>`;
 }
+
+function propertyDisplayName(property = {}) {
+  return property.label || property.name || property.property_name || property.nickname || `Property #${property.id || ''}`.trim() || 'Property';
+}
+function propertyDisplayAddress(property = {}) {
+  return [property.address || property.address_line1 || property.street, property.city, property.state, property.zip || property.zip_code].filter(Boolean).join(', ') || 'Address unavailable';
+}
+function propertyImageValue(property = {}) {
+  return property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || property.logo_url || '';
+}
+function propertyStatusValue(property = {}) {
+  // Client properties are considered active/saved as long as they exist in the database.
+  return 'saved';
+}
+function propertyRequestsForProperty(property = {}) {
+  return (state.patrolRequests || []).filter(req => String(req.property_id) === String(property.id));
+}
+function propertyLatestRequest(property = {}) {
+  return propertyRequestsForProperty(property).sort((a,b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))[0] || null;
+}
+function propertyActiveRequest(property = {}) {
+  return propertyRequestsForProperty(property)
+    .filter(req => ['accepted','in_progress','assigned'].includes(String(req.status || '')))
+    .sort((a,b) => new Date(b.updated_at || b.accepted_at || b.created_at || 0) - new Date(a.updated_at || a.accepted_at || a.created_at || 0))[0] || null;
+}
+function propertyOpenRequestCount(property = {}) {
+  return propertyRequestsForProperty(property).filter(req => String(req.status || '') !== 'completed').length;
+}
+function propertyReportsForProperty(property = {}) {
+  const reqIds = new Set(propertyRequestsForProperty(property).map(req => String(req.id)));
+  return (state.patrolReports || []).filter(report => reqIds.has(String(report.request_id)));
+}
+function propertyLastActivityMeta(property = {}) {
+  const req = propertyLatestRequest(property);
+  const reports = propertyReportsForProperty(property).sort((a,b) => new Date(b.released_at || b.created_at || 0) - new Date(a.released_at || a.created_at || 0));
+  const report = reports[0] || null;
+  const events = (state.patrolActivity || []).filter(item => {
+    const linked = requestById(item.request_id);
+    return linked && String(linked.property_id) === String(property.id);
+  }).sort((a,b) => new Date(b.created_at || b.timestamp || 0) - new Date(a.created_at || a.timestamp || 0));
+  const event = events[0] || null;
+  const candidates = [
+    req ? { type:'request', title: statusText(req.status), subtitle: req.status === 'completed' ? 'Patrol finished' : req.status === 'in_progress' ? 'GPS update' : 'Patrol activity', at: req.updated_at || req.created_at } : null,
+    report ? { type:'report', title:'Report ready', subtitle: 'Client report released', at: report.released_at || report.created_at } : null,
+    event ? { type:'event', title: event.title || event.event_type || 'Activity', subtitle: event.details || event.message || 'Patrol update', at: event.created_at || event.timestamp } : null
+  ].filter(Boolean).sort((a,b) => new Date(b.at || 0) - new Date(a.at || 0));
+  return candidates[0] || { title:'System Check', subtitle:'No recent events', at:null };
+}
+
+function propertyTypeStorageKey() { return 'cp_security_client_property_types_v1'; }
+function readPropertyTypeMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(propertyTypeStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writePropertyTypeMap(map = {}) {
+  try { localStorage.setItem(propertyTypeStorageKey(), JSON.stringify(map)); } catch {}
+}
+function savePropertyTypeOverride(propertyId, type) {
+  if (!propertyId) return;
+  const map = readPropertyTypeMap();
+  map[String(propertyId)] = type || 'Retail';
+  writePropertyTypeMap(map);
+}
+function propertyTypeOverride(property = {}) {
+  const map = readPropertyTypeMap();
+  return map[String(property.id || '')] || '';
+}
+function propertyTypeLabel(property = {}) {
+  const override = propertyTypeOverride(property);
+  const raw = String(override || property.property_type || property.type || property.category || '').trim();
+  const value = raw.toLowerCase();
+  if (/residential|home|house|apartment|condo|townhome|duplex|triplex|fourplex/.test(value)) return 'Residential';
+  if (/retail|restaurant|store|shop|commercial|business|office|warehouse|mall/.test(value)) return 'Retail';
+  if (!raw) return 'Retail';
+  return raw.replace(/\s+location$/i, '').replace(/\b\w/g, c => c.toUpperCase());
+}
+function propertyContactName(property = {}) {
+  return property.owner_name || property.contact_name || state.profile?.display_name || state.profile?.name || 'Client';
+}
+function propertyPhoneValue(property = {}) {
+  return property.phone || property.contact_phone || property.owner_phone || '—';
+}
+function propertyEmailValue(property = {}) {
+  return property.email || property.contact_email || property.owner_email || state.profile?.email || '—';
+}
+function propertyTimezoneValue(property = {}) {
+  return property.timezone || 'America/Los_Angeles';
+}
+function propertyFootageValue(property = {}) {
+  return property.square_footage || property.sq_ft || property.squareFeet || '—';
+}
+function propertyClientSince(property = {}) {
+  return property.client_since || property.created_at || property.inserted_at || null;
+}
+function propertyIsPrimary(property = {}) {
+  return Boolean(property.is_primary || property.primary || property.default_property);
+}
+function filteredClientProperties() {
+  const term = String(state.clientPropertySearch || '').trim().toLowerCase();
+  return (state.properties || []).filter(property => {
+    const hay = [propertyDisplayName(property), propertyDisplayAddress(property), propertyTypeLabel(property), propertyContactName(property)].join(' ').toLowerCase();
+    const matchesTerm = !term || hay.includes(term);
+    const type = propertyTypeLabel(property).toLowerCase();
+    const hasActive = Boolean(propertyActiveRequest(property));
+    const hasOpen = propertyOpenRequestCount(property) > 0;
+    const matchesFilter = state.clientPropertyFilter === 'all'
+      || (state.clientPropertyFilter === 'active' && hasActive)
+      || (state.clientPropertyFilter === 'open' && hasOpen)
+      || (state.clientPropertyFilter === 'retail' && type.includes('retail'))
+      || (state.clientPropertyFilter === 'residential' && type.includes('residential'));
+    return matchesTerm && matchesFilter;
+  });
+}
+function selectedClientProperty() {
+  const filtered = filteredClientProperties();
+  const all = state.properties || [];
+  const selectedId = String(state.clientSelectedPropertyId || '');
+  let property = filtered.find(item => String(item.id) === selectedId) || all.find(item => String(item.id) === selectedId) || filtered[0] || all[0] || null;
+  if (property && String(state.clientSelectedPropertyId || '') !== String(property.id)) state.clientSelectedPropertyId = String(property.id);
+  return property;
+}
+function clientPropertiesCounts() {
+  const properties = state.properties || [];
+  const total = properties.length;
+  const activePatrols = properties.filter(property => Boolean(propertyActiveRequest(property))).length;
+  const openRequests = properties.reduce((sum, property) => sum + propertyOpenRequestCount(property), 0);
+  const saved = properties.length;
+  return { total, activePatrols, openRequests, saved };
+}
+function clientPropertyStatusChip(property = {}) {
+  const type = propertyTypeLabel(property);
+  const color = /residential/i.test(type) ? '#b05cff' : '#2e7dff';
+  return `<span class="client-property-online type-chip" style="--tone:${color}">${esc(type)}</span>`;
+}
+function clientPropertyPatrolSummary(property = {}) {
+  const req = propertyActiveRequest(property);
+  if (!req) return `<div class="client-property-patrol none"><i>–</i><span><strong>No active patrol</strong><small>Waiting for request</small></span></div>`;
+  const statusLabel = String(req.status || '') === 'accepted' ? 'En Route' : String(req.status || '') === 'assigned' ? 'Assigned' : 'On Patrol';
+  return `<div class="client-property-patrol"><i>${esc(initials(requestGuardName(req) || 'G'))}</i><span><strong>${esc(requestGuardName(req))}</strong><small>${esc(statusLabel)}</small></span><em>${liveGps.routeEtaMin ? `ETA: ${esc(liveGps.routeEtaMin)} min` : statusText(req.status)}</em></div>`;
+}
+function clientPropertyLastActivity(property = {}) {
+  const meta = propertyLastActivityMeta(property);
+  return `<div class="client-property-last"><strong>${esc(meta.at ? timeAgo(meta.at) : '—')}</strong><small>${esc(meta.subtitle)}</small></div>`;
+}
+function clientPropertyRow(property = {}) {
+  const activeReq = propertyActiveRequest(property);
+  const latest = propertyLatestRequest(property);
+  const image = propertyImageValue(property);
+  const selected = String(state.clientSelectedPropertyId || '') === String(property.id);
+  return `<button type="button" class="client-property-row ${selected ? 'active' : ''}" data-action="select-client-property" data-property-id="${esc(property.id)}">
+    <div class="client-property-col property-main"><div class="client-property-thumb">${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="property-main-copy"><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyTypeLabel(property))}</small>${propertyIsPrimary(property) ? '<b>Primary</b>' : ''}</div></div>
+    <div class="client-property-col address"><strong>${esc(property.address || property.address_line1 || property.street || '—')}</strong><small>${esc([property.city, property.state, property.zip || property.zip_code].filter(Boolean).join(', ') || 'Address unavailable')}</small></div>
+    <div class="client-property-col status">${clientPropertyStatusChip(property)}<small>Saved property</small></div>
+    <div class="client-property-col patrol">${clientPropertyPatrolSummary(property)}</div>
+    <div class="client-property-col last-activity">${clientPropertyLastActivity(property)}</div>
+    <div class="client-property-chevron">›</div>
+  </button>`;
+}
+function clientPropertyGridCard(property = {}) {
+  const selected = String(state.clientSelectedPropertyId || '') === String(property.id);
+  const image = propertyImageValue(property);
+  return `<button type="button" class="client-property-grid-card ${selected ? 'active' : ''}" data-action="select-client-property" data-property-id="${esc(property.id)}">
+    <div class="client-property-grid-image">${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div>
+    <div class="client-property-grid-copy"><div class="row"><strong>${esc(propertyDisplayName(property))}</strong>${clientPropertyStatusChip(property)}</div><small>${esc(propertyDisplayAddress(property))}</small><div class="row patrol-meta">${clientPropertyPatrolSummary(property)}</div></div>
+  </button>`;
+}
+
+function clientPropertyMapCard(property = {}) {
+  const req = propertyActiveRequest(property);
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  const propertyCoords = getPropertyCoords({ property_id: property.id });
+  const bounds = clientPropertyDetailMapBounds(property);
+  const propertyPos = propertyCoords ? mapPercentForPoint(propertyCoords.lat, propertyCoords.lng, bounds) : { x: 50, y: 50 };
+  const guardPos = showGuard ? mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds) : null;
+  const routePath = showGuard ? clientPropertyDetailRoutePath(bounds, propertyCoords) : '';
+  return `<section class="client-property-guard-map">
+    <h3>Property Location</h3>
+    <div class="guard302-leaflet-wrap client-property-detail-map-wrap">
+      <div id="client-property-detail-leaflet-map" class="guard302-leaflet-map" data-property-id="${esc(property.id)}"></div>
+      <div class="guard302-map-fallback" id="client-property-detail-map-fallback">
+        <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
+        <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        <button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(property.id)}" style="left:${propertyPos.x.toFixed ? propertyPos.x.toFixed(2) : propertyPos.x}%;top:${propertyPos.y.toFixed ? propertyPos.y.toFixed(2) : propertyPos.y}%" aria-label="Open property card"><span></span></button>
+        ${showGuard && guardPos ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${guardPos.x.toFixed(2)}%;top:${guardPos.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
+        <small>${esc(liveGps.mapNotice || 'Property map ready.')}</small>
+      </div>
+      ${liveGps.selectedMapCard === 'property' ? clientMapPropertyCard(property) : ''}
+      ${liveGps.selectedMapCard === 'guard' && showGuard && req ? clientMapGuardCard(req) : ''}
+      <div class="guard302-map-status">${esc(liveGps.mapNotice || 'Client property map ready.')} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
+    </div>
+    <div class="guard302-map-stats client-property-map-stats">
+      <div><small>Property</small><strong>${esc(propertyDisplayName(property))}</strong></div>
+      <div><small>Guard Visibility</small><strong>${esc(showGuard ? 'Live' : 'After Accepted')}</strong></div>
+      <div><small>ETA</small><strong>${esc(showGuard && liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(showGuard && liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+    </div>
+  </section>`;
+}
+function clientPropertyDetailMapBounds(property = {}) {
+  const points = [];
+  const coords = getPropertyCoords({ property_id: property.id });
+  const req = propertyActiveRequest(property);
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  if (coords) points.push([coords.lat, coords.lng]);
+  if (showGuard) points.push([liveGps.guardLat, liveGps.guardLng]);
+  if (showGuard && liveGps.routePoints?.length) liveGps.routePoints.forEach(pt => points.push([pt.lat, pt.lng]));
+  if (!points.length) return { minLat: 36.07, maxLat: 36.20, minLng: -115.30, maxLng: -115.08 };
+  let minLat = Math.min(...points.map(p => p[0])); let maxLat = Math.max(...points.map(p => p[0]));
+  let minLng = Math.min(...points.map(p => p[1])); let maxLng = Math.max(...points.map(p => p[1]));
+  const latPad = Math.max(.006, (maxLat - minLat) * .35);
+  const lngPad = Math.max(.006, (maxLng - minLng) * .35);
+  return { minLat:minLat-latPad, maxLat:maxLat+latPad, minLng:minLng-lngPad, maxLng:maxLng+lngPad };
+}
+function clientPropertyDetailRoutePath(bounds, coords) {
+  if (!coords || !Number.isFinite(liveGps.guardLat) || !Number.isFinite(liveGps.guardLng)) return '';
+  if (liveGps.routePoints && liveGps.routePoints.length >= 2) {
+    return liveGps.routePoints.map((pt, idx) => {
+      const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+      return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+  const g = mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds);
+  const p = mapPercentForPoint(coords.lat, coords.lng, bounds);
+  const midX = (g.x + p.x) / 2;
+  const midY = (g.y + p.y) / 2;
+  return `M ${g.x.toFixed(2)} ${g.y.toFixed(2)} C ${(midX - 10).toFixed(2)} ${(midY + 16).toFixed(2)}, ${(midX + 12).toFixed(2)} ${(midY - 14).toFixed(2)}, ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+}
+function hideClientPropertyDetailMapFallback() {
+  const fallback = document.getElementById('client-property-detail-map-fallback');
+  if (fallback) fallback.classList.add('loaded');
+}
+function showClientPropertyDetailMapFallback(message = 'Live street map layer unavailable. Showing fallback street grid.') {
+  const fallback = document.getElementById('client-property-detail-map-fallback');
+  if (fallback) {
+    fallback.classList.remove('loaded');
+    const small = fallback.querySelector('small');
+    if (small) small.textContent = message;
+  }
+}
+function initClientPropertyDetailLeafletMap() {
+  const el = document.getElementById('client-property-detail-leaflet-map');
+  if (!el) return;
+  const property = selectedClientProperty();
+  if (!property) return;
+  if (!window.L) {
+    showClientPropertyDetailMapFallback('Leaflet did not load yet. Showing the same fallback street grid used by Guard map.');
+    return;
+  }
+  if (el.dataset.ready === '1' && liveGps.leafletMap && el.dataset.propertyId === String(property.id)) {
+    try { liveGps.leafletMap.invalidateSize(); } catch {}
+    return;
+  }
+  try {
+    if (liveGps.leafletMap) {
+      try { liveGps.leafletMap.remove(); } catch {}
+      liveGps.leafletMap = null;
+      liveGps.leafletLayer = null;
+    }
+    el.dataset.propertyId = String(property.id);
+    const coords = getPropertyCoords({ property_id: property.id });
+    const req = propertyActiveRequest(property);
+    const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    const center = showGuard ? [liveGps.guardLat, liveGps.guardLng] : coords ? [coords.lat, coords.lng] : [36.1699, -115.1398];
+    const map = L.map(el, { zoomControl:true, attributionControl:false, dragging:true, scrollWheelZoom:true, doubleClickZoom:true }).setView(center, coords || showGuard ? 14 : 11);
+    liveGps.leafletMap = map;
+    el.dataset.ready = '1';
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, crossOrigin:true });
+    tiles.on('load', hideClientPropertyDetailMapFallback);
+    tiles.on('tileerror', () => showClientPropertyDetailMapFallback('Map tiles blocked or slow. Showing fallback street grid.'));
+    tiles.addTo(map);
+    const markerGroup = L.featureGroup().addTo(map);
+    if (coords) {
+      const marker = L.marker([coords.lat, coords.lng], { icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      marker.on('click', () => openMapCard('property', property.id));
+    }
+    if (showGuard) {
+      const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], { icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      guardMarker.on('click', () => openMapCard('guard'));
+    }
+    if (showGuard && coords) {
+      const routeCoords = (liveGps.routePoints && liveGps.routePoints.length >= 2)
+        ? liveGps.routePoints.map(p => [p.lat, p.lng])
+        : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + coords.lat) / 2 + 0.003, (liveGps.guardLng + coords.lng) / 2 - 0.003], [coords.lat, coords.lng]];
+      L.polyline(routeCoords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);
+    }
+    if (markerGroup.getLayers().length > 0) {
+      try { map.fitBounds(markerGroup.getBounds(), { padding:[36,36], maxZoom:15 }); } catch {}
+    }
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 150);
+    setTimeout(() => {
+      const tilePane = el.querySelector('.leaflet-tile-pane');
+      const hasTiles = tilePane && tilePane.querySelector('img');
+      if (hasTiles) hideClientPropertyDetailMapFallback();
+    }, 1100);
+  } catch (err) {
+    showClientPropertyDetailMapFallback('Map could not initialize. Showing fallback street grid with clickable markers.');
+  }
+}
+function scheduleClientPropertyDetailMap() {
+  if (state.role === 'client' && state.view === 'properties') {
+    requestAnimationFrame(() => {
+      [75, 450, 1200, 2500].forEach(delay => setTimeout(initClientPropertyDetailLeafletMap, delay));
+    });
+  }
+}
+function scheduleClientPropertyMapPrep() {
+  if (state.role !== 'client' || state.view !== 'properties') return;
+  restoreClientViewOfGuardGps();
+  const property = selectedClientProperty();
+  if (!property) return;
+  const req = propertyActiveRequest(property);
+  const coords = getPropertyCoords({ property_id: property.id });
+  if (coords) {
+    liveGps.propertyLat = coords.lat;
+    liveGps.propertyLng = coords.lng;
+    liveGps.propertyAddress = propertyDisplayAddress(property);
+  }
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  if (showGuard && coords && !liveGps.routeBusy && !liveGps.routePoints.length) {
+    setTimeout(async () => {
+      await fetchRouteIfPossible();
+      if (state.role === 'client' && state.view === 'properties') render();
+    }, 180);
+  } else if (!coords && !liveGps.geocodeBusy) {
+    const key = `property_detail_${String(property.id || '')}`;
+    if (liveGps.propertyPrepKey !== key) {
+      liveGps.propertyPrepKey = key;
+      setTimeout(async () => {
+        await geocodePropertyIfNeeded({ property_id: property.id });
+        if (showGuard) await fetchRouteIfPossible();
+        if (state.role === 'client' && state.view === 'properties') render();
+      }, 250);
+    }
+  }
+  liveGps.mapNotice = showGuard
+    ? 'Live map active. Client can see this accepted guard, route line, ETA, distance, and GPS updates.'
+    : 'Property map active. Guard marker appears only after a guard accepts an assignment for this property.';
+}
+
+function clientPropertyOverviewGrid(property = {}) {
+  return `<section class="client-property-overview-grid"><h3>Property Overview</h3><div class="grid">
+    <div><small>Property ID</small><strong>${esc(property.property_code || property.code || `PROP-${property.id || '—'}`)}</strong></div>
+    <div><small>Client Since</small><strong>${esc(propertyClientSince(property) ? fmtDate(propertyClientSince(property)) : '—')}</strong></div>
+    <div><small>Property Type</small><strong>${esc(propertyTypeLabel(property))}</strong></div>
+    <div><small>Contact Person</small><strong>${esc(propertyContactName(property))}</strong></div>
+    <div><small>Time Zone</small><strong>${esc(propertyTimezoneValue(property))}</strong></div>
+    <div><small>Phone</small><strong>${esc(propertyPhoneValue(property))}</strong></div>
+    <div><small>Square Footage</small><strong>${esc(propertyFootageValue(property))}${propertyFootageValue(property) !== '—' ? ' sq ft' : ''}</strong></div>
+    <div><small>Email</small><strong>${esc(propertyEmailValue(property))}</strong></div>
+  </div></section>`;
+}
+function clientPropertyActivePatrolCard(property = {}) {
+  const req = propertyActiveRequest(property);
+  if (!req) return `<section class="client-property-active-card"><h3>Active Patrol</h3><div class="empty">No guard is currently assigned to this property.</div></section>`;
+  const eta = liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : '—';
+  const distance = liveGps.routeDistanceMiles ? `${liveGps.routeDistanceMiles.toFixed(1)} mi` : '—';
+  const accuracy = liveGps.accuracy ? `${Math.round(liveGps.accuracy)} ft` : '—';
+  return `<section class="client-property-active-card"><h3>Active Patrol</h3><div class="client-property-active-inner">${avatar(requestGuardName(req), getGuardPhotoUrl())}<div class="copy"><strong>${esc(requestGuardName(req))}</strong><small>${esc(String(req.status || '') === 'accepted' ? 'En Route' : 'On Patrol')}</small><span>Started: ${esc(fmtTime(req.accepted_at || req.assigned_at || req.created_at))}</span></div><div class="stat"><small>ETA</small><strong>${esc(eta)}</strong></div><div class="stat"><small>Distance</small><strong>${esc(distance)}</strong></div><div class="stat"><small>Accuracy</small><strong>${esc(accuracy)}</strong></div><button class="ghost-button" data-view="messages">View Details</button></div></section>`;
+}
+function clientPropertyDetailTabs(property = {}) {
+  const tab = state.clientPropertyTab || 'overview';
+  if (tab === 'details') {
+    return `<section class="client-property-tab-content"><div class="client-property-detail-list"><div><small>Property Name</small><strong>${esc(propertyDisplayName(property))}</strong></div><div><small>Full Address</small><strong>${esc(propertyDisplayAddress(property))}</strong></div><div><small>Database Status</small><strong>Saved</strong></div><div><small>Primary Property</small><strong>${esc(propertyIsPrimary(property) ? 'Yes' : 'No')}</strong></div><div><small>Patrol Notes</small><strong>${esc(property.notes || property.instructions || 'No special property notes saved yet.')}</strong></div></div></section>`;
+  }
+  if (tab === 'activity') {
+    const reqs = propertyRequestsForProperty(property).sort((a,b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)).slice(0, 6);
+    return `<section class="client-property-tab-content"><div class="client-property-history-list">${reqs.length ? reqs.map(req => `<article><strong>${esc(requestTitle(req))}</strong><span>${esc(statusText(req.status))}</span><small>${esc(fmtDate(req.updated_at || req.created_at))} · ${esc(req.instructions || propertyAddress(req))}</small></article>`).join('') : '<div class="empty">No recent property activity.</div>'}</div></section>`;
+  }
+  if (tab === 'patrol-history') {
+    const completed = propertyRequestsForProperty(property).filter(req => String(req.status || '') === 'completed').sort((a,b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    return `<section class="client-property-tab-content"><div class="client-property-history-list">${completed.length ? completed.map(req => `<article><strong>${esc(requestTitle(req))}</strong><span>${esc(fmtDate(req.updated_at || req.created_at))}</span><small>${esc(requestGuardName(req))} · ${esc(proofForRequest(req.id).length)} proof item(s)</small></article>`).join('') : '<div class="empty">No completed patrol history yet.</div>'}</div></section>`;
+  }
+  if (tab === 'notes') {
+    return `<section class="client-property-tab-content"><div class="client-property-notes-box"><strong>Client Notes</strong><p>${esc(property.notes || property.instructions || 'No saved notes for this property yet. Use this area later for gate codes, alarm notes, and dispatch instructions.')}</p></div></section>`;
+  }
+  return `${clientPropertyMapCard(property)}${clientPropertyOverviewGrid(property)}${clientPropertyActivePatrolCard(property)}`;
+}
+function clientPropertyDetailPanel(property) {
+  if (!property) return `<aside class="client-property-detail panel panel-pad"><div class="empty">No property selected.</div></aside>`;
+  const img = propertyImageValue(property);
+  return `<aside class="client-property-detail panel panel-pad"><div class="client-property-detail-head"><div class="copy"><h2>Property Details</h2></div><button class="header-button" data-action="clear-client-property-filters">×</button></div><div class="client-property-hero"><div class="hero-image">${img ? `<img src="${esc(img)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="hero-copy"><div class="title-row"><strong>${esc(propertyDisplayName(property))}</strong></div><small>${esc(propertyTypeLabel(property))}</small><span class="primary-tag">${propertyIsPrimary(property) ? 'Primary Property' : 'Property'}</span></div></div><div class="client-property-hero-actions"><button class="ghost-button" data-action="edit-client-property"><span>✎</span> Edit Property</button><button class="ghost-button" data-action="open-client-patrol-request" data-property-id="${esc(property.id)}"><span>🛡</span> Request Patrol</button><button class="ghost-button" data-action="open-client-reports"><span>▣</span> View Reports</button></div><div class="client-property-tabs"><button class="${state.clientPropertyTab === 'overview' ? 'active' : ''}" data-property-tab="overview">Overview</button><button class="${state.clientPropertyTab === 'details' ? 'active' : ''}" data-property-tab="details">Details</button><button class="${state.clientPropertyTab === 'activity' ? 'active' : ''}" data-property-tab="activity">Activity</button><button class="${state.clientPropertyTab === 'patrol-history' ? 'active' : ''}" data-property-tab="patrol-history">Patrol History</button><button class="${state.clientPropertyTab === 'notes' ? 'active' : ''}" data-property-tab="notes">Notes</button></div>${clientPropertyDetailTabs(property)}</aside>`;
+}
+
+function propertyFormValue(property = {}, field = '') {
+  if (!property) return '';
+  if (field === 'label') return property.label || property.name || property.property_name || '';
+  if (field === 'address') return property.address || property.address_line1 || property.street || '';
+  if (field === 'zip') return property.zip_code || property.zip || '';
+  if (field === 'photo_url') return property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || '';
+  if (field === 'latitude') return Number.isFinite(Number(property.latitude ?? property.lat ?? property.property_latitude ?? property.geo_lat)) ? String(Number(property.latitude ?? property.lat ?? property.property_latitude ?? property.geo_lat)) : '';
+  if (field === 'longitude') return Number.isFinite(Number(property.longitude ?? property.lng ?? property.lon ?? property.property_longitude ?? property.geo_lng)) ? String(Number(property.longitude ?? property.lng ?? property.lon ?? property.property_longitude ?? property.geo_lng)) : '';
+  return property[field] || '';
+}
+function closeClientPropertyEditModal() {
+  document.querySelectorAll('.client-property-edit-modal').forEach(el => el.remove());
+}
+
+function showClientPropertyEditModal(property = null) {
+  closeClientPropertyEditModal();
+  const isEdit = Boolean(property?.id);
+  const type = property ? propertyTypeLabel(property) : 'Retail';
+  const currentPhoto = property ? propertyImageValue(property) : '';
+  const modal = document.createElement('div');
+  modal.className = 'client-property-edit-modal';
+  modal.innerHTML = `<div class="client-property-edit-backdrop" data-action="close-client-property-edit"></div>
+    <section class="client-property-edit-dialog" role="dialog" aria-modal="true" aria-label="${isEdit ? 'Edit property' : 'Add property'}">
+      <div class="client-property-edit-head">
+        <div><p class="eyebrow">Client Property</p><h2>${isEdit ? 'Edit Property' : 'Add Property'}</h2><span>${isEdit ? esc(propertyDisplayName(property)) : 'Create a new client property record'}</span></div>
+        <button type="button" data-action="close-client-property-edit">×</button>
+      </div>
+      <form class="client-property-edit-form" data-form="client-property-edit">
+        <input type="hidden" name="property_id" value="${esc(property?.id || '')}">
+        <input type="hidden" name="client_id" value="${esc(property?.client_id || '')}">
+        <div class="form-row">
+          <label>Property Name<input name="label" value="${esc(propertyFormValue(property, 'label'))}" placeholder="McDonald's" required></label>
+          <label>Property Type<select name="property_type"><option value="Retail" ${type === 'Retail' ? 'selected' : ''}>Retail</option><option value="Residential" ${type === 'Residential' ? 'selected' : ''}>Residential</option></select></label>
+        </div>
+        <label>Street Address<input name="address" value="${esc(propertyFormValue(property, 'address'))}" placeholder="10020 Eastern Ave" required></label>
+        <div class="form-row three">
+          <label>City<input name="city" value="${esc(propertyFormValue(property, 'city'))}" placeholder="Las Vegas"></label>
+          <label>State<input name="state" value="${esc(propertyFormValue(property, 'state'))}" placeholder="NV" maxlength="2"></label>
+          <label>ZIP<input name="zip_code" value="${esc(propertyFormValue(property, 'zip'))}" placeholder="89052" required></label>
+        </div>
+        <div class="client-property-photo-upload">
+          <div class="client-property-photo-preview" data-property-photo-preview>${currentPhoto ? `<img src="${esc(currentPhoto)}" alt="${esc(propertyDisplayName(property || {}))}">` : `<span>${esc(initials(propertyDisplayName(property || {})))}</span>`}</div>
+          <label class="client-property-photo-picker">
+            <input type="file" name="property_photo_file" accept="image/*" data-property-photo-file>
+            <strong>Upload Property Photo</strong>
+            <small>Choose a photo from this device. No URL entry is allowed.</small>
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Latitude<input name="latitude" value="${esc(propertyFormValue(property, 'latitude'))}" placeholder="Optional"></label>
+          <label>Longitude<input name="longitude" value="${esc(propertyFormValue(property, 'longitude'))}" placeholder="Optional"></label>
+        </div>
+        <label>Property Notes<textarea name="notes" placeholder="Gate codes, alarm details, special patrol instructions...">${esc(propertyFormValue(property, 'notes'))}</textarea></label>
+        <div class="client-property-edit-actions">
+          <button type="button" class="ghost-button" data-action="close-client-property-edit">Cancel</button>
+          <button type="submit" class="primary-button">${isEdit ? 'Save Property' : 'Add Property'}</button>
+        </div>
+      </form>
+    </section>`;
+  document.body.appendChild(modal);
+  const first = modal.querySelector('input[name="label"]');
+  if (first) first.focus();
+}
+
+async function uploadClientPropertyPhoto(propertyId, file) {
+  if (!file) return '';
+  if (!file.type.startsWith('image/')) throw new Error('Property photo must be an image file.');
+  const safe = String(file.name || 'property-photo').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90);
+  const objectPath = `${propertyId || 'new'}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safe}`;
+  await supabase.uploadStorageObject('property-photos', objectPath, file, { upsert: false });
+  return supabase.getPublicUrl('property-photos', objectPath);
+}
+function cleanPropertyRpcPayload(payload = {}) {
+  const out = { ...payload };
+  Object.keys(out).forEach(key => {
+    if (out[key] === undefined) delete out[key];
+  });
+  return out;
+}
+async function savePropertyThroughKnownRpc(payload = {}) {
+  const clean = cleanPropertyRpcPayload(payload);
+  const attempts = [
+    { name: 'cp_core_save_property', payload: clean },
+    { name: 'cp_save_property_for_client', payload: clean },
+    { name: 'cp_save_property_for_client', payload: (() => {
+      const copy = { ...clean };
+      delete copy.p_client_id;
+      return copy;
+    })() },
+    { name: 'cp_save_property_for_client', payload: (() => {
+      const copy = { ...clean };
+      delete copy.p_client_id;
+      delete copy.p_photo_url;
+      delete copy.p_latitude;
+      delete copy.p_longitude;
+      return copy;
+    })() }
+  ];
+  let lastErr = null;
+  for (const attempt of attempts) {
+    try {
+      const result = await supabase.rpc(attempt.name, attempt.payload);
+      if (result?.ok === false) throw new Error(result?.message || 'Property could not be saved.');
+      return result;
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err?.message || err || '').toLowerCase();
+      const canTryNext = msg.includes('could not find the function') || msg.includes('schema cache') || msg.includes('function') || msg.includes('ambiguous');
+      if (!canTryNext) throw err;
+    }
+  }
+  throw lastErr || new Error('Property could not be saved.');
+}
+async function saveClientPropertyPayload(payload = {}) {
+  return savePropertyThroughKnownRpc(payload);
+}
+async function saveClientPropertyEdit(form) {
+  const propertyId = form.property_id.value.trim() || null;
+  const clientId = form.client_id.value.trim() || null;
+  const type = form.property_type.value || 'Retail';
+  const latRaw = form.latitude.value.trim();
+  const lngRaw = form.longitude.value.trim();
+  const latitude = latRaw === '' ? null : Number(latRaw);
+  const longitude = lngRaw === '' ? null : Number(lngRaw);
+  if (latRaw && !Number.isFinite(latitude)) throw new Error('Latitude must be a number.');
+  if (lngRaw && !Number.isFinite(longitude)) throw new Error('Longitude must be a number.');
+
+  const existingProperty = propertyId ? propertyById(propertyId) : {};
+  const selectedPhotoFile = form.property_photo_file?.files?.[0] || null;
+  const existingPhotoUrl = existingProperty ? propertyImageValue(existingProperty) : '';
+
+  const basePayload = {
+    p_property_id: propertyId,
+    p_client_id: clientId,
+    p_label: form.label.value.trim() || 'Property',
+    p_address: form.address.value.trim(),
+    p_city: form.city.value.trim(),
+    p_state: form.state.value.trim(),
+    p_zip_code: form.zip_code.value.trim(),
+    p_photo_url: existingPhotoUrl,
+    p_notes: form.notes.value.trim(),
+    p_latitude: latitude,
+    p_longitude: longitude
+  };
+
+  if (!basePayload.p_address) throw new Error('Property address is required.');
+  if (!basePayload.p_zip_code) throw new Error('ZIP code is required.');
+
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  let result = await saveClientPropertyPayload(basePayload);
+  let saved = result?.property || {};
+  let savedId = saved.id || propertyId;
+
+  if (selectedPhotoFile) {
+    if (btn) btn.textContent = 'Uploading photo…';
+    const uploadedUrl = await uploadClientPropertyPhoto(savedId, selectedPhotoFile);
+    const photoPayload = { ...basePayload, p_property_id: savedId, p_photo_url: uploadedUrl };
+    result = await saveClientPropertyPayload(photoPayload);
+    saved = result?.property || { ...saved, photo_url: uploadedUrl };
+    savedId = saved.id || savedId;
+  }
+
+  savePropertyTypeOverride(savedId, type);
+  closeClientPropertyEditModal();
+  await loadData();
+  state.view = 'properties';
+  state.clientSelectedPropertyId = String(savedId || state.clientSelectedPropertyId || '');
+  state.clientPropertyTab = 'overview';
+  render();
+  toast('Property saved.', 'success');
+}
+
+
+function clientPropertiesView() {
+  const counts = clientPropertiesCounts();
+  const rows = filteredClientProperties();
+  const selected = selectedClientProperty();
+  return `<div class="dashboard client-properties-shell"><header class="dashboard-header"><div class="title-block"><h1>Properties</h1><p>Manage and monitor all properties under your account.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="client-properties-toolbar"><div class="client-properties-search"><span>⌕</span><input type="search" placeholder="Search properties..." value="${esc(state.clientPropertySearch)}" data-client-property-search></div><button class="ghost-button" data-action="cycle-client-property-filter">⎚ ${esc(state.clientPropertyFilter === 'all' ? 'Filters' : 'Filter: ' + (state.clientPropertyFilter === 'open' ? 'Open Requests' : statusText(state.clientPropertyFilter)))}</button><button class="primary-button" data-action="add-client-property">＋ Add Property</button></section><section class="kpi-row client-properties-kpis">${kpiCard('⌂', 'Total Properties', counts.total, 'All properties', '#2f83ff')}${kpiCard('◉', 'Active Patrols', counts.activePatrols, 'Currently in progress', '#37dc72')}${kpiCard('▣', 'Open Requests', counts.openRequests, 'Needs attention', '#ffb53d')}${kpiCard('⌁', 'Saved Properties', counts.saved, 'In database', '#b05cff')}</section><section class="client-properties-filter-pills"><button class="filter-pill ${state.clientPropertyFilter === 'all' ? 'active' : ''}" data-client-property-filter="all">All</button><button class="filter-pill ${state.clientPropertyFilter === 'active' ? 'active' : ''}" data-client-property-filter="active">Active Patrol</button><button class="filter-pill ${state.clientPropertyFilter === 'open' ? 'active' : ''}" data-client-property-filter="open">Open Requests</button><button class="filter-pill ${state.clientPropertyFilter === 'retail' ? 'active' : ''}" data-client-property-filter="retail">Retail</button><button class="filter-pill ${state.clientPropertyFilter === 'residential' ? 'active' : ''}" data-client-property-filter="residential">Residential</button></section><section class="client-properties-layout"><div class="client-properties-main panel"><div class="client-properties-list-head"><div><h2>All Properties (${rows.length})</h2></div><div class="client-properties-view-toggle"><button class="${state.clientPropertyView === 'list' ? 'active' : ''}" data-property-view="list">☰</button><button class="${state.clientPropertyView === 'grid' ? 'active' : ''}" data-property-view="grid">☷</button></div></div>${state.clientPropertyView === 'grid' ? `<div class="client-property-grid">${rows.length ? rows.map(clientPropertyGridCard).join('') : '<div class="empty">No properties match your filters.</div>'}</div>` : `<div class="client-property-table-head"><span>Property</span><span>Address</span><span>Type</span><span>Active Patrol</span><span>Last Activity</span><span></span></div><div class="client-property-list">${rows.length ? rows.map(clientPropertyRow).join('') : '<div class="empty">No properties match your filters.</div>'}</div>`}<div class="client-property-list-footer">Showing ${rows.length ? `1 to ${rows.length}` : '0'} of ${state.properties.length} properties</div></div>${clientPropertyDetailPanel(selected)}</section></div>`;
+}
+
+
+function clientRequestTypeConfig(type = state.clientRequestType || 'immediate') {
+  const map = {
+    immediate: { icon:'⚡', label:'Immediate Patrol', sub:'Request a patrol as soon as possible.', schedule:'on_demand', patrol:'urgent', tone:'blue' },
+    vacation: { icon:'▣', label:'Vacation Watch', sub:'Schedule patrols while you are away.', schedule:'vacation_watch', patrol:'vacation_watch', tone:'green' },
+    recurring: { icon:'↻', label:'Recurring Patrol', sub:'Set up repeated patrol schedules.', schedule:'recurring', patrol:'standard', tone:'purple' },
+    scheduled: { icon:'▦', label:'Scheduled Patrol', sub:'Schedule a one-time future patrol.', schedule:'scheduled', patrol:'standard', tone:'orange' }
+  };
+  return map[type] || map.immediate;
+}
+function clientRequestTypeCard(type) {
+  const cfg = clientRequestTypeConfig(type);
+  const active = (state.clientRequestType || 'immediate') === type;
+  return `<button type="button" class="client-request-type-card ${active ? 'active' : ''} ${esc(cfg.tone)}" data-client-request-type="${esc(type)}"><i>${esc(cfg.icon)}</i><span><strong>${esc(cfg.label)}</strong><small>${esc(cfg.sub)}</small></span></button>`;
+}
+
+function clientRequestTypeOptions() {
+  return ['immediate','vacation','recurring','scheduled'].map(type => {
+    const cfg = clientRequestTypeConfig(type);
+    return `<option value="${esc(type)}" ${(state.clientRequestType || 'immediate') === type ? 'selected' : ''}>${esc(cfg.label)}</option>`;
+  }).join('');
+}
+function clientPrioritySegment() {
+  const choices = [
+    { value:'normal', label:'Normal' },
+    { value:'high', label:'High' },
+    { value:'urgent', label:'Emergency' }
+  ];
+  return `<div class="client-priority-segment" role="radiogroup" aria-label="Priority">${choices.map(item => `<label class="${item.value === 'urgent' ? 'danger' : ''}"><input type="radio" name="priority" value="${esc(item.value)}" ${item.value === 'normal' ? 'checked' : ''}><span>${esc(item.label)}</span></label>`).join('')}</div>`;
+}
+function clientRequestServiceCards() {
+  const services = [
+    ['Check doors', true, '▥'],
+    ['Check perimeter', true, '◇'],
+    ['Check windows', true, '▦'],
+    ['Photo proof required', true, '▣'],
+    ['Lock up if needed', false, '⌘']
+  ];
+  return `<div class="client-request-services"><span>Requested Services</span>${services.map(([label, checked, icon]) => `<label><input type="checkbox" name="requested_services" value="${esc(label)}" ${checked ? 'checked' : ''}><b><i>${esc(icon)}</i>${esc(label)}</b></label>`).join('')}</div>`;
+}
+function clientRequestTypeCounts() {
+  const requests = clientRecentRequests();
+  return {
+    open: clientOpenRequests().length,
+    immediate: requests.filter(r => ['on_demand','immediate'].includes(String(r.schedule_type || 'on_demand')) || String(r.patrol_type || '').includes('urgent')).length,
+    vacation: requests.filter(r => String(r.schedule_type || '') === 'vacation_watch' || String(r.patrol_type || '') === 'vacation_watch').length,
+    recurring: requests.filter(r => String(r.schedule_type || '') === 'recurring').length
+  };
+}
+function clientSelectedRequestProperty() {
+  const id = String(state.clientPatrolPrefillPropertyId || state.clientSelectedPropertyId || '');
+  return (state.properties || []).find(p => String(p.id) === id) || (state.properties || [])[0] || null;
+}
+function clientRequestRecentForProperty(property) {
+  const rows = clientRecentRequests().filter(req => !property || String(req.property_id) === String(property.id));
+  return rows.slice(0, 3);
+}
+function clientScheduleFields() {
+  const type = state.clientRequestType || 'immediate';
+  if (type === 'vacation') return `<div class="client-request-schedule-grid"><label>Start Date<input type="date" name="schedule_start_date" required></label><label>End Date<input type="date" name="schedule_end_date" required></label><label>Preferred Time Window<select name="preferred_time_window"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="overnight">Overnight</option></select></label></div>`;
+  if (type === 'recurring') return `<div class="client-request-schedule-grid recurring"><label>Start Date<input type="date" name="schedule_start_date" required></label><label>End Date<input type="date" name="schedule_end_date"></label><label>Pattern<select name="recurrence_pattern" required><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="custom_days">Custom Days</option></select></label><label>Time Window<select name="preferred_time_window"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="overnight">Overnight</option></select></label><div class="client-request-days"><span>Days</span>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<label><input type="checkbox" name="recurrence_days" value="${esc(d.toLowerCase())}"> ${esc(d)}</label>`).join('')}</div></div>`;
+  if (type === 'scheduled') return `<div class="client-request-schedule-grid"><label>Date<input type="date" name="scheduled_date" required></label><label>Time<input type="time" name="scheduled_time" required></label><label>Estimated Duration<select name="estimated_duration"><option value="30 minutes">30 minutes</option><option value="60 minutes" selected>60 minutes</option><option value="90 minutes">90 minutes</option><option value="120 minutes">120 minutes</option></select></label></div>`;
+  return `<div class="client-request-schedule-grid"><label>Date<input type="text" value="Today" disabled></label><label>Time<select name="preferred_time_window"><option value="asap">Now (ASAP)</option><option value="within_1_hour">Within 1 hour</option><option value="tonight">Tonight</option></select></label><label>Estimated Duration<select name="estimated_duration"><option value="30 minutes">30 minutes</option><option value="60 minutes" selected>60 minutes</option><option value="90 minutes">90 minutes</option></select></label></div>`;
+}
+function clientRequestSummary(property) {
+  const cfg = clientRequestTypeConfig();
+  const when = state.clientRequestType === 'immediate' ? 'ASAP' : state.clientRequestType === 'vacation' ? 'Date range' : state.clientRequestType === 'recurring' ? 'Repeating schedule' : 'Future date/time';
+  return `<section class="panel panel-pad client-request-summary-card"><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list command"><span>Type</span><strong>${esc(cfg.label)}</strong><span>Property</span><strong>${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong>${esc(when)}</strong><span>Duration</span><strong>60 minutes (est.)</strong><span>Services</span><strong class="summary-icons"><i>▥</i><i>◇</i><i>▦</i><i>▣</i></strong><span>Special Instructions</span><strong>Yes / Optional</strong></div></section>`;
+}
+function clientRequestPropertyPanel(property) {
+  if (!property) return `<section class="panel panel-pad client-selected-request-property"><div class="empty">Add a property before requesting patrol.</div></section>`;
+  const image = propertyImageValue(property);
+  return `<section class="panel panel-pad client-selected-request-property"><div class="panel-head"><div><h2>Selected Property</h2></div></div><div class="client-request-property-hero"><div>${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><aside><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small><em>${clientPropertyStatusChip(property)}</em></aside></div><button type="button" class="ghost-button wide" data-view="properties">View Property</button></section>`;
+}
+function clientRequestHistoryRows() {
+  let rows = clientRecentRequests();
+  const f = state.clientRequestHistoryFilter || 'all';
+  if (f === 'immediate') rows = rows.filter(r => ['on_demand','immediate'].includes(String(r.schedule_type || 'on_demand')) || String(r.patrol_type || '').includes('urgent'));
+  if (f === 'vacation') rows = rows.filter(r => String(r.schedule_type || '') === 'vacation_watch' || String(r.patrol_type || '') === 'vacation_watch');
+  if (f === 'recurring') rows = rows.filter(r => String(r.schedule_type || '') === 'recurring');
+  if (f === 'scheduled') rows = rows.filter(r => String(r.schedule_type || '') === 'scheduled');
+  return rows.slice(0, 12);
+}
+function clientRequestHistoryTableRow(req = {}) {
+  const type = req.schedule_type === 'vacation_watch' ? 'Vacation Watch' : req.schedule_type === 'recurring' ? 'Recurring Patrol' : req.schedule_type === 'scheduled' ? 'Scheduled Patrol' : (req.patrol_type === 'urgent' ? 'Immediate Patrol' : statusText(req.patrol_type || 'Patrol'));
+  const scheduled = req.scheduled_for || req.schedule_start_date || req.requested_at || req.created_at;
+  return `<div class="client-request-history-row"><span>${esc(type)}</span><span>${esc(propertyLabel(req))}</span><span>${statusChip(req.priority || 'normal')}</span><span>${statusChip(req.status || 'pending_dispatch')}</span><span>${esc(fmtDate(req.created_at || req.requested_at))}</span><span>${esc(fmtDate(scheduled))}</span><span>${esc(requestGuardName(req) === 'Unassigned' ? '—' : requestGuardName(req))}</span><button type="button" class="icon-square small">⋯</button></div>`;
+}
+function clientRequestRecentList(property) {
+  const rows = clientRequestRecentForProperty(property);
+  return `<section class="panel panel-pad client-request-recent-card"><div class="active-rail-head"><h2>Recent Requests</h2><button class="ghost-button" data-client-request-history-filter="all">View all</button></div><div class="client-request-recent-list">${rows.length ? rows.map(req => `<div><i>${esc(clientRequestTypeConfig(req.schedule_type === 'vacation_watch' ? 'vacation' : req.schedule_type === 'recurring' ? 'recurring' : req.schedule_type === 'scheduled' ? 'scheduled' : 'immediate').icon)}</i><span><strong>${esc(requestTitle(req))}</strong><small>${esc(fmtDate(req.created_at || req.requested_at))}</small></span>${statusChip(req.status || 'pending_dispatch')}</div>`).join('') : '<div class="empty">No requests for this property yet.</div>'}</div></section>`;
+}
+function clientRequestPropertyMiniMap(property) {
+  return `<section class="panel panel-pad client-request-property-map-card"><div class="panel-head"><div><h2>Property Location</h2></div></div><div class="client-request-mini-map"><span class="street-name s1">W Main St</span><span class="street-name s2">S Eastern Ave</span><div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><button type="button" class="guard302-fallback-marker property"><span></span></button></div></section>`;
+}
 function clientPatrolRequestsView() {
   const properties = state.properties || [];
-  const recent = clientRecentRequests();
-  const open = clientOpenRequests();
-  const completed = completedRequests();
-  const latest = recent[0] || null;
-  const propertyOptions = properties.map(p => `<option value="${esc(p.id)}">${esc(clientPropertyOptionLabel(p))}</option>`).join('');
-  return `<div class="dashboard client-request-dashboard">
-    <header class="dashboard-header"><div class="title-block"><h1>Request Patrol</h1><p>Development request flow: client submits a patrol, Dispatch sees it in Pending Dispatch, then a guard can be assigned.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header>
-    <section class="kpi-row">
-      ${kpiCard('▤', 'Open Requests', open.length, 'Pending or active', '#2f83ff')}
-      ${kpiCard('⌂', 'Saved Properties', properties.length, 'Available for patrol', '#37dc72')}
-      ${kpiCard('✓', 'Completed', completed.length, 'Finished patrols', '#b05cff')}
-      ${kpiCard('▣', 'Proof Items', state.proofItems.length, 'Uploaded by guards', '#ffb53d')}
-    </section>
-    <section class="client-request-layout">
-      <div class="client-request-main">
-        <section class="panel panel-pad client-request-form-card">
-          <div class="panel-head"><div><h2>New Patrol Request</h2><p>Use this form to create a real pending dispatch request for testing the full app workflow.</p></div><span class="client-flow-pill">Client → Dispatch → Guard → Report</span></div>
-          ${properties.length ? `<form class="client-request-form" data-form="client-patrol-request">
-            <label>Property<select name="property_id" required><option value="">Choose property</option>${propertyOptions}</select></label>
-            <div class="form-row"><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Patrol Type<select name="patrol_type"><option value="standard">Standard Patrol</option><option value="suspicious_activity">Suspicious Activity</option><option value="alarm_response">Alarm Response</option><option value="vacation_watch">Vacation Watch</option><option value="custom">Custom</option></select></label></div>
-            <label>Proof Preference<select name="proof_preference"><option value="photo">Photo proof</option><option value="video">Video proof</option><option value="photo_video">Photo + video proof</option><option value="none">No proof required</option></select></label>
-            <label>Instructions<textarea name="instructions" placeholder="Example: Check front entrance, rear door, parking lot, and upload photos of all gates."></textarea></label>
-            <div class="client-request-submit-row"><button class="btn success" type="submit">Submit Patrol Request</button><button class="btn secondary" type="button" data-view="properties">View Properties</button></div>
-          </form>` : `<div class="empty"><strong>No saved properties yet.</strong><br>Add or assign a client property first, then this request form will submit real patrol jobs to Dispatch.</div>`}
-        </section>
-        <section class="panel panel-pad client-request-history-card">
-          <div class="panel-head"><div><h2>Request History</h2><p>Recent client patrol requests</p></div><button class="ghost-button" data-action="refresh-data">Refresh</button></div>
-          <div class="client-request-list">${recent.length ? recent.slice(0, 8).map(clientRequestCard).join('') : `<div class="empty">No patrol requests yet.</div>`}</div>
-        </section>
-      </div>
-      <aside class="client-request-right">
-        <section class="panel panel-pad client-flow-card"><div class="panel-head"><div><h2>Testing Flow</h2><p>What should happen after submit</p></div></div><div class="client-flow-steps"><div><i>1</i><span><strong>Client submits</strong><small>Status becomes Pending Dispatch</small></span></div><div><i>2</i><span><strong>Dispatch sees request</strong><small>Admin Pending Dispatch count increases</small></span></div><div><i>3</i><span><strong>Guard gets assigned</strong><small>Guard Active Job workflow appears</small></span></div><div><i>4</i><span><strong>Proof + report</strong><small>Guard uploads proof, Admin builds final report</small></span></div></div></section>
-        <section class="panel panel-pad client-selected-card"><div class="panel-head"><div><h2>Saved Properties</h2><p>Click a property to pre-fill the request form</p></div></div><div class="client-property-pick-list">${properties.length ? properties.slice(0, 5).map(clientPropertyCardForRequest).join('') : `<div class="empty">No properties available.</div>`}</div></section>
-        <section class="panel panel-pad client-latest-card"><div class="panel-head"><div><h2>Latest Request</h2><p>Newest client activity</p></div></div>${latest ? `<div class="client-latest-box"><strong>${esc(requestTitle(latest))}</strong><span>${esc(propertyLabel(latest))}</span><p>${statusChip(latest.status)}</p><small>${esc(fmtDate(latest.updated_at || latest.created_at))}</small></div>` : `<div class="empty">Submit the first request to start testing.</div>`}</section>
-      </aside>
-    </section>
-  </div>`;
+  const counts = clientRequestTypeCounts();
+  const selectedProperty = clientSelectedRequestProperty();
+  const cfg = clientRequestTypeConfig();
+  const prefillPropertyId = String(selectedProperty?.id || state.clientPatrolPrefillPropertyId || '');
+  const propertyOptions = properties.map(p => `<option value="${esc(p.id)}" ${String(p.id) === prefillPropertyId ? 'selected' : ''}>${esc(clientPropertyOptionLabel(p))}</option>`).join('');
+  const historyRows = clientRequestHistoryRows();
+  return `<div class="dashboard client-patrol-request-command"><header class="dashboard-header"><div class="title-block"><h1>Patrol Requests</h1><p>Request immediate, vacation, recurring, or scheduled patrol coverage for your properties.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="kpi-row client-request-kpis">${kpiCard('◈','Open Requests',counts.open,'Needs attention','#2f83ff')}${kpiCard('▣','Immediate Patrols',counts.immediate,'Active now','#37dc72')}${kpiCard('✪','Vacation Watches',counts.vacation,'Scheduled','#b05cff')}${kpiCard('↻','Recurring Patrols',counts.recurring,'Active schedules','#ffb53d')}</section><section class="client-patrol-request-layout"><div class="client-patrol-request-main"><section class="panel panel-pad client-request-type-section"><div class="panel-head"><div><h2>Select Request Type</h2><p>Choose the type of patrol service you need.</p></div></div><div class="client-request-type-grid">${['immediate','vacation','recurring','scheduled'].map(clientRequestTypeCard).join('')}</div></section><section class="panel panel-pad client-request-details-card"><div class="panel-head"><div><h2>Request Details</h2><p>${esc(cfg.sub)}</p></div><span class="client-flow-pill">Client → Dispatch → Guard</span></div>${properties.length ? `<form class="client-patrol-request-form command-request-form" data-form="client-patrol-request"><input type="hidden" name="schedule_type" value="${esc(cfg.schedule)}"><input type="hidden" name="patrol_type" value="${esc(cfg.patrol)}"><div class="client-request-top-grid"><label>Property * <select name="property_id" required><option value="">Choose property</option>${propertyOptions}</select></label><label>Request Type * <select name="request_type_select" data-client-request-type-select><option value="">Choose type</option>${clientRequestTypeOptions()}</select></label><label class="priority-field">Priority * ${clientPrioritySegment()}</label></div>${clientScheduleFields()}<div class="client-request-body-grid"><label class="client-request-instructions">Special Instructions <textarea name="instructions" maxlength="500" placeholder="Example: Front door alarm triggered. Please respond immediately and check all perimeter doors."></textarea><small>0/500</small></label>${clientRequestServiceCards()}</div><label class="client-request-schedule-notes">Schedule Notes <textarea name="schedule_notes" maxlength="300" placeholder="Optional recurring/vacation notes, access details, preferred route, or gate code instructions."></textarea></label><div class="client-request-final-grid"><div class="client-request-reference-upload"><label class="client-request-upload-drop"><input type="file" name="reference_photo_file" accept="image/*,video/*" data-client-request-reference-file><i>⬆</i><strong>Drag and drop or click to upload</strong><small>JPG, PNG, MP4 from device only. No URL entry.</small></label><div class="client-request-reference-preview" data-client-request-reference-preview><span>No file selected</span></div></div><div class="client-request-submit-row"><button class="ghost-button" type="button" data-action="save-client-request-draft">Save Draft</button><button class="primary-button" type="submit">➤ Submit Request</button></div></div></form>` : `<div class="empty"><strong>No saved properties yet.</strong><br>Add a property first, then request immediate, vacation, recurring, or scheduled patrols.</div>`}</section><section class="panel panel-pad client-request-history-card"><div class="panel-head"><div><h2>Request History</h2><p>All patrol requests for your properties.</p></div></div><div class="client-request-history-tabs">${['all','immediate','vacation','recurring','scheduled'].map(f => `<button class="${state.clientRequestHistoryFilter === f ? 'active' : ''}" data-client-request-history-filter="${esc(f)}">${esc(f === 'all' ? 'All Requests' : statusText(f))}</button>`).join('')}</div><div class="client-request-history-table"><div class="client-request-history-head"><span>Type</span><span>Property</span><span>Priority</span><span>Status</span><span>Created</span><span>Scheduled</span><span>Assigned Guard</span><span></span></div>${historyRows.length ? historyRows.map(clientRequestHistoryTableRow).join('') : '<div class="empty">No requests found.</div>'}</div></section></div><aside class="client-patrol-request-rail">${clientRequestPropertyPanel(selectedProperty)}${clientRequestSummary(selectedProperty)}${clientRequestRecentList(selectedProperty)}${clientRequestPropertyMiniMap(selectedProperty)}</aside></section></div>`;
 }
+
 
 function settingsView() {
   const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'User';
@@ -2255,7 +3718,7 @@ function renderRoleView() {
     if (state.view === 'pending-dispatch') return tableView('Pending Dispatch', 'Requests waiting for assignment.', pendingRequests());
     if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
     if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
-    if (state.view === 'guard-approvals') return cardsView('Guard Approvals', 'Pending guard applications.', guardApprovals().map(x => ({ ...x, kind: 'guard' })), 'signup');
+    if (state.view === 'guard-approvals') return guardApprovalsView();
     if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
     if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
     if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
@@ -2270,8 +3733,8 @@ function renderRoleView() {
     if (state.view === 'upload-proof') return proofUploadView();
   }
   if (state.role === 'client') {
-    if (state.view === 'dashboard') return compactDashboard('client');
-    if (state.view === 'properties') return cardsView('Properties', 'Client properties.', state.properties);
+    if (state.view === 'dashboard') return clientDashboardView();
+    if (state.view === 'properties') return clientPropertiesView();
     if (state.view === 'patrol-requests') return clientPatrolRequestsView();
     if (state.view === 'reports') return cardsView('Reports', 'Released client reports.', state.patrolReports);
   }
@@ -2441,6 +3904,10 @@ function render() {
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  scheduleClientMapPrep();
+  scheduleClientLeafletMap();
+  scheduleClientPropertyMapPrep();
+  scheduleClientPropertyDetailMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -2483,6 +3950,45 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.messageFilter) {
+      state.messageFilter = button.dataset.messageFilter;
+      render();
+      return;
+    }
+    if (button.dataset.notificationFilter) {
+      state.notificationFilter = button.dataset.notificationFilter;
+      render();
+      return;
+    }
+    if (button.dataset.clientRequestType) {
+      state.clientRequestType = button.dataset.clientRequestType;
+      render();
+      return;
+    }
+    if (button.dataset.clientRequestHistoryFilter) {
+      state.clientRequestHistoryFilter = button.dataset.clientRequestHistoryFilter;
+      render();
+      return;
+    }
+    if (button.dataset.clientPropertyFilter) {
+      state.clientPropertyFilter = button.dataset.clientPropertyFilter;
+      render();
+      return;
+    }
+    if (button.dataset.propertyView) {
+      state.clientPropertyView = button.dataset.propertyView;
+      render();
+      return;
+    }
+    if (button.dataset.propertyTab) {
+      state.clientPropertyTab = button.dataset.propertyTab;
+      render();
+      return;
+    }
+    if (button.dataset.action === 'save-client-request-draft') {
+      toast('Draft saved locally for this development session.', 'success');
+      return;
+    }
     if (button.dataset.action === 'guard-online') {
       setGuardOnline();
       return;
@@ -2492,7 +3998,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'map-card') {
-      openMapCard(button.dataset.card || 'guard');
+      openMapCard(button.dataset.card || 'guard', button.dataset.propertyId || '');
       return;
     }
     if (button.dataset.action === 'close-map-card') {
@@ -2523,8 +4029,103 @@ document.addEventListener('click', async event => {
       await updateGuardWorkflowStep(button.dataset.requestId, button.dataset.step);
       return;
     }
+    if (button.dataset.action === 'select-thread') {
+      state.selectedThreadId = button.dataset.threadId || '';
+      markCurrentThreadRead();
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-notification') {
+      state.selectedNotificationId = button.dataset.notificationId || '';
+      markNotificationReadById(state.selectedNotificationId);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'mark-all-notifications-read') {
+      markAllNotificationsRead();
+      render();
+      toast('All notifications marked as read.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'clear-notification-filters') {
+      state.notificationSearch = '';
+      state.notificationFilter = 'all';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'acknowledge-notification') {
+      markNotificationReadById(button.dataset.notificationId || state.selectedNotificationId);
+      render();
+      toast('Notification acknowledged.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'notification-open-linked-job') {
+      const note = selectedNotification();
+      const req = relatedRequestForNotification(note);
+      state.view = req && String(req.status) === 'completed' ? 'completed' : 'active-job';
+      if (req && String(req.status) === 'completed') state.selectedCompletedRequestId = req.id || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'notification-open-messages') {
+      state.view = 'messages';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'open-notification-preferences') {
+      toast('Notification preferences coming next.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'quick-message') {
+      sendDispatchGuardMessage(button.dataset.text || '');
+      render();
+      toast('Message sent.', 'success');
+      return;
+    }
     if (button.dataset.action === 'confirm-inline-proof') {
       await confirmInlineProofUpload();
+      return;
+    }
+    if (button.dataset.action === 'select-client-property') {
+      state.clientSelectedPropertyId = button.dataset.propertyId || '';
+      state.clientPropertyTab = 'overview';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'cycle-client-property-filter') {
+      const order = ['all', 'active', 'open', 'retail', 'residential'];
+      const idx = order.indexOf(state.clientPropertyFilter || 'all');
+      state.clientPropertyFilter = order[(idx + 1) % order.length];
+      render();
+      return;
+    }
+    if (button.dataset.action === 'clear-client-property-filters') {
+      state.clientPropertySearch = '';
+      state.clientPropertyFilter = 'all';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'add-client-property') {
+      showClientPropertyEditModal(null);
+      return;
+    }
+    if (button.dataset.action === 'edit-client-property') {
+      showClientPropertyEditModal(selectedClientProperty());
+      return;
+    }
+    if (button.dataset.action === 'close-client-property-edit') {
+      closeClientPropertyEditModal();
+      return;
+    }
+    if (button.dataset.action === 'open-client-patrol-request') {
+      state.clientPatrolPrefillPropertyId = button.dataset.propertyId || state.clientSelectedPropertyId || '';
+      state.view = 'patrol-requests';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'open-client-reports') {
+      state.view = 'reports';
+      render();
       return;
     }
     if (button.dataset.action === 'cancel-inline-proof') {
@@ -2559,8 +4160,67 @@ document.addEventListener('submit', async event => {
     if (form.dataset.form === 'client-signup') await submitClientSignup(form);
     if (form.dataset.form === 'proof-upload') await uploadProof(form);
     if (form.dataset.form === 'client-patrol-request') await submitClientPatrolRequest(form);
+    if (form.dataset.form === 'client-property-edit') await saveClientPropertyEdit(form);
+    if (form.dataset.form === 'dispatch-guard-message') {
+      sendDispatchGuardMessage(form.message.value);
+      form.reset();
+      render();
+      toast('Message sent.', 'success');
+    }
   } catch (err) {
     toast(friendly(err));
+  }
+});
+
+document.addEventListener('input', event => {
+  const input = event.target;
+
+  if (input && input.hasAttribute('data-client-request-type-select')) {
+    state.clientRequestType = input.value || 'immediate';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-message-search')) {
+    state.messageSearch = input.value || '';
+    render();
+  }
+  if (input && input.hasAttribute('data-notification-search')) {
+    state.notificationSearch = input.value || '';
+    render();
+  }
+  if (input && input.hasAttribute('data-client-property-search')) {
+    state.clientPropertySearch = input.value || '';
+    render();
+  }
+});
+
+document.addEventListener('change', event => {
+  const input = event.target;
+  if (input && input.hasAttribute('data-client-request-type-select')) {
+    state.clientRequestType = input.value || 'immediate';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-property-photo-file')) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast('Property photo must be an image file.');
+      input.value = '';
+      return;
+    }
+    const preview = document.querySelector('[data-property-photo-preview]');
+    if (preview) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<img src="${esc(url)}" alt="Property photo preview">`;
+    }
+  }
+  if (input && input.hasAttribute('data-client-request-reference-file')) {
+    const file = input.files?.[0];
+    const preview = document.querySelector('[data-client-request-reference-preview]');
+    if (!file || !preview) return;
+    const url = URL.createObjectURL(file);
+    preview.innerHTML = file.type.startsWith('video/') ? `<video src="${esc(url)}" muted controls playsinline></video><span>${esc(file.name)}</span>` : `<img src="${esc(url)}" alt="Reference preview"><span>${esc(file.name)}</span>`;
   }
 });
 
