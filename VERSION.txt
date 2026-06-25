@@ -1,21 +1,19 @@
 Co Pilot Security
-Version: 3.0.32
-Build Name: REQUEST PATROL COMMAND CENTER
+Version: 3.0.33
+Build Name: BADGE VERSION SYNC FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.31.
-- Rebuilt the Client Patrol Requests page into the command-center design shown in the mockup.
-- Added form-level Request Type selector synced with the request type cards.
-- Converted Priority into a segmented Normal / High / Emergency control.
-- Reorganized the request form into clean developer-style grid rows.
-- Requested Services are now properly aligned service cards with icons.
-- Reference Photo / Video upload remains device-only and has no URL input anywhere.
-- Submit Request is clearer and the request summary rail stays intact.
+- Built from v3.0.32.
+- Fixed the root issue: script.js still had BUILD label v3.0.31, so the badge kept showing v3.0.31 even though index/package said v3.0.32.
+- Synced script.js BUILD label to v3.0.33 BADGE VERSION SYNC FIX.
+- Added stronger cache-busted asset URLs in index.html.
+- Made ensureBadge aggressively recreate/overwrite the bottom-right badge.
+- Preserved the v3.0.32 Client Patrol Requests command-center page work.
 - No new SQL required.
 
 Badge:
-v3.0.32 REQUEST PATROL COMMAND CENTER
+v3.0.33 BADGE VERSION SYNC FIX
 
 SQL:
 No new SQL required.

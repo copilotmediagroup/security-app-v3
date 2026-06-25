@@ -1,19 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.32",
-  "buildName": "REQUEST PATROL COMMAND CENTER",
-  "type": "client-request-patrol-command-center",
+  "version": "3.0.33",
+  "buildName": "BADGE VERSION SYNC FIX",
+  "type": "badge-version-sync-cache-fix",
   "sql_required": false,
   "features": [
-    "Rebuilt Client Patrol Requests form into command-center layout matching the developer mockup",
-    "Added Request Type dropdown in the form synced with the request type cards",
-    "Converted Priority to a segmented Normal / High / Emergency control",
-    "Reorganized the form into clean rows: property/type/priority, schedule, instructions/services, upload/submit",
-    "Requested Services are now aligned service cards with icons",
-    "Reference Photo/Video remains device-upload only with no URL entry",
-    "Upload preview supports photo/video file name display",
-    "Request Summary rail includes service icons and clearer request context",
-    "Request History table remains below the form",
+    "Fixes issue where badge still showed v3.0.31 because script.js BUILD label was not updated",
+    "Forces bottom-right badge to show v3.0.33 BADGE VERSION SYNC FIX",
+    "Adds stronger cache-busted asset URLs in index.html",
+    "Makes ensureBadge recreate and overwrite the badge every second",
+    "Preserves v3.0.32 Client Patrol Requests command-center page changes",
     "No new SQL required"
   ]
 }

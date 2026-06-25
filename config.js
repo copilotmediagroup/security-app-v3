@@ -1,5 +1,5 @@
 window.COPILOT_SECURITY_CONFIG = {
   supabaseUrl: 'https://riysdcczjdsmxtyqceuj.supabase.co',
   supabaseAnonKey: 'sb_publishable_UewIFGu15bJTr6PPRCLDlg_hHDbu8xO',
-  appVersion: '3.0.32-request-patrol-command-center'
+  appVersion: '3.0.33-badge-version-sync-fix'
 };

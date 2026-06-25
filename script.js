@@ -1,8 +1,12 @@
 
+const CP_DEV_CACHE_BUST = '2026-06-25T09-52-v3033';
 const BUILD = {
-  version: '3.0.31',
-  label: 'v3.0.31 PATROL REQUESTS POLISH'
+  version: '3.0.33',
+  label: 'v3.0.33 BADGE VERSION SYNC FIX'
 };
+window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
+window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
+
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
 const supabase = new window.CoPilotSupabaseClient(config);

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-request-patrol-command-center",
-  "version": "3.0.32",
+  "name": "co-pilot-security-badge-version-sync-fix",
+  "version": "3.0.33",
   "private": true,
-  "description": "Builds the Client Request Patrol page into a premium command-center workflow with request type selector, priority segment, services cards, device-only upload, summary rail, and history table.",
+  "description": "Fixes stale badge issue by syncing script.js BUILD label and forcing cache-busted asset URLs.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
