@@ -4441,3 +4441,30 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
     grid-template-columns: 1fr !important;
   }
 }
+
+/* v3.0.35 Live request summary */
+.mockup-priority.normal {
+  background: rgba(46,125,255,.18);
+  border-color: rgba(46,125,255,.25);
+  color: #9ecbff;
+}
+.mockup-priority.high {
+  background: rgba(255,181,61,.18);
+  border-color: rgba(255,181,61,.28);
+  color: #ffd18a;
+}
+.mockup-priority.urgent,
+.mockup-priority.emergency {
+  background: rgba(190,55,69,.24);
+  border-color: rgba(255,93,110,.22);
+  color: #ff9aa8;
+}
+.client-request-summary-list.command [data-summary="reference"],
+.client-request-summary-list.command [data-summary="instructions"] {
+  color: #dcecff;
+  font-weight: 900;
+}
+.client-request-summary-list.command .summary-empty {
+  color: var(--muted);
+  font-size: 12px;
+}

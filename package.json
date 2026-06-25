@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-request-patrol-mockup-match",
-  "version": "3.0.34",
+  "name": "co-pilot-security-live-request-summary",
+  "version": "3.0.35",
   "private": true,
-  "description": "Polishes Client Patrol Requests page to match the provided command-center mockup while preserving v3.0.33 badge sync fix.",
+  "description": "Makes the Client Patrol Request summary update in real time as form fields change.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

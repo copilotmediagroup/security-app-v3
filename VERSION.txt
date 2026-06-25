@@ -1,21 +1,19 @@
 Co Pilot Security
-Version: 3.0.34
-Build Name: REQUEST PATROL MOCKUP MATCH
+Version: 3.0.35
+Build Name: LIVE REQUEST SUMMARY
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.33.
-- Polished the Client Patrol Requests page to more closely match the provided mockup.
-- Compacted KPI cards and request type cards.
-- Improved Request Details form spacing and right rail proportions.
-- Simplified Requested Services checkboxes to avoid icon clutter.
-- Improved Selected Property card layout with stronger image/text spacing.
-- Improved Reference Photo/Video upload/dropzone and Submit/Save action placement.
-- Preserved the v3.0.33 badge/cache sync fix.
+- Built from v3.0.34.
+- Request Summary now updates in real time as the client changes the form.
+- Priority updates live for Normal / High / Emergency.
+- Property, request type, when/date/time, duration, services, instructions, and reference upload all update live.
+- Reference upload summary shows the selected device file name.
+- Preserved v3.0.34 Patrol Request mockup layout and v3.0.33 badge/cache sync fix.
 - No new SQL required.
 
 Badge:
-v3.0.34 REQUEST PATROL MOCKUP MATCH
+v3.0.35 LIVE REQUEST SUMMARY
 
 SQL:
 No new SQL required.

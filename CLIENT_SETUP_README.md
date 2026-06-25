@@ -1,19 +1,22 @@
-# Co Pilot Security v3.0.34 — Request Patrol Mockup Match
+# Co Pilot Security v3.0.35 — Live Request Summary
 
 ## What changed
-- Polished the Client Patrol Requests page to better match the provided command-center mockup.
-- Layout improvements:
-  - tighter KPI row
-  - tighter request type cards
-  - cleaner request details grid
-  - simplified requested services checkboxes
-  - cleaner right rail
-  - stronger Selected Property card layout
-  - cleaner device-only upload area
-  - better Submit Request / Save Draft placement
+- The Client Patrol Request `Request Summary` now updates in real time.
+- Live fields:
+  - Request Type
+  - Priority
+  - Property
+  - When / schedule
+  - Duration
+  - Requested Services
+  - Special Instructions
+  - Reference Upload file name
 
 ## Preserved
+- v3.0.34 Patrol Request mockup layout.
 - v3.0.33 badge/cache sync fix.
 - Device-only photo/video upload.
 - No URL input for photo/video.
-- No new SQL required.
+
+## SQL
+No new SQL required.

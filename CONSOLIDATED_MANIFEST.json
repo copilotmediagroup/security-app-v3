@@ -1,18 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.34",
-  "buildName": "REQUEST PATROL MOCKUP MATCH",
-  "type": "client-request-patrol-mockup-match",
+  "version": "3.0.35",
+  "buildName": "LIVE REQUEST SUMMARY",
+  "type": "client-request-summary-live-sync",
   "sql_required": false,
   "features": [
-    "Polishes Client Patrol Requests page to more closely match the provided mockup",
-    "Widens and tightens right-side rail cards",
-    "Compacts KPI cards and request type cards",
-    "Improves Request Details grid spacing",
-    "Simplifies Requested Services checkboxes to match mockup",
-    "Improves selected property card image/text layout",
-    "Improves upload/dropzone and submit/save action placement",
-    "Preserves v3.0.33 badge/cache sync fix",
+    "Request Summary now reflects form changes in real time",
+    "Priority updates live when Normal / High / Emergency is selected",
+    "Property updates live when selected property changes",
+    "Request type updates live when request type dropdown changes",
+    "When / duration / services / instructions / reference upload update live",
+    "Reference upload summary shows selected device file name",
+    "Preserves v3.0.34 Patrol Request mockup layout and v3.0.33 badge/cache fix",
     "No new SQL required"
   ]
 }

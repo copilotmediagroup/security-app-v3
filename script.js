@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T14-20-v3034';
+const CP_DEV_CACHE_BUST = '2026-06-25T14-35-v3035';
 const BUILD = {
-  version: '3.0.34',
-  label: 'v3.0.34 REQUEST PATROL MOCKUP MATCH'
+  version: '3.0.35',
+  label: 'v3.0.35 LIVE REQUEST SUMMARY'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -968,6 +968,73 @@ async function assignPatrolNow(requestId) {
 }
 
 
+
+function summaryRequestTypeLabel(value) {
+  const cfg = clientRequestTypeConfig(value || state.clientRequestType || 'immediate');
+  return cfg.label || 'Immediate Patrol';
+}
+function summaryPriorityHtml(value) {
+  const v = String(value || 'normal').toLowerCase();
+  const label = v === 'urgent' ? 'Emergency' : statusText(v);
+  const cls = v === 'urgent' ? 'emergency' : v;
+  return `<em class="mockup-priority ${esc(cls)}">${esc(label)}</em>`;
+}
+function summaryServiceIcons(form) {
+  const checked = [...form.querySelectorAll('input[name="requested_services"]:checked')].map(i => i.value);
+  if (!checked.length) return '<span class="summary-empty">None selected</span>';
+  const iconMap = {
+    'Check doors': '▥',
+    'Check perimeter': '◇',
+    'Check windows': '▦',
+    'Photo proof required': '▣',
+    'Lock up if needed': '⌘'
+  };
+  return checked.map(item => `<i title="${esc(item)}">${esc(iconMap[item] || '✓')}</i>`).join('');
+}
+function summaryWhenText(form, requestType) {
+  const date = form.querySelector('[name="requested_date"], [name="date"], [name="start_date"]')?.value?.trim() || '';
+  const time = form.querySelector('[name="requested_time"], [name="time"]')?.value?.trim() || '';
+  const end = form.querySelector('[name="end_date"]')?.value?.trim() || '';
+  const recurring = form.querySelector('[name="recurring_pattern"], [name="frequency"]')?.value?.trim() || '';
+  if (requestType === 'immediate') return 'ASAP';
+  if (requestType === 'vacation') return [date || 'Start date', end ? `to ${end}` : 'End date'].join(' ');
+  if (requestType === 'recurring') return recurring || date || 'Repeating schedule';
+  return [date || 'Future date', time || 'Time'].join(' at ');
+}
+function updateClientRequestSummaryFromForm(form = document.querySelector('[data-form="client-patrol-request"]')) {
+  const summary = document.querySelector('[data-live-request-summary]');
+  if (!summary || !form) return;
+  const requestType = form.querySelector('[name="request_type_select"]')?.value || state.clientRequestType || 'immediate';
+  const priority = form.querySelector('input[name="priority"]:checked')?.value || form.querySelector('[name="priority"]')?.value || 'normal';
+  const propertySelect = form.querySelector('[name="property_id"]');
+  const propertyText = propertySelect?.selectedOptions?.[0]?.textContent?.trim() || 'Choose property';
+  const duration = form.querySelector('[name="estimated_duration"], [name="duration"]')?.selectedOptions?.[0]?.textContent?.trim()
+    || form.querySelector('[name="estimated_duration"], [name="duration"]')?.value?.trim()
+    || '60 minutes';
+  const instructions = form.querySelector('[name="instructions"]')?.value?.trim() || '';
+  const file = form.querySelector('[name="reference_photo_file"]')?.files?.[0] || null;
+  const set = (key, html) => {
+    const el = summary.querySelector(`[data-summary="${key}"]`);
+    if (el) el.innerHTML = html;
+  };
+  set('type', esc(summaryRequestTypeLabel(requestType)));
+  set('priority', summaryPriorityHtml(priority));
+  set('property', esc(propertyText.replace(/^Choose property$/i, 'Choose property')));
+  set('when', esc(summaryWhenText(form, requestType)));
+  set('duration', esc(`${duration}${/minute|hour|day/i.test(duration) ? '' : ' minutes'} (est.)`));
+  set('services', summaryServiceIcons(form));
+  set('instructions', instructions ? 'Yes' : 'No');
+  set('reference', file ? esc(file.name || 'File selected') : 'No file selected');
+}
+function syncClientRequestFormStateFromInput(input) {
+  if (!input) return;
+  const form = input.closest?.('[data-form="client-patrol-request"]');
+  if (!form) return;
+  if (input.name === 'request_type_select') state.clientRequestType = input.value || 'immediate';
+  if (input.name === 'property_id') state.clientPatrolPrefillPropertyId = input.value || '';
+  updateClientRequestSummaryFromForm(form);
+}
+
 async function submitClientPatrolRequest(form) {
   const propertyId = form.property_id?.value || '';
   const priority = form.priority?.value || 'normal';
@@ -1054,6 +1121,7 @@ function renderLoading() {
   scheduleClientLeafletMap();
   scheduleClientPropertyMapPrep();
   scheduleClientPropertyDetailMap();
+  if (state.role === 'client' && state.view === 'patrol-requests') setTimeout(() => updateClientRequestSummaryFromForm(), 0);
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -3669,7 +3737,7 @@ function clientScheduleFields() {
 function clientRequestSummary(property) {
   const cfg = clientRequestTypeConfig();
   const when = state.clientRequestType === 'immediate' ? 'ASAP' : state.clientRequestType === 'vacation' ? 'Date range' : state.clientRequestType === 'recurring' ? 'Repeating schedule' : 'Future date/time';
-  return `<section class="panel panel-pad client-request-summary-card"><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list command"><span>Type</span><strong>${esc(cfg.label)}</strong><span>Priority</span><strong><em class="mockup-priority">Normal</em></strong><span>Property</span><strong>${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong>${esc(when)}</strong><span>Duration</span><strong>60 minutes (est.)</strong><span>Services</span><strong class="summary-icons"><i>▥</i><i>◇</i><i>▦</i><i>▣</i></strong><span>Special Instructions</span><strong>Yes / Optional</strong></div></section>`;
+  return `<section class="panel panel-pad client-request-summary-card" data-live-request-summary><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list command"><span>Type</span><strong data-summary="type">${esc(cfg.label)}</strong><span>Priority</span><strong data-summary="priority"><em class="mockup-priority normal">Normal</em></strong><span>Property</span><strong data-summary="property">${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong data-summary="when">${esc(when)}</strong><span>Duration</span><strong data-summary="duration">60 minutes (est.)</strong><span>Services</span><strong class="summary-icons" data-summary="services"><i title="Check doors">▥</i><i title="Check perimeter">◇</i><i title="Check windows">▦</i><i title="Photo proof">▣</i></strong><span>Special Instructions</span><strong data-summary="instructions">No</strong><span>Reference Upload</span><strong data-summary="reference">No file selected</strong></div></section>`;
 }
 function clientRequestPropertyPanel(property) {
   if (!property) return `<section class="panel panel-pad client-selected-request-property"><div class="empty">Add a property before requesting patrol.</div></section>`;
@@ -3912,6 +3980,7 @@ function render() {
   scheduleClientLeafletMap();
   scheduleClientPropertyMapPrep();
   scheduleClientPropertyDetailMap();
+  if (state.role === 'client' && state.view === 'patrol-requests') setTimeout(() => updateClientRequestSummaryFromForm(), 0);
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -4181,7 +4250,7 @@ document.addEventListener('input', event => {
 
   if (input && input.hasAttribute('data-client-request-type-select')) {
     state.clientRequestType = input.value || 'immediate';
-    render();
+    updateClientRequestSummaryFromForm(input.closest('[data-form="client-patrol-request"]'));
     return;
   }
   if (input && input.hasAttribute('data-message-search')) {
@@ -4196,13 +4265,16 @@ document.addEventListener('input', event => {
     state.clientPropertySearch = input.value || '';
     render();
   }
+  if (input && input.closest?.('[data-form="client-patrol-request"]')) {
+    syncClientRequestFormStateFromInput(input);
+  }
 });
 
 document.addEventListener('change', event => {
   const input = event.target;
   if (input && input.hasAttribute('data-client-request-type-select')) {
     state.clientRequestType = input.value || 'immediate';
-    render();
+    updateClientRequestSummaryFromForm(input.closest('[data-form="client-patrol-request"]'));
     return;
   }
   if (input && input.hasAttribute('data-property-photo-file')) {
