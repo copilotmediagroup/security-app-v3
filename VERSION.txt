@@ -1,19 +1,19 @@
 Co Pilot Security
-Version: 3.0.28
-Build Name: CLIENT EDIT PROPERTY
+Version: 3.0.29
+Build Name: CLIENT PROPERTY PHOTO UPLOAD FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.27.
-- Added functional Client Edit Property flow.
-- Edit Property opens a modal from the Property Details panel.
-- Add Property now opens the same modal for a new property.
-- The modal saves property name, address, city, state, ZIP, photo URL, notes, latitude, and longitude through the existing Supabase RPC: cp_save_property_for_client.
-- Retail/Residential display choice is saved locally for the current browser because the current database schema does not have a property_type column.
+- Built from v3.0.28.
+- Fixed Client Edit Property save error by calling the existing cp_core_save_property RPC first, with fallback compatibility attempts.
+- Removed the visible Property Photo URL field.
+- Client can only change the property photo by uploading an image from the device.
+- The upload uses Supabase Storage bucket: property-photos.
+- Existing property photo is preserved if no new photo is selected.
 - No new SQL required.
 
 Badge:
-v3.0.28 CLIENT EDIT PROPERTY
+v3.0.29 CLIENT PROPERTY PHOTO UPLOAD FIX
 
 SQL:
 No new SQL required.

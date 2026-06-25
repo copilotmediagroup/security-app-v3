@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-edit-property",
-  "version": "3.0.28",
+  "name": "co-pilot-security-client-property-photo-upload-fix",
+  "version": "3.0.29",
   "private": true,
-  "description": "Adds functional Client property edit/add modal using existing Supabase property save RPC.",
+  "description": "Fixes client property save RPC and replaces photo URL field with device-only property photo upload.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

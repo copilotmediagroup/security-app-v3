@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.28',
-  label: 'v3.0.28 CLIENT EDIT PROPERTY'
+  version: '3.0.29',
+  label: 'v3.0.29 CLIENT PROPERTY PHOTO UPLOAD FIX'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -3383,10 +3383,12 @@ function propertyFormValue(property = {}, field = '') {
 function closeClientPropertyEditModal() {
   document.querySelectorAll('.client-property-edit-modal').forEach(el => el.remove());
 }
+
 function showClientPropertyEditModal(property = null) {
   closeClientPropertyEditModal();
   const isEdit = Boolean(property?.id);
   const type = property ? propertyTypeLabel(property) : 'Retail';
+  const currentPhoto = property ? propertyImageValue(property) : '';
   const modal = document.createElement('div');
   modal.className = 'client-property-edit-modal';
   modal.innerHTML = `<div class="client-property-edit-backdrop" data-action="close-client-property-edit"></div>
@@ -3408,7 +3410,14 @@ function showClientPropertyEditModal(property = null) {
           <label>State<input name="state" value="${esc(propertyFormValue(property, 'state'))}" placeholder="NV" maxlength="2"></label>
           <label>ZIP<input name="zip_code" value="${esc(propertyFormValue(property, 'zip'))}" placeholder="89052" required></label>
         </div>
-        <label>Property Photo URL<input name="photo_url" value="${esc(propertyFormValue(property, 'photo_url'))}" placeholder="https://..."></label>
+        <div class="client-property-photo-upload">
+          <div class="client-property-photo-preview" data-property-photo-preview>${currentPhoto ? `<img src="${esc(currentPhoto)}" alt="${esc(propertyDisplayName(property || {}))}">` : `<span>${esc(initials(propertyDisplayName(property || {})))}</span>`}</div>
+          <label class="client-property-photo-picker">
+            <input type="file" name="property_photo_file" accept="image/*" data-property-photo-file>
+            <strong>Upload Property Photo</strong>
+            <small>Choose a photo from this device. No URL entry is allowed.</small>
+          </label>
+        </div>
         <div class="form-row">
           <label>Latitude<input name="latitude" value="${esc(propertyFormValue(property, 'latitude'))}" placeholder="Optional"></label>
           <label>Longitude<input name="longitude" value="${esc(propertyFormValue(property, 'longitude'))}" placeholder="Optional"></label>
@@ -3424,6 +3433,59 @@ function showClientPropertyEditModal(property = null) {
   const first = modal.querySelector('input[name="label"]');
   if (first) first.focus();
 }
+
+async function uploadClientPropertyPhoto(propertyId, file) {
+  if (!file) return '';
+  if (!file.type.startsWith('image/')) throw new Error('Property photo must be an image file.');
+  const safe = String(file.name || 'property-photo').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90);
+  const objectPath = `${propertyId || 'new'}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safe}`;
+  await supabase.uploadStorageObject('property-photos', objectPath, file, { upsert: false });
+  return supabase.getPublicUrl('property-photos', objectPath);
+}
+function cleanPropertyRpcPayload(payload = {}) {
+  const out = { ...payload };
+  Object.keys(out).forEach(key => {
+    if (out[key] === undefined) delete out[key];
+  });
+  return out;
+}
+async function savePropertyThroughKnownRpc(payload = {}) {
+  const clean = cleanPropertyRpcPayload(payload);
+  const attempts = [
+    { name: 'cp_core_save_property', payload: clean },
+    { name: 'cp_save_property_for_client', payload: clean },
+    { name: 'cp_save_property_for_client', payload: (() => {
+      const copy = { ...clean };
+      delete copy.p_client_id;
+      return copy;
+    })() },
+    { name: 'cp_save_property_for_client', payload: (() => {
+      const copy = { ...clean };
+      delete copy.p_client_id;
+      delete copy.p_photo_url;
+      delete copy.p_latitude;
+      delete copy.p_longitude;
+      return copy;
+    })() }
+  ];
+  let lastErr = null;
+  for (const attempt of attempts) {
+    try {
+      const result = await supabase.rpc(attempt.name, attempt.payload);
+      if (result?.ok === false) throw new Error(result?.message || 'Property could not be saved.');
+      return result;
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err?.message || err || '').toLowerCase();
+      const canTryNext = msg.includes('could not find the function') || msg.includes('schema cache') || msg.includes('function') || msg.includes('ambiguous');
+      if (!canTryNext) throw err;
+    }
+  }
+  throw lastErr || new Error('Property could not be saved.');
+}
+async function saveClientPropertyPayload(payload = {}) {
+  return savePropertyThroughKnownRpc(payload);
+}
 async function saveClientPropertyEdit(form) {
   const propertyId = form.property_id.value.trim() || null;
   const clientId = form.client_id.value.trim() || null;
@@ -3434,7 +3496,12 @@ async function saveClientPropertyEdit(form) {
   const longitude = lngRaw === '' ? null : Number(lngRaw);
   if (latRaw && !Number.isFinite(latitude)) throw new Error('Latitude must be a number.');
   if (lngRaw && !Number.isFinite(longitude)) throw new Error('Longitude must be a number.');
-  const payload = {
+
+  const existingProperty = propertyId ? propertyById(propertyId) : {};
+  const selectedPhotoFile = form.property_photo_file?.files?.[0] || null;
+  const existingPhotoUrl = existingProperty ? propertyImageValue(existingProperty) : '';
+
+  const basePayload = {
     p_property_id: propertyId,
     p_client_id: clientId,
     p_label: form.label.value.trim() || 'Property',
@@ -3442,27 +3509,41 @@ async function saveClientPropertyEdit(form) {
     p_city: form.city.value.trim(),
     p_state: form.state.value.trim(),
     p_zip_code: form.zip_code.value.trim(),
-    p_photo_url: form.photo_url.value.trim(),
+    p_photo_url: existingPhotoUrl,
     p_notes: form.notes.value.trim(),
     p_latitude: latitude,
     p_longitude: longitude
   };
-  if (!payload.p_address) throw new Error('Property address is required.');
-  if (!payload.p_zip_code) throw new Error('ZIP code is required.');
+
+  if (!basePayload.p_address) throw new Error('Property address is required.');
+  if (!basePayload.p_zip_code) throw new Error('ZIP code is required.');
+
   const btn = form.querySelector('button[type="submit"]');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  const result = await supabase.rpc('cp_save_property_for_client', payload);
-  if (!result?.ok) throw new Error(result?.message || 'Property could not be saved.');
-  const saved = result.property || {};
-  savePropertyTypeOverride(saved.id || propertyId, type);
+
+  let result = await saveClientPropertyPayload(basePayload);
+  let saved = result?.property || {};
+  let savedId = saved.id || propertyId;
+
+  if (selectedPhotoFile) {
+    if (btn) btn.textContent = 'Uploading photo…';
+    const uploadedUrl = await uploadClientPropertyPhoto(savedId, selectedPhotoFile);
+    const photoPayload = { ...basePayload, p_property_id: savedId, p_photo_url: uploadedUrl };
+    result = await saveClientPropertyPayload(photoPayload);
+    saved = result?.property || { ...saved, photo_url: uploadedUrl };
+    savedId = saved.id || savedId;
+  }
+
+  savePropertyTypeOverride(savedId, type);
   closeClientPropertyEditModal();
   await loadData();
   state.view = 'properties';
-  state.clientSelectedPropertyId = String(saved.id || propertyId || state.clientSelectedPropertyId || '');
+  state.clientSelectedPropertyId = String(savedId || state.clientSelectedPropertyId || '');
   state.clientPropertyTab = 'overview';
   render();
   toast('Property saved.', 'success');
 }
+
 
 function clientPropertiesView() {
   const counts = clientPropertiesCounts();
@@ -3979,6 +4060,24 @@ document.addEventListener('input', event => {
   if (input && input.hasAttribute('data-client-property-search')) {
     state.clientPropertySearch = input.value || '';
     render();
+  }
+});
+
+document.addEventListener('change', event => {
+  const input = event.target;
+  if (input && input.hasAttribute('data-property-photo-file')) {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast('Property photo must be an image file.');
+      input.value = '';
+      return;
+    }
+    const preview = document.querySelector('[data-property-photo-preview]');
+    if (preview) {
+      const url = URL.createObjectURL(file);
+      preview.innerHTML = `<img src="${esc(url)}" alt="Property photo preview">`;
+    }
   }
 });
 

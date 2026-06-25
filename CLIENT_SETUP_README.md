@@ -1,22 +1,12 @@
-# Co Pilot Security v3.0.28 — Client Edit Property
+# Co Pilot Security v3.0.29 — Client Property Photo Upload Fix
 
 ## What changed
-- Client can now click `Edit Property` from the Property Details panel.
-- A polished modal opens with editable fields:
-  - Property Name
-  - Property Type: Retail / Residential
-  - Street Address
-  - City
-  - State
-  - ZIP
-  - Property Photo URL
-  - Latitude / Longitude
-  - Notes
-- Client can also use `Add Property` to open the same modal for a new property.
-- Saves through the existing Supabase RPC: `cp_save_property_for_client`.
+- Fixed the Client Edit Property save error by using the existing `cp_core_save_property` RPC first.
+- Added compatibility fallback attempts for older property save RPC names/signatures.
+- Removed the visible `Property Photo URL` input.
+- Client property photos are now changed only by uploading an image from the device.
+- Existing photo is preserved when no new image is selected.
+- New property photo uploads use Supabase Storage bucket `property-photos`.
 
 ## SQL
 No new SQL required.
-
-## Note
-The current database table does not include a dedicated `property_type` column. The Retail/Residential display choice is saved locally in browser storage for the development UI.

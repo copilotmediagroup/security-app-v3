@@ -1,15 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.28",
-  "buildName": "CLIENT EDIT PROPERTY",
-  "type": "client-property-edit-flow",
+  "version": "3.0.29",
+  "buildName": "CLIENT PROPERTY PHOTO UPLOAD FIX",
+  "type": "client-property-edit-save-and-photo-upload-fix",
   "sql_required": false,
   "features": [
-    "Client can edit selected property from Property Details",
-    "Client can add a property from the Add Property button",
-    "Edit modal supports property name, Retail/Residential type, address, city, state, ZIP, photo URL, notes, latitude, and longitude",
-    "Property save uses existing cp_save_property_for_client RPC",
-    "Retail/Residential display preference persists locally for the current browser because the existing database schema has no property_type column",
+    "Fixes Client Edit Property save by using the existing cp_core_save_property RPC first, with fallback compatibility attempts",
+    "Removes visible Property Photo URL field from client edit/add property modal",
+    "Client property photo can only be changed by uploading an image from the device",
+    "Property photo upload uses Supabase Storage bucket property-photos",
+    "Existing property photo is preserved if no new device photo is selected",
+    "No visible URL entry for property photos",
     "No new SQL required"
   ]
 }

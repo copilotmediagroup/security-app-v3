@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.28 client edit property build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.29 client property photo upload fix build complete. Copied ${count} files to dist/.`);
