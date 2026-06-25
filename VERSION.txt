@@ -1,19 +1,18 @@
 Co Pilot Security
-Version: 3.0.21
-Build Name: MESSAGE LAYOUT POLISH
+Version: 3.0.22
+Build Name: NOTIFICATIONS REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.20.
-- Fixes the Messages page chat bubble stretching vertically.
-- Chat bubbles now stay compact, top-aligned, and behave like a normal messaging app.
-- Current user's sent messages show as "You."
-- Linked completed jobs in the details rail are labeled correctly.
-- Keeps Dispatch/Guard local development messaging and guard rank selection.
+- Built from v3.0.21.
+- Rebuilt the Notifications page into a premium alerts center layout.
+- Added notification search, filter pills, summary KPI cards, grouped feed, and detail rail.
+- Added local read/acknowledge behavior for development testing.
+- Added quick actions for linked job, open messages, and acknowledge.
 - No new SQL required.
 
 Badge:
-v3.0.21 MESSAGE LAYOUT POLISH
+v3.0.22 NOTIFICATIONS REDESIGN
 
 SQL:
 No new SQL required.

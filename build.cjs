@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.21 message layout polish build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.22 notifications redesign build complete. Copied ${count} files to dist/.`);

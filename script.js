@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.21',
-  label: 'v3.0.21 MESSAGE LAYOUT POLISH'
+  version: '3.0.22',
+  label: 'v3.0.22 NOTIFICATIONS REDESIGN'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -33,7 +33,10 @@ const state = {
   completedFilter: 'today',
   selectedCompletedRequestId: '',
   messageSearch: '',
-  messageFilter: 'all'
+  messageFilter: 'all',
+  notificationSearch: '',
+  notificationFilter: 'all',
+  selectedNotificationId: ''
 };;
 const liveGps = {
   online: false,
@@ -147,6 +150,170 @@ function toast(message, type = 'error') {
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 5600);
+}
+
+function notificationStorageKey() { return 'cp_security_notification_read_map_v1'; }
+function readNotificationReadMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(notificationStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeNotificationReadMap(map = {}) {
+  try { localStorage.setItem(notificationStorageKey(), JSON.stringify(map)); } catch {}
+}
+function notificationId(note = {}) {
+  return String(note.id || note.notification_id || note.reference_id || `${note.title || note.event_type || 'notification'}-${note.created_at || ''}-${note.message || note.details || ''}`);
+}
+function notificationBody(note = {}) { return note.message || note.details || note.body || ''; }
+function notificationTitle(note = {}) { return note.title || note.event_type || 'Notification'; }
+function notificationCategory(note = {}) {
+  const text = `${notificationTitle(note)} ${notificationBody(note)}`.toLowerCase();
+  if (/message|dispatch/.test(text)) return 'message';
+  if (/system|maintenance|settings|preference|platform/.test(text)) return 'system';
+  if (/route|gps/.test(text)) return 'route';
+  if (/proof|upload/.test(text)) return 'proof';
+  return 'patrol';
+}
+function notificationSeverity(note = {}) {
+  const text = `${notificationTitle(note)} ${notificationBody(note)}`.toLowerCase();
+  if (/high|urgent|critical|alert|alarm|incident/.test(text)) return 'high';
+  if (/new|assignment|patrol|dispatch/.test(text)) return 'medium';
+  return 'normal';
+}
+function notificationMeta(note = {}) {
+  const map = readNotificationReadMap();
+  const id = notificationId(note);
+  const localReadAt = map[id] || null;
+  const category = notificationCategory(note);
+  const severity = notificationSeverity(note);
+  const created = note.created_at || note.updated_at || new Date().toISOString();
+  const readAt = localReadAt || note.read_at || null;
+  return {
+    ...note,
+    _id: id,
+    _title: notificationTitle(note),
+    _body: notificationBody(note),
+    _category: category,
+    _severity: severity,
+    _created: created,
+    _readAt: readAt,
+    _isUnread: !readAt,
+    _timeAgo: timeAgo(created),
+    _time: fmtTime(created),
+    _date: fmtDate(created)
+  };
+}
+function notificationsList() {
+  return (state.notifications || []).map(notificationMeta).sort((a,b) => new Date(b._created || 0) - new Date(a._created || 0));
+}
+function unreadNotificationsCount() { return notificationsList().filter(n => n._isUnread).length; }
+function notificationCounts() {
+  const rows = notificationsList();
+  return {
+    total: rows.length,
+    unread: rows.filter(n => n._isUnread).length,
+    patrol: rows.filter(n => ['patrol','route','proof'].includes(n._category)).length,
+    messages: rows.filter(n => n._category === 'message').length,
+    system: rows.filter(n => n._category === 'system').length
+  };
+}
+function filteredNotifications() {
+  let rows = notificationsList();
+  const q = String(state.notificationSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(n => `${n._title} ${n._body}`.toLowerCase().includes(q));
+  const f = state.notificationFilter;
+  if (f === 'unread') rows = rows.filter(n => n._isUnread);
+  if (f === 'patrol') rows = rows.filter(n => ['patrol','route','proof'].includes(n._category));
+  if (f === 'messages') rows = rows.filter(n => n._category === 'message');
+  if (f === 'system') rows = rows.filter(n => n._category === 'system');
+  return rows;
+}
+function selectedNotification() {
+  const all = filteredNotifications();
+  const any = notificationsList();
+  let note = all.find(n => String(n._id) === String(state.selectedNotificationId)) || any.find(n => String(n._id) === String(state.selectedNotificationId));
+  if (!note) note = all[0] || any[0] || null;
+  if (note && String(state.selectedNotificationId) !== String(note._id)) state.selectedNotificationId = note._id;
+  return note;
+}
+function markNotificationReadById(id) {
+  if (!id) return;
+  const map = readNotificationReadMap();
+  map[String(id)] = new Date().toISOString();
+  writeNotificationReadMap(map);
+}
+function markAllNotificationsRead() {
+  const map = readNotificationReadMap();
+  const now = new Date().toISOString();
+  notificationsList().forEach(n => { map[n._id] = map[n._id] || now; });
+  writeNotificationReadMap(map);
+}
+function notificationIcon(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return '◔';
+  if (cat === 'system') return '⚙';
+  if (cat === 'route') return '⌖';
+  if (cat === 'proof') return '⬆';
+  return '✓';
+}
+function notificationAccentClass(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return 'message';
+  if (cat === 'system') return 'system';
+  if (cat === 'route') return 'route';
+  if (cat === 'proof') return 'proof';
+  return 'patrol';
+}
+function notificationCategoryLabel(note = {}) {
+  const cat = note._category || notificationCategory(note);
+  if (cat === 'message') return 'Dispatch';
+  if (cat === 'system') return 'System';
+  if (cat === 'route') return 'Route';
+  if (cat === 'proof') return 'Proof';
+  return 'Patrol';
+}
+function notificationPriorityLabel(note = {}) {
+  const sev = note._severity || notificationSeverity(note);
+  if (sev === 'high') return 'High Priority';
+  if (sev === 'medium') return 'New';
+  return 'Normal';
+}
+function notificationReferenceId(note = {}) {
+  const date = new Date(note._created || Date.now());
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  const hm = String(date.getHours()).padStart(2,'0') + String(date.getMinutes()).padStart(2,'0');
+  return note.reference_id || `${String(notificationCategoryLabel(note)).toUpperCase()}-${y}${m}${d}-${hm}`;
+}
+function relatedRequestForNotification(note = {}) {
+  if (!note) return null;
+  return state.patrolRequests.find(r => String(r.id || '') === String(note.request_id || ''))
+    || activeRequests()[0]
+    || completedRequests()[0]
+    || null;
+}
+function groupedNotifications(rows = []) {
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startYesterday = startToday - 86400000;
+  const groups = [];
+  const todayRows = rows.filter(n => new Date(n._created).getTime() >= startToday);
+  const yesterdayRows = rows.filter(n => {
+    const t = new Date(n._created).getTime();
+    return t >= startYesterday && t < startToday;
+  });
+  const olderRows = rows.filter(n => new Date(n._created).getTime() < startYesterday);
+  if (todayRows.length) groups.push({ label: `Today — ${today.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}`, rows: todayRows });
+  if (yesterdayRows.length) {
+    const y = new Date(startYesterday);
+    groups.push({ label: `Yesterday — ${y.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}`, rows: yesterdayRows });
+  }
+  if (olderRows.length) groups.push({ label: 'Earlier', rows: olderRows });
+  return groups;
 }
 function friendly(err) {
   const raw = String(err?.message || err || 'Unknown error');
@@ -365,9 +532,8 @@ function reportsReady() { return completedRequests().filter(r => !reportByReques
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
 function clientApprovals() { return state.clientSignups.filter(c => !c.status || String(c.status) === 'pending'); }
 function unreadMessagesCount() { return state.messageThreads.filter(t => Number(t.unread_count || 0) > 0).length; }
-function unreadNotificationsCount() { return state.notifications.filter(n => !n.read_at).length; }
 function activeAlertCount() {
-  const alertNotes = state.notifications.filter(n => /alert|alarm|urgent|priority|incident|battery/i.test(`${n.title || ''} ${n.message || ''}`));
+  const alertNotes = notificationsList().filter(n => /alert|alarm|urgent|priority|incident|battery/i.test(`${n._title || ''} ${n._body || ''}`));
   return alertNotes.length || activeRequests().filter(r => /high|urgent/i.test(String(r.priority || ''))).length;
 }
 
@@ -2350,9 +2516,60 @@ function cardsView(title, subtitle, rows, type = 'person') {
 }
 
 
+
 function notificationsView() {
-  return cardsView('Notifications', 'Alerts and updates.', state.notifications.map(n => ({ title: n.title || n.event_type || 'Notification', message: n.message || n.details || '' })), 'notification');
+  const counts = notificationCounts();
+  const rows = filteredNotifications();
+  const note = selectedNotification();
+  const linkedRequest = relatedRequestForNotification(note);
+  const groups = groupedNotifications(rows);
+  const recentActivity = [...(state.patrolActivity || [])].sort((a,b) => new Date(b.created_at || b.timestamp || 0) - new Date(a.created_at || a.timestamp || 0)).slice(0,2);
+  return `<div class="dashboard notifications-shell">
+    <header class="dashboard-header">
+      <div class="title-block"><h1>Notifications</h1><p>Alerts, patrol updates, and dispatch communication.</p></div>
+      <div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div>
+    </header>
+    <section class="notifications-toolbar page-panel">
+      <div class="notifications-search"><span>⌕</span><input type="search" placeholder="Search notifications..." value="${esc(state.notificationSearch)}" data-notification-search></div>
+      <div class="notifications-filter-row">
+        <button type="button" class="filter-pill ${state.notificationFilter === 'all' ? 'active' : ''}" data-notification-filter="all">All</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'unread' ? 'active' : ''}" data-notification-filter="unread">Unread ${counts.unread ? `<b>${esc(counts.unread)}</b>` : ''}</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'patrol' ? 'active' : ''}" data-notification-filter="patrol">Patrols</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'messages' ? 'active' : ''}" data-notification-filter="messages">Messages</button>
+        <button type="button" class="filter-pill ${state.notificationFilter === 'system' ? 'active' : ''}" data-notification-filter="system">System</button>
+      </div>
+      <div class="notifications-toolbar-actions">
+        <button type="button" class="ghost-button" data-action="mark-all-notifications-read">✓ Mark All Read</button>
+        <button type="button" class="ghost-button" data-action="clear-notification-filters">⟲ Clear Filters</button>
+      </div>
+    </section>
+    <section class="notifications-summary-row">
+      ${notificationSummaryCard('◔', 'Total Notifications', counts.total, '+ 18% vs yesterday', 'blue')}
+      ${notificationSummaryCard('⦿', 'Unread', counts.unread, counts.unread ? 'Requires attention' : 'All caught up', 'violet')}
+      ${notificationSummaryCard('✓', 'Patrol Updates', counts.patrol, '+ 12% vs yesterday', 'green')}
+      ${notificationSummaryCard('☵', 'Dispatch Messages', counts.messages, '+ 5% vs yesterday', 'purple')}
+    </section>
+    <section class="notifications-layout page-panel">
+      <div class="notifications-feed">
+        ${groups.length ? groups.map(group => `<div class="notifications-group"><div class="notifications-group-label">${esc(group.label)}</div><div class="notifications-group-list">${group.rows.map(item => notificationRow(item)).join('')}</div></div>`).join('') : '<div class="empty">No notifications found.</div>'}
+        <div class="notifications-load-more"><button type="button" class="ghost-button">⌄ Load more</button></div>
+      </div>
+      <aside class="notifications-detail panel panel-pad">
+        ${note ? `<div class="notifications-detail-head"><div class="detail-title-wrap"><div class="notification-orb ${esc(notificationAccentClass(note))}">${esc(notificationIcon(note))}</div><div><h2>${esc(note._title)}</h2><p>${esc(fmtDate(note._created))} (${esc(note._timeAgo)})</p></div></div><span class="severity-chip ${esc(note._severity)}">${esc(notificationPriorityLabel(note))}</span></div>
+          <div class="detail-card"><div class="detail-card-head"><strong>Message</strong></div><div class="notification-message-box">${esc(note._body || 'No message body available.')}</div><div class="detail-grid"><span>Source</span><strong>${esc(note.source || (note._category === 'message' ? 'Dispatch Center' : note._category === 'system' ? 'System Monitor' : 'Operations'))}</strong><span>Category</span><strong>${esc(notificationCategoryLabel(note))}</strong><span>Related Job</span><strong>${esc(linkedRequest ? `${propertyLabel(linkedRequest)}${propertyAddress(linkedRequest) ? ' / ' + propertyAddress(linkedRequest) : ''}` : 'None linked')}</strong><span>Reference ID</span><strong>${esc(notificationReferenceId(note))}</strong><span>Priority</span><strong>${esc(notificationPriorityLabel(note))}</strong><span>Status</span><strong>${esc(note._isUnread ? 'New' : 'Read')}</strong></div><div class="detail-action-row"><button type="button" class="primary-button" data-action="notification-open-linked-job">${esc(linkedRequest && String(linkedRequest.status) === 'completed' ? 'View Completed Job' : 'View Active Job')}</button><button type="button" class="ghost-button" data-action="notification-open-messages">Open Messages</button><button type="button" class="ghost-button" data-action="acknowledge-notification" data-notification-id="${esc(note._id)}">✓ Acknowledge</button></div></div>
+          <section class="detail-card"><div class="detail-card-head"><strong>Recent Activity</strong><button type="button" class="ghost-inline">View all</button></div>${recentActivity.length ? recentActivity.map(a => `<div class="detail-line icon"><span class="mini-icon ${esc(notificationAccentClass(note))}">${esc(notificationIcon(note))}</span><div><strong>${esc(a.event_type || a.title || 'Patrol update')}</strong><p>${esc(a.notes || a.message || propertyLabel(linkedRequest || {}))}</p></div><em>${esc(fmtTime(a.created_at || a.timestamp))}</em></div>`).join('') : '<div class="detail-line"><span>No recent activity.</span></div>'}</section>
+          <section class="detail-card"><div class="detail-card-head"><strong>Notification Preferences</strong></div><div class="preferences-row"><div><strong>Manage how and when you receive notifications.</strong><p>Patrol assignments, dispatch messages, and system updates.</p></div><button type="button" class="ghost-button" data-action="open-notification-preferences">Open Preferences</button></div></section>` : '<div class="empty">No notification selected.</div>'}
+      </aside>
+    </section>
+  </div>`;
 }
+function notificationSummaryCard(icon, label, value, sub, tone = 'blue') {
+  return `<article class="notification-summary ${esc(tone)}"><div class="summary-icon">${esc(icon)}</div><div class="summary-copy"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div></article>`;
+}
+function notificationRow(item) {
+  return `<button type="button" class="notification-row ${String(state.selectedNotificationId) === String(item._id) ? 'active' : ''} ${item._isUnread ? 'unread' : ''}" data-action="select-notification" data-notification-id="${esc(item._id)}"><div class="notification-orb ${esc(notificationAccentClass(item))}">${esc(notificationIcon(item))}</div><div class="notification-row-copy"><div class="notification-row-top"><strong>${esc(item._title)}</strong>${item._isUnread ? '<span class="notif-dot"></span>' : ''}</div><p>${esc(item._body)}</p><div class="notification-row-tags"><span class="category-pill ${esc(notificationAccentClass(item))}">${esc(notificationCategoryLabel(item))}</span>${item._severity === 'high' ? '<span class="category-pill danger">High Priority</span>' : ''}</div></div><div class="notification-row-meta"><strong>${esc(item._time)}</strong><span>${esc(item._timeAgo)}</span>${item._isUnread ? '<i></i>' : ''}</div></button>`;
+}
+
 
 function proofUploadView() {
   state.view = 'active-job';
@@ -2683,6 +2900,11 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.notificationFilter) {
+      state.notificationFilter = button.dataset.notificationFilter;
+      render();
+      return;
+    }
     if (button.dataset.action === 'guard-online') {
       setGuardOnline();
       return;
@@ -2727,6 +2949,47 @@ document.addEventListener('click', async event => {
       state.selectedThreadId = button.dataset.threadId || '';
       markCurrentThreadRead();
       render();
+      return;
+    }
+    if (button.dataset.action === 'select-notification') {
+      state.selectedNotificationId = button.dataset.notificationId || '';
+      markNotificationReadById(state.selectedNotificationId);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'mark-all-notifications-read') {
+      markAllNotificationsRead();
+      render();
+      toast('All notifications marked as read.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'clear-notification-filters') {
+      state.notificationSearch = '';
+      state.notificationFilter = 'all';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'acknowledge-notification') {
+      markNotificationReadById(button.dataset.notificationId || state.selectedNotificationId);
+      render();
+      toast('Notification acknowledged.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'notification-open-linked-job') {
+      const note = selectedNotification();
+      const req = relatedRequestForNotification(note);
+      state.view = req && String(req.status) === 'completed' ? 'completed' : 'active-job';
+      if (req && String(req.status) === 'completed') state.selectedCompletedRequestId = req.id || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'notification-open-messages') {
+      state.view = 'messages';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'open-notification-preferences') {
+      toast('Notification preferences coming next.', 'success');
       return;
     }
     if (button.dataset.action === 'quick-message') {
@@ -2786,6 +3049,10 @@ document.addEventListener('input', event => {
   const input = event.target;
   if (input && input.hasAttribute('data-message-search')) {
     state.messageSearch = input.value || '';
+    render();
+  }
+  if (input && input.hasAttribute('data-notification-search')) {
+    state.notificationSearch = input.value || '';
     render();
   }
 });

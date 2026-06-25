@@ -1,10 +1,9 @@
-# Next Thread Handoff — Co Pilot Security v3.0.21
+# Next Thread Handoff — Co Pilot Security v3.0.22
 
-Latest build: v3.0.21 MESSAGE LAYOUT POLISH
+Latest build: v3.0.22 NOTIFICATIONS REDESIGN
 
 ## What changed
-- Built from v3.0.20.
-- Fixed tall skinny chat bubble behavior on Messages page.
-- Chat stream now stacks messages normally.
-- Sent messages show as `You`.
+- Rebuilt Notifications page into a premium alerts center.
+- Added search, filters, KPI cards, grouped list, and detail rail.
+- Added local read/acknowledge state for testing.
 - No new SQL required.
