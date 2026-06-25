@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-current-assignment-button-cleanup",
-  "version": "3.0.8",
+  "name": "co-pilot-security-active-job-workflow",
+  "version": "3.0.9",
   "private": true,
-  "description": "Removes duplicate Online/Offline buttons from Current Assignment; keeps GPS controls under map only.",
+  "description": "Guard Active Job workflow screen with clickable patrol status steps.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

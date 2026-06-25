@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.8',
-  label: 'v3.0.8 CURRENT ASSIGNMENT BUTTON CLEANUP'
+  version: '3.0.9',
+  label: 'v3.0.9 ACTIVE JOB WORKFLOW'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1277,6 +1277,266 @@ function guardDashboardMockup302() {
   </div>`;
 }
 
+function guardWorkflowStorageKey(req) {
+  return `cp_guard_workflow_stage_${String(req?.id || 'none')}`;
+}
+function guardWorkflowLogKey(req) {
+  return `cp_guard_workflow_log_${String(req?.id || 'none')}`;
+}
+function guardWorkflowValidStages() {
+  return ['accepted', 'on_way', 'arrived', 'checking', 'upload_proof', 'complete'];
+}
+function guardWorkflowStage(req) {
+  if (!req) return 'accepted';
+  if (String(req.status) === 'completed') return 'complete';
+  const stored = sessionStorage.getItem(guardWorkflowStorageKey(req));
+  if (guardWorkflowValidStages().includes(stored)) return stored;
+  if (String(req.status) === 'in_progress') return 'checking';
+  return 'accepted';
+}
+function guardWorkflowStageText(stage) {
+  return ({
+    accepted: 'Accepted',
+    on_way: 'On The Way',
+    arrived: 'Arrived',
+    checking: 'Checking Property',
+    upload_proof: 'Upload Proof',
+    complete: 'Complete'
+  })[stage] || 'Accepted';
+}
+function guardWorkflowInstruction(stage) {
+  return ({
+    accepted: 'Assignment accepted. When you leave for the property, mark On The Way.',
+    on_way: 'You are currently en route to the property. When you arrive, mark Arrived to continue.',
+    arrived: 'You are on site. Start checking the property when the patrol begins.',
+    checking: 'Complete the property check, then upload proof photos or video.',
+    upload_proof: 'Upload required proof, then complete the job when the patrol is finished.',
+    complete: 'Job completed. The property marker is cleared from the live map workflow.'
+  })[stage] || 'Use the workflow buttons below to continue.';
+}
+function guardWorkflowIndex(stage) {
+  return Math.max(0, guardWorkflowValidStages().indexOf(stage));
+}
+function guardWorkflowLocalLogs(req) {
+  if (!req) return [];
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(guardWorkflowLogKey(req)) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function addGuardWorkflowLocalLog(req, title, details) {
+  if (!req) return;
+  const rows = guardWorkflowLocalLogs(req);
+  rows.unshift({ created_at: new Date().toISOString(), title, details, actor: activeGuardName() });
+  sessionStorage.setItem(guardWorkflowLogKey(req), JSON.stringify(rows.slice(0, 12)));
+}
+function setGuardWorkflowLocalStage(req, stage) {
+  if (!req) return;
+  sessionStorage.setItem(guardWorkflowStorageKey(req), stage);
+}
+function guardWorkflowProofProgress(req) {
+  const count = req ? proofForRequest(req.id).length : 0;
+  const target = 4;
+  return { count, target, pct: Math.min(100, Math.round((count / target) * 100)) };
+}
+async function callGuardStatusRpc(req, nextStatus) {
+  const result = await supabase.rpc('cp_guard_update_patrol_request_status', {
+    p_request_id: req.id,
+    p_next_status: nextStatus
+  });
+  if (!result?.ok) throw new Error(result?.message || 'Workflow status could not be updated.');
+  return result.request || null;
+}
+async function updateGuardWorkflowStep(requestId, step) {
+  const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
+  if (!req) throw new Error('Active job not found.');
+  const beforeStatus = String(req.status || 'assigned');
+
+  if (step === 'upload_proof') {
+    setGuardWorkflowLocalStage(req, 'upload_proof');
+    addGuardWorkflowLocalLog(req, 'Opened Upload Proof', `${propertyLabel(req)} proof workflow opened`);
+    state.view = 'upload-proof';
+    render();
+    return;
+  }
+
+  if (step === 'on_way') {
+    if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
+    setGuardWorkflowLocalStage(req, 'on_way');
+    addGuardWorkflowLocalLog(req, 'Guard marked On The Way', `${propertyLabel(req)} · route started`);
+  } else if (step === 'arrived') {
+    if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
+    const latest = state.patrolRequests.find(r => String(r.id) === String(requestId)) || req;
+    if (String(latest.status || beforeStatus) !== 'in_progress') await callGuardStatusRpc(latest, 'in_progress');
+    setGuardWorkflowLocalStage(req, 'arrived');
+    addGuardWorkflowLocalLog(req, 'Guard marked Arrived', `${propertyLabel(req)} · on site`);
+  } else if (step === 'checking') {
+    if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
+    const latest = state.patrolRequests.find(r => String(r.id) === String(requestId)) || req;
+    if (String(latest.status || beforeStatus) !== 'in_progress') await callGuardStatusRpc(latest, 'in_progress');
+    setGuardWorkflowLocalStage(req, 'checking');
+    addGuardWorkflowLocalLog(req, 'Started Property Check', `${propertyLabel(req)} · checking property`);
+  } else if (step === 'complete') {
+    let latest = req;
+    if (String(latest.status) === 'assigned') {
+      const updated = await callGuardStatusRpc(latest, 'accepted');
+      latest = updated || latest;
+    }
+    if (String(latest.status) === 'accepted') {
+      const updated = await callGuardStatusRpc(latest, 'in_progress');
+      latest = updated || latest;
+    }
+    if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
+    setGuardWorkflowLocalStage(req, 'complete');
+    addGuardWorkflowLocalLog(req, 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
+    liveGps.propertyLat = null;
+    liveGps.propertyLng = null;
+    liveGps.propertyAddress = '';
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    liveGps.selectedMapCard = null;
+  }
+
+  await loadData();
+  render();
+  toast(`${guardWorkflowStageText(step)} saved.`, 'success');
+}
+function activeJobSummaryCard(req) {
+  const photo = getPropertyPhotoUrl(req);
+  const proof = guardWorkflowProofProgress(req);
+  const stage = guardWorkflowStage(req);
+  const thumb = photo ? `<img src="${esc(photo)}" alt="${esc(propertyLabel(req))}">` : `<div class="active-job-photo-fallback"><span>CP</span><strong>${esc(initials(propertyLabel(req)))}</strong></div>`;
+  return `<section class="panel panel-pad active-job-summary-card">
+    <div class="active-job-photo">${thumb}</div>
+    <div class="active-job-summary-main">
+      <div class="active-job-card-title"><h2>${esc(requestTitle(req))}</h2>${statusChip(req.status)}</div>
+      <h3>${esc(propertyLabel(req))}</h3>
+      <p>${esc(propertyAddress(req))}</p>
+      <div class="active-job-chip-row"><span>● GPS ${liveGps.online ? 'Live' : 'Offline'}</span><span>${esc(req.priority || 'Medium')}</span><span>${esc(proof.count)} Proof Uploaded</span><button type="button" data-view="route-gps">Open Assignment</button></div>
+    </div>
+    <div class="active-job-meta-grid">
+      <div><small>Started</small><strong>${esc(fmtDate(req.started_at || req.accepted_at || req.assigned_at || req.created_at))}</strong></div>
+      <div><small>ETA</small><strong>${esc(liveGps.routeEtaMin ? fmtTime(new Date(Date.now() + liveGps.routeEtaMin * 60000).toISOString()) + ' (' + liveGps.routeEtaMin + ' min)' : '—')}</strong></div>
+      <div><small>Priority</small><strong><i></i>${esc(req.priority || 'Medium')}</strong></div>
+      <div><small>Status</small><strong>${esc(guardWorkflowStageText(stage))}</strong></div>
+    </div>
+  </section>`;
+}
+function activeJobWorkflowPanel(req) {
+  const stage = guardWorkflowStage(req);
+  const currentIdx = guardWorkflowIndex(stage);
+  const steps = [
+    ['accepted', '✓', 'Accepted'],
+    ['on_way', '▣', 'On The Way'],
+    ['arrived', '⌖', 'Arrived'],
+    ['checking', '⌕', 'Checking Property'],
+    ['upload_proof', '⇧', 'Upload Proof'],
+    ['complete', '✓', 'Complete']
+  ];
+  return `<section class="panel panel-pad active-workflow-panel">
+    <div class="panel-head"><div><h2>Workflow Progress</h2><p>Tap the next step as the patrol moves forward.</p></div></div>
+    <div class="active-stepper">
+      ${steps.map(([key, icon, label], idx) => `<button type="button" class="active-step ${idx < currentIdx ? 'done' : idx === currentIdx ? 'current' : 'wait'}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="${esc(key)}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${idx < currentIdx ? 'Done' : idx === currentIdx ? 'Current' : 'Pending'}</small></button>`).join('')}
+    </div>
+    <div class="active-workflow-status"><strong>Current Status: <b>${esc(guardWorkflowStageText(stage))}</b></strong><p>${esc(guardWorkflowInstruction(stage))}</p></div>
+    <div class="active-job-action-row">
+      <button type="button" class="active-job-action primary" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
+      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
+      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
+      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Open Upload Proof</button>
+      <button type="button" class="active-job-action" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
+    </div>
+  </section>`;
+}
+function activeJobLogPanel(req) {
+  const local = guardWorkflowLocalLogs(req);
+  const remote = req ? state.patrolActivity.filter(item => String(item.request_id) === String(req.id)).map(item => ({
+    created_at: item.created_at,
+    title: item.title || item.event_type || 'Patrol Event',
+    details: item.details || item.message || '',
+    actor: requestGuardName(req)
+  })) : [];
+  const fallback = req ? [
+    { created_at: req.accepted_at || req.assigned_at || req.created_at, title: 'Guard accepted patrol', details: `${propertyLabel(req)} · assignment active`, actor: activeGuardName() },
+    { created_at: req.assigned_at || req.created_at, title: 'Admin assigned guard', details: `${activeGuardName()} assigned to patrol request`, actor: 'System' },
+    { created_at: req.created_at, title: 'Patrol request created', details: propertyAddress(req), actor: 'System' }
+  ] : [];
+  const rows = [...local, ...remote, ...fallback].filter(x => x.created_at).slice(0, 7);
+  return `<section class="panel panel-pad active-job-log-panel">
+    <div class="panel-head"><div><h2>Activity / Job Log</h2><p>Request timeline</p></div><button class="ghost-button" data-view="activity-log">View Full Activity</button></div>
+    <div class="active-log-table">
+      ${rows.length ? rows.map(row => `<div class="active-log-row"><span>${esc(fmtTime(row.created_at))}</span><i>•</i><strong>${esc(row.title)}</strong><p>${esc(row.details)}</p><em>${esc(row.actor || 'System')}</em></div>`).join('') : `<div class="empty">No activity yet.</div>`}
+    </div>
+  </section>`;
+}
+function activeJobGpsMini(req) {
+  const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  const showProperty = liveGps.online && Boolean(req);
+  const proof = guardWorkflowProofProgress(req);
+  return `<section class="panel panel-pad active-rail-card active-gps-mini">
+    <div class="active-rail-head"><h2>Route / GPS <span class="${liveGps.online ? 'on' : ''}">${liveGps.online ? 'Online' : 'Offline'}</span></h2></div>
+    <div class="active-mini-map">
+      <span class="street s1">I-15</span><span class="street s2">S Main St</span><span class="street s3">W Charleston Blvd</span>
+      <div class="road a"></div><div class="road b"></div><div class="road c"></div>
+      ${showProperty ? '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M 22 72 C 36 72, 35 42, 54 48 S 70 37, 82 23"></path></svg>' : ''}
+      ${hasGuard ? '<button type="button" class="active-mini-marker guard" data-action="map-card" data-card="guard"><span></span></button>' : ''}
+      ${showProperty ? '<button type="button" class="active-mini-marker property" data-action="map-card" data-card="property"><span></span></button>' : ''}
+      ${liveGps.selectedMapCard === 'guard' && hasGuard ? guard302GuardCard(req) : ''}
+      ${liveGps.selectedMapCard === 'property' && showProperty ? guard302PropertyCard(req) : ''}
+    </div>
+    <div class="active-rail-metrics"><div><small>ETA</small><strong>${esc(liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div><div><small>Distance</small><strong>${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div><div><small>Accuracy</small><strong>${esc(liveGps.accuracy ? '±' + Math.round(liveGps.accuracy) + ' ft' : '—')}</strong></div></div>
+  </section>`;
+}
+function activeJobDetailsCard(req) {
+  return `<section class="panel panel-pad active-rail-card">
+    <div class="active-rail-head"><h2>Open Job Details</h2></div>
+    <div class="active-detail-list"><span>Request #</span><strong>${esc(String(req.request_number || req.id || '').slice(0, 8))}</strong><span>Property</span><strong>${esc(propertyLabel(req))}</strong><span>Scheduled</span><strong>${esc(fmtDate(req.scheduled_for || req.requested_for || req.scheduled_at || req.created_at))}</strong><span>Client</span><strong>${esc(requestClientName(req))}</strong></div>
+    <button class="ghost-button active-full-width" data-view="dashboard">View Full Job</button>
+  </section>`;
+}
+function activeJobProofNotesCard(req) {
+  const proof = guardWorkflowProofProgress(req);
+  const local = guardWorkflowLocalLogs(req)[0];
+  return `<section class="panel panel-pad active-rail-card">
+    <div class="active-rail-head"><h2>Proof / Notes</h2><button class="ghost-button" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">Upload Proof</button></div>
+    <div class="active-proof-row"><span>Proof Progress</span><b>${esc(proof.count)} / ${esc(proof.target)} uploaded</b></div>
+    <div class="active-proof-bar"><i style="width:${esc(proof.pct)}%"></i></div>
+    <div class="active-note-box"><small>Notes from Guard</small><p>${esc(local?.details || req.instructions || 'No guard notes yet.')}</p><em>— ${esc(activeGuardName())}</em></div>
+  </section>`;
+}
+function activeJobNotificationsCard() {
+  const notes = state.notifications.slice(0, 2);
+  return `<section class="panel panel-pad active-rail-card">
+    <div class="active-rail-head"><h2>Recent Notifications</h2><button class="ghost-button" data-view="notifications">View All</button></div>
+    <div class="active-notice-list">${notes.length ? notes.map(n => `<button type="button" data-view="notifications"><i></i><span><strong>${esc(n.title || n.event_type || 'Notification')}</strong><small>${esc(n.message || n.details || '')}</small></span><em>${esc(fmtTime(n.created_at))}</em></button>`).join('') : `<div class="empty">No notifications yet.</div>`}</div>
+  </section>`;
+}
+function guardActiveJobWorkflowView() {
+  const req = guard302CurrentRequest();
+  if (!req) {
+    return `<div class="dashboard guard-active-workflow"><header class="dashboard-header"><div class="title-block"><h1>Active Job</h1><p>Manage your current patrol workflow from start to finish.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div class="empty"><strong>No Active Job</strong><br>When Dispatch assigns a patrol, the workflow controls will appear here.</div></section></div>`;
+  }
+  return `<div class="dashboard guard-active-workflow">
+    <header class="dashboard-header active-job-header"><div class="title-block"><h1>Active Job</h1><p>Manage your current patrol workflow from start to finish.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header>
+    <section class="active-job-layout">
+      <div class="active-job-main-col">
+        ${activeJobSummaryCard(req)}
+        ${activeJobWorkflowPanel(req)}
+        ${activeJobLogPanel(req)}
+      </div>
+      <aside class="active-job-right-col">
+        ${activeJobGpsMini(req)}
+        ${activeJobDetailsCard(req)}
+        ${activeJobProofNotesCard(req)}
+        ${activeJobNotificationsCard()}
+      </aside>
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -1349,7 +1609,7 @@ function renderRoleView() {
   }
   if (state.role === 'guard') {
     if (state.view === 'dashboard') return guardDashboardMockup302();
-    if (state.view === 'active-job') return tableView('Active Job', 'Current guard assignments.', state.patrolRequests);
+    if (state.view === 'active-job') return guardActiveJobWorkflowView();
     if (state.view === 'route-gps') return compactDashboard('guard');
     if (state.view === 'upload-proof') return proofUploadView();
   }
@@ -1372,14 +1632,14 @@ function renderAppShell() {
 
 
 function scheduleGuardLeafletMap() {
-  if (state.role === 'guard' && state.view === 'dashboard') {
+  if (state.role === 'guard' && ['dashboard','active-job'].includes(state.view)) {
     requestAnimationFrame(() => {
       [75, 450, 1200, 2500].forEach(delay => setTimeout(initGuardLeafletMap, delay));
     });
   }
 }
 function scheduleGuardGpsPrep() {
-  if (state.role !== 'guard' || state.view !== 'dashboard') return;
+  if (state.role !== 'guard' || !['dashboard','active-job'].includes(state.view)) return;
   if (!liveGps.online) return;
   const req = guard302CurrentRequest();
   if (!req) return;
@@ -1397,7 +1657,7 @@ function scheduleGuardGpsPrep() {
     try {
       await geocodePropertyIfNeeded(req);
     } finally {
-      if (state.role === 'guard' && state.view === 'dashboard') render();
+      if (state.role === 'guard' && ['dashboard','active-job'].includes(state.view)) render();
     }
   }, 250);
 }
@@ -1573,6 +1833,10 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'close-map-card') {
       closeMapCard();
+      return;
+    }
+    if (button.dataset.action === 'guard-workflow-step') {
+      await updateGuardWorkflowStep(button.dataset.requestId, button.dataset.step);
       return;
     }
     if (button.dataset.action === 'logout') {

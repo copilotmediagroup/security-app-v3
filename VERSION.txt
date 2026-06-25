@@ -1,18 +1,20 @@
 Co Pilot Security
-Version: 3.0.8
-Build Name: CURRENT ASSIGNMENT BUTTON CLEANUP
+Version: 3.0.9
+Build Name: ACTIVE JOB WORKFLOW
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.7.
-- Removes the duplicate Online and Offline buttons from the Current Assignment card.
-- Current Assignment now only shows Open Active Job.
-- Online and Offline GPS controls remain below the Route / GPS map only.
-- Preserves the v3.0.7 marker visibility flow: offline hides both markers, online shows guard marker, and property marker appears only during an active job.
-- Bottom-right badge remains active.
+- Built from v3.0.8.
+- Replaces the Guard Active Job table with a full workflow screen.
+- Active Job is now the guard's hands-on open job page.
+- Shows a single current assignment, workflow stepper, quick action buttons, activity/job log, GPS preview, job details, proof progress, notes, and notifications.
+- Guards can click Mark On The Way, Mark Arrived, Start Checking, Open Upload Proof, and Complete Job.
+- Uses existing cp_guard_update_patrol_request_status RPC for accepted/in_progress/completed transitions.
+- Uses sessionStorage for the finer on-the-way/arrived/checking/upload-proof UI stage without requiring new SQL.
+- Preserves v3.0.8 map marker visibility rules.
 
 Badge:
-v3.0.8 CURRENT ASSIGNMENT BUTTON CLEANUP
+v3.0.9 ACTIVE JOB WORKFLOW
 
 SQL:
 No new SQL required.

@@ -1,15 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.8",
-  "buildName": "CURRENT ASSIGNMENT BUTTON CLEANUP",
-  "type": "guard-current-assignment-button-cleanup",
+  "version": "3.0.9",
+  "buildName": "ACTIVE JOB WORKFLOW",
+  "type": "guard-active-job-workflow",
   "sql_required": false,
   "features": [
-    "Removed duplicate Online button from the Current Assignment card",
-    "Removed duplicate Offline button from the Current Assignment card",
-    "Current Assignment now keeps only Open Active Job",
-    "Online/Offline GPS controls remain below the Route / GPS map",
-    "Marker visibility flow from v3.0.7 is preserved",
+    "Guard Active Job page rebuilt as a workflow screen",
+    "Single current assignment card instead of patrol history table",
+    "Clickable workflow stepper",
+    "Quick action buttons for On The Way, Arrived, Checking, Upload Proof, and Complete",
+    "Activity / job log panel",
+    "Right rail GPS preview, open job details, proof/notes, and notifications",
+    "Uses existing Supabase RPC for status updates",
+    "No new SQL required",
     "Bottom-right badge preserved"
   ]
 }
