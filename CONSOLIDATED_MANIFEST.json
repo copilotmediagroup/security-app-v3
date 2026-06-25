@@ -1,19 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.32",
-  "buildName": "REQUEST PATROL COMMAND CENTER",
-  "type": "client-request-patrol-command-center",
+  "version": "3.0.19",
+  "buildName": "MAP TEXT STAMPS",
+  "type": "route-gps-map-behavior-card-stamps",
   "sql_required": false,
   "features": [
-    "Rebuilt Client Patrol Requests form into command-center layout matching the developer mockup",
-    "Added Request Type dropdown in the form synced with the request type cards",
-    "Converted Priority to a segmented Normal / High / Emergency control",
-    "Reorganized the form into clean rows: property/type/priority, schedule, instructions/services, upload/submit",
-    "Requested Services are now aligned service cards with icons",
-    "Reference Photo/Video remains device-upload only with no URL entry",
-    "Upload preview supports photo/video file name display",
-    "Request Summary rail includes service icons and clearer request context",
-    "Request History table remains below the form",
+    "Removed separate timestamp block from Route/GPS Map Behavior panel",
+    "Added timestamps directly inside each Map Behavior text card",
+    "Online card shows Online Since",
+    "Active Job card shows current checked date/time",
+    "Offline card shows Last Offline",
+    "Marker Click card shows Last GPS Update",
+    "Persistent online/offline behavior preserved",
     "No new SQL required"
   ]
 }
