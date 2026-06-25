@@ -1,6 +1,6 @@
 {
-  "name": "co-pilot-security-active-job-workflow",
-  "version": "3.0.9",
+  "name": "co-pilot-security-client-patrol-request-flow",
+  "version": "3.0.10",
   "private": true,
   "description": "Guard Active Job workflow screen with clickable patrol status steps.",
   "scripts": {

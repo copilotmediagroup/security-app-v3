@@ -1,18 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.9",
-  "buildName": "ACTIVE JOB WORKFLOW",
-  "type": "guard-active-job-workflow",
+  "version": "3.0.10",
+  "buildName": "CLIENT PATROL REQUEST FLOW",
+  "type": "client-request-patrol-dev-flow",
   "sql_required": false,
   "features": [
-    "Guard Active Job page rebuilt as a workflow screen",
-    "Single current assignment card instead of patrol history table",
-    "Clickable workflow stepper",
-    "Quick action buttons for On The Way, Arrived, Checking, Upload Proof, and Complete",
-    "Activity / job log panel",
-    "Right rail GPS preview, open job details, proof/notes, and notifications",
-    "Uses existing Supabase RPC for status updates",
-    "No new SQL required",
-    "Bottom-right badge preserved"
+    "Client Patrol Requests page now includes a real New Patrol Request form",
+    "Form submits to existing Supabase cp_submit_patrol_request RPC",
+    "Submitted requests appear in Dispatch/Admin Pending Dispatch",
+    "Development flow card explains Client to Dispatch to Guard to Report cycle",
+    "Saved property picker can prefill the request form",
+    "Request history remains visible under the form",
+    "Preserves Guard Active Job workflow and marker visibility rules"
   ]
 }

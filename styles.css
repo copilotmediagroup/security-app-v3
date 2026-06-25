@@ -2132,3 +2132,112 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .active-log-row { grid-template-columns: 76px 18px 1fr; }
   .active-log-row p, .active-log-row em { grid-column: 3; text-align:left; }
 }
+
+/* v3.0.10 Client Patrol Request Flow */
+.client-request-dashboard { gap: 16px; }
+.client-request-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+.client-request-main, .client-request-right { display: grid; gap: 16px; min-width: 0; }
+.client-request-form-card, .client-request-history-card { overflow: visible; }
+.client-flow-pill {
+  height: 31px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid rgba(49, 200, 255, .22);
+  background: rgba(30, 112, 214, .14);
+  color: #9bd6ff;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.client-request-form { display: grid; gap: 14px; }
+.client-request-submit-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.client-request-list { display: grid; gap: 9px; }
+.client-request-row {
+  min-height: 74px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 150px minmax(0, .9fr) 74px;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(113, 169, 232, .12);
+  background: rgba(8, 22, 38, .46);
+  border-radius: 9px;
+  padding: 12px 14px;
+}
+.client-request-row strong { display: block; color: #f5fbff; }
+.client-request-row span, .client-request-row small { display: block; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.client-request-row p { margin: 0; }
+.client-request-row b { display: block; color: #dcecff; font-size: 13px; }
+.client-request-row em { font-style: normal; color: #8fcaff; font-weight: 900; text-align: right; }
+.client-flow-card, .client-selected-card, .client-latest-card { min-width: 0; }
+.client-flow-steps { display: grid; gap: 10px; }
+.client-flow-steps > div {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  align-items: start;
+  border: 1px solid rgba(113, 169, 232, .12);
+  background: rgba(8, 22, 38, .48);
+  border-radius: 9px;
+  padding: 11px;
+}
+.client-flow-steps i {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(46,125,255,.88), rgba(22,88,207,.88));
+  color: #fff;
+  font-style: normal;
+  font-weight: 1000;
+}
+.client-flow-steps strong { display: block; color: #f4fbff; }
+.client-flow-steps small { display: block; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.client-property-pick-list { display: grid; gap: 10px; }
+.client-property-pick {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 11px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid rgba(113, 169, 232, .12);
+  border-radius: 9px;
+  background: rgba(8, 22, 38, .54);
+  color: #edf7ff;
+  padding: 9px;
+}
+.client-property-pick:hover { border-color: rgba(46, 125, 255, .45); background: rgba(18, 46, 82, .58); }
+.client-property-pick img, .client-property-pick i {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: rgba(46,125,255,.14);
+  border: 1px solid rgba(113, 169, 232, .15);
+  color: #8fcaff;
+  font-style: normal;
+  font-weight: 1000;
+}
+.client-property-pick strong { display: block; color: #fff; }
+.client-property-pick small { display: block; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.client-latest-box { display: grid; gap: 7px; }
+.client-latest-box strong { font-size: 18px; }
+.client-latest-box span, .client-latest-box small { color: var(--muted); }
+@media (max-width: 1180px) {
+  .client-request-layout { grid-template-columns: 1fr; }
+  .client-request-row { grid-template-columns: 1fr; align-items: start; }
+  .client-request-row em { text-align: left; }
+}

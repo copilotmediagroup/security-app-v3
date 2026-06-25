@@ -1,20 +1,20 @@
 Co Pilot Security
-Version: 3.0.9
-Build Name: ACTIVE JOB WORKFLOW
+Version: 3.0.10
+Build Name: CLIENT PATROL REQUEST FLOW
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.8.
-- Replaces the Guard Active Job table with a full workflow screen.
-- Active Job is now the guard's hands-on open job page.
-- Shows a single current assignment, workflow stepper, quick action buttons, activity/job log, GPS preview, job details, proof progress, notes, and notifications.
-- Guards can click Mark On The Way, Mark Arrived, Start Checking, Open Upload Proof, and Complete Job.
-- Uses existing cp_guard_update_patrol_request_status RPC for accepted/in_progress/completed transitions.
-- Uses sessionStorage for the finer on-the-way/arrived/checking/upload-proof UI stage without requiring new SQL.
-- Preserves v3.0.8 map marker visibility rules.
+- Built from v3.0.9 ACTIVE JOB WORKFLOW.
+- Adds a client-facing Request Patrol page for development/testing.
+- Client can choose a saved property, priority, patrol type, proof preference, and instructions.
+- Submits to the existing Supabase cp_submit_patrol_request RPC.
+- New requests should show for Dispatch/Admin under Pending Dispatch.
+- Request history remains visible so the client can see pending, assigned, active, and completed patrols.
+- No new SQL required if the existing consolidated SQL/RPCs are already installed.
+- Preserves Guard Active Job workflow and map marker visibility rules.
 
 Badge:
-v3.0.9 ACTIVE JOB WORKFLOW
+v3.0.10 CLIENT PATROL REQUEST FLOW
 
 SQL:
 No new SQL required.

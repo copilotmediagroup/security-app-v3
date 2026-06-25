@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.9',
-  label: 'v3.0.9 ACTIVE JOB WORKFLOW'
+  version: '3.0.10',
+  label: 'v3.0.10 CLIENT PATROL REQUEST FLOW'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -387,6 +387,41 @@ async function uploadProof(form) {
   state.view = state.role === 'guard' ? 'upload-proof' : 'proof-review';
   render();
   toast('Proof uploaded.', 'success');
+}
+
+
+async function submitClientPatrolRequest(form) {
+  const propertyId = form.property_id?.value || '';
+  const priority = form.priority?.value || 'normal';
+  const patrolType = form.patrol_type?.value || 'standard';
+  const proofPreference = form.proof_preference?.value || 'photo';
+  const instructions = form.instructions?.value?.trim() || '';
+  if (!propertyId) throw new Error('Choose a saved property before requesting patrol.');
+
+  let result = null;
+  try {
+    result = await supabase.rpc('cp_submit_patrol_request', {
+      p_property_id: propertyId,
+      p_priority: priority,
+      p_instructions: instructions,
+      p_patrol_type: patrolType,
+      p_proof_preference: proofPreference
+    });
+  } catch (err) {
+    const msg = String(err?.message || err || '').toLowerCase();
+    if (!(msg.includes('function') || msg.includes('argument') || msg.includes('schema cache'))) throw err;
+    result = await supabase.rpc('cp_submit_patrol_request', {
+      p_property_id: propertyId,
+      p_priority: priority,
+      p_instructions: instructions
+    });
+  }
+
+  if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be submitted.');
+  await loadData();
+  state.view = 'patrol-requests';
+  render();
+  toast('Patrol request submitted to Dispatch.', 'success');
 }
 
 function renderLoading() {
@@ -1587,6 +1622,84 @@ function proofUploadView() {
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Upload Proof</h1><p>Upload photo or video proof for patrol work.</p></div></header><section class="page-panel">${eligible.length ? `<form class="form-grid" data-form="proof-upload"><label>Patrol Request<select name="request_id">${eligible.map(r => `<option value="${esc(r.id)}">${esc(requestTitle(r))} · ${esc(propertyLabel(r))} · ${esc(statusText(r.status))}</option>`).join('')}</select></label><label>Proof Files<input type="file" name="proof_files" accept="image/*,video/*" multiple required></label><label>Note<textarea name="note" placeholder="Optional note"></textarea></label><div class="button-row"><button class="btn success" type="submit">Upload Proof</button></div></form>` : '<div class="empty">No assignments available for proof upload.</div>'}</section></div>`;
 }
 
+function clientOpenRequests() {
+  return state.patrolRequests.filter(r => ['pending_dispatch', 'assigned', 'accepted', 'in_progress'].includes(String(r.status || 'pending_dispatch')));
+}
+function clientRecentRequests() {
+  return [...state.patrolRequests].sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+}
+function clientPropertyOptionLabel(p = {}) {
+  const name = p.label || p.name || p.property_name || 'Property';
+  const address = [p.address || p.address_line1, p.city, p.state, p.zip_code].filter(Boolean).join(', ');
+  return address ? `${name} — ${address}` : name;
+}
+function clientRequestStatusLabel(req = {}) {
+  const status = String(req.status || 'pending_dispatch');
+  if (status === 'pending_dispatch') return 'Waiting for Dispatch';
+  if (status === 'assigned') return 'Guard Assigned';
+  if (status === 'accepted') return 'Guard Accepted';
+  if (status === 'in_progress') return 'In Progress';
+  if (status === 'completed') return 'Completed';
+  return statusText(status);
+}
+function clientRequestCard(req) {
+  const proof = proofForRequest(req.id).length;
+  return `<article class="client-request-row">
+    <div><strong>${esc(requestTitle(req))}</strong><span>${esc(propertyLabel(req))}</span><small>${esc(propertyAddress(req))}</small></div>
+    <p>${statusChip(req.status)}</p>
+    <div><b>${esc(clientRequestStatusLabel(req))}</b><small>${esc(fmtDate(req.created_at || req.requested_at))}</small></div>
+    <em>${esc(proof)} proof</em>
+  </article>`;
+}
+function clientPropertyCardForRequest(p) {
+  const photo = p.photo_url || p.image_url || p.property_photo_url || p.reference_photo_url || '';
+  const address = [p.address || p.address_line1, p.city, p.state, p.zip_code].filter(Boolean).join(', ');
+  return `<button type="button" class="client-property-pick" data-action="client-prefill-property" data-property-id="${esc(p.id)}">
+    ${photo ? `<img src="${esc(photo)}" alt="${esc(p.label || p.name || 'Property')}">` : `<i>${esc(initials(p.label || p.name || 'CP'))}</i>`}
+    <span><strong>${esc(p.label || p.name || p.property_name || 'Property')}</strong><small>${esc(address || 'Address unavailable')}</small></span>
+  </button>`;
+}
+function clientPatrolRequestsView() {
+  const properties = state.properties || [];
+  const recent = clientRecentRequests();
+  const open = clientOpenRequests();
+  const completed = completedRequests();
+  const latest = recent[0] || null;
+  const propertyOptions = properties.map(p => `<option value="${esc(p.id)}">${esc(clientPropertyOptionLabel(p))}</option>`).join('');
+  return `<div class="dashboard client-request-dashboard">
+    <header class="dashboard-header"><div class="title-block"><h1>Request Patrol</h1><p>Development request flow: client submits a patrol, Dispatch sees it in Pending Dispatch, then a guard can be assigned.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header>
+    <section class="kpi-row">
+      ${kpiCard('▤', 'Open Requests', open.length, 'Pending or active', '#2f83ff')}
+      ${kpiCard('⌂', 'Saved Properties', properties.length, 'Available for patrol', '#37dc72')}
+      ${kpiCard('✓', 'Completed', completed.length, 'Finished patrols', '#b05cff')}
+      ${kpiCard('▣', 'Proof Items', state.proofItems.length, 'Uploaded by guards', '#ffb53d')}
+    </section>
+    <section class="client-request-layout">
+      <div class="client-request-main">
+        <section class="panel panel-pad client-request-form-card">
+          <div class="panel-head"><div><h2>New Patrol Request</h2><p>Use this form to create a real pending dispatch request for testing the full app workflow.</p></div><span class="client-flow-pill">Client → Dispatch → Guard → Report</span></div>
+          ${properties.length ? `<form class="client-request-form" data-form="client-patrol-request">
+            <label>Property<select name="property_id" required><option value="">Choose property</option>${propertyOptions}</select></label>
+            <div class="form-row"><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Patrol Type<select name="patrol_type"><option value="standard">Standard Patrol</option><option value="suspicious_activity">Suspicious Activity</option><option value="alarm_response">Alarm Response</option><option value="vacation_watch">Vacation Watch</option><option value="custom">Custom</option></select></label></div>
+            <label>Proof Preference<select name="proof_preference"><option value="photo">Photo proof</option><option value="video">Video proof</option><option value="photo_video">Photo + video proof</option><option value="none">No proof required</option></select></label>
+            <label>Instructions<textarea name="instructions" placeholder="Example: Check front entrance, rear door, parking lot, and upload photos of all gates."></textarea></label>
+            <div class="client-request-submit-row"><button class="btn success" type="submit">Submit Patrol Request</button><button class="btn secondary" type="button" data-view="properties">View Properties</button></div>
+          </form>` : `<div class="empty"><strong>No saved properties yet.</strong><br>Add or assign a client property first, then this request form will submit real patrol jobs to Dispatch.</div>`}
+        </section>
+        <section class="panel panel-pad client-request-history-card">
+          <div class="panel-head"><div><h2>Request History</h2><p>Recent client patrol requests</p></div><button class="ghost-button" data-action="refresh-data">Refresh</button></div>
+          <div class="client-request-list">${recent.length ? recent.slice(0, 8).map(clientRequestCard).join('') : `<div class="empty">No patrol requests yet.</div>`}</div>
+        </section>
+      </div>
+      <aside class="client-request-right">
+        <section class="panel panel-pad client-flow-card"><div class="panel-head"><div><h2>Testing Flow</h2><p>What should happen after submit</p></div></div><div class="client-flow-steps"><div><i>1</i><span><strong>Client submits</strong><small>Status becomes Pending Dispatch</small></span></div><div><i>2</i><span><strong>Dispatch sees request</strong><small>Admin Pending Dispatch count increases</small></span></div><div><i>3</i><span><strong>Guard gets assigned</strong><small>Guard Active Job workflow appears</small></span></div><div><i>4</i><span><strong>Proof + report</strong><small>Guard uploads proof, Admin builds final report</small></span></div></div></section>
+        <section class="panel panel-pad client-selected-card"><div class="panel-head"><div><h2>Saved Properties</h2><p>Click a property to pre-fill the request form</p></div></div><div class="client-property-pick-list">${properties.length ? properties.slice(0, 5).map(clientPropertyCardForRequest).join('') : `<div class="empty">No properties available.</div>`}</div></section>
+        <section class="panel panel-pad client-latest-card"><div class="panel-head"><div><h2>Latest Request</h2><p>Newest client activity</p></div></div>${latest ? `<div class="client-latest-box"><strong>${esc(requestTitle(latest))}</strong><span>${esc(propertyLabel(latest))}</span><p>${statusChip(latest.status)}</p><small>${esc(fmtDate(latest.updated_at || latest.created_at))}</small></div>` : `<div class="empty">Submit the first request to start testing.</div>`}</section>
+      </aside>
+    </section>
+  </div>`;
+}
+
 function settingsView() {
   const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'User';
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Settings</h1><p>Account and app status.</p></div></header><section class="page-panel"><div class="top-panel-grid"><div><p class="eyebrow">Account</p><h2>${esc(name)}</h2><p style="color:var(--muted)">${esc(state.profile?.email || '')}</p><p>${statusChip(state.role)}</p></div><div><p class="eyebrow">Build</p><h2>${esc(BUILD.label)}</h2><p style="color:var(--muted)">Bottom-right badge is hard coded and refreshed after every render.</p></div></div></section></div>`;
@@ -1616,7 +1729,7 @@ function renderRoleView() {
   if (state.role === 'client') {
     if (state.view === 'dashboard') return compactDashboard('client');
     if (state.view === 'properties') return cardsView('Properties', 'Client properties.', state.properties);
-    if (state.view === 'patrol-requests') return tableView('Patrol Requests', 'Client patrol request history.', state.patrolRequests);
+    if (state.view === 'patrol-requests') return clientPatrolRequestsView();
     if (state.view === 'reports') return cardsView('Reports', 'Released client reports.', state.patrolReports);
   }
   if (state.view === 'messages') return messagesView();
@@ -1835,6 +1948,17 @@ document.addEventListener('click', async event => {
       closeMapCard();
       return;
     }
+    if (button.dataset.action === 'client-prefill-property') {
+      const select = document.querySelector('[data-form="client-patrol-request"] select[name="property_id"]');
+      if (select) { select.value = button.dataset.propertyId || ''; select.focus(); }
+      return;
+    }
+    if (button.dataset.action === 'refresh-data') {
+      await loadData();
+      render();
+      toast('Data refreshed.', 'success');
+      return;
+    }
     if (button.dataset.action === 'guard-workflow-step') {
       await updateGuardWorkflowStep(button.dataset.requestId, button.dataset.step);
       return;
@@ -1866,6 +1990,7 @@ document.addEventListener('submit', async event => {
     if (form.dataset.form === 'guard-signup') await submitGuardSignup(form);
     if (form.dataset.form === 'client-signup') await submitClientSignup(form);
     if (form.dataset.form === 'proof-upload') await uploadProof(form);
+    if (form.dataset.form === 'client-patrol-request') await submitClientPatrolRequest(form);
   } catch (err) {
     toast(friendly(err));
   }
