@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T16-48-v3041';
+const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.41',
-  label: 'v3.0.41 DISPATCH MAP BLUEPRINT FIX'
+  version: '3.0.42',
+  label: 'v3.0.42 DISPATCH ONLINE GUARDS + MAP DEFAULT'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -354,6 +354,9 @@ function readGuardGpsPersistedState() {
 }
 function writeGuardGpsPersistedState(extra = {}) {
   try {
+    const rec = typeof activeGuardRecord === 'function' ? activeGuardRecord() : null;
+    const guardName = rec?.name || rec?.display_name || activeGuardName?.() || state.profile?.name || state.profile?.email || 'Guard';
+    const guardEmail = rec?.email || activeGuardEmail?.() || state.profile?.email || '';
     const data = {
       online: Boolean(liveGps.online),
       gpsMode: liveGps.gpsMode || (liveGps.online ? 'online' : 'offline'),
@@ -365,6 +368,9 @@ function writeGuardGpsPersistedState(extra = {}) {
       guardLng: Number.isFinite(liveGps.guardLng) ? liveGps.guardLng : null,
       accuracy: Number.isFinite(liveGps.accuracy) ? liveGps.accuracy : null,
       currentAddress: liveGps.currentAddress || '',
+      guardId: rec?.id || rec?.auth_user_id || rec?.user_id || rec?.profile_id || state.profile?.id || state.profile?.auth_user_id || state.profile?.user_id || '',
+      guardEmail: String(guardEmail || '').trim().toLowerCase(),
+      guardName: String(guardName || '').trim(),
       savedAt: new Date().toISOString(),
       ...extra
     };
@@ -1460,7 +1466,7 @@ function dispatchGuardExplicitOnlineState(guard = {}) {
     guard.current_status, guard.status, guard.presence
   ].filter(Boolean).join(' ').toLowerCase();
   if (/offline|inactive|disabled|rejected|pending|off duty|off-duty/.test(text)) return false;
-  if (/online|available|on duty|on-duty|active/.test(text)) return true;
+  if (/online|available|on duty|on-duty/.test(text)) return true;
   return null;
 }
 function dispatchGuardRawCoords(guard = {}) {
@@ -1478,39 +1484,82 @@ function dispatchGuardRawCoords(guard = {}) {
   if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng, source: 'guard-record' };
   return null;
 }
-function dispatchFallbackGuardCenter() {
-  for (const guard of (state.guards || [])) {
-    const raw = dispatchGuardRawCoords(guard);
-    if (raw) return raw;
+function dispatchGuardIdentityKeys(guard = {}) {
+  return [guard.id, guard.auth_user_id, guard.user_id, guard.profile_id, String(guard.email || '').trim().toLowerCase(), String(guard.name || guard.display_name || '').trim().toLowerCase()]
+    .filter(Boolean)
+    .map(v => String(v).trim().toLowerCase());
+}
+function dispatchGuardMatchesPersistedOnlineState(guard = {}) {
+  const saved = readGuardGpsPersistedState();
+  if (!saved?.online) return false;
+  const savedKeys = [saved.guardId, saved.guardEmail, saved.guardName]
+    .filter(Boolean)
+    .map(v => String(v).trim().toLowerCase());
+  const guardKeys = dispatchGuardIdentityKeys(guard);
+  if (savedKeys.length && guardKeys.some(k => savedKeys.includes(k))) return true;
+
+  // Backward compatibility for older local GPS records that did not store guard identity.
+  if (!savedKeys.length || savedKeys.every(k => ['guard','unknown'].includes(k))) {
+    const approved = adminAssignableGuards();
+    const tony = approved.find(g => /tony/i.test(String(g.name || g.display_name || g.email || '')));
+    if (tony) return dispatchGuardIdentityKeys(tony).some(k => guardKeys.includes(k));
+    const nonGeneric = approved.filter(g => !/^guard$/i.test(String(g.name || g.display_name || '').trim() || 'Guard'));
+    if (nonGeneric.length === 1) return dispatchGuardIdentityKeys(nonGeneric[0]).some(k => guardKeys.includes(k));
   }
-  if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) {
-    return { lat: liveGps.guardLat, lng: liveGps.guardLng, source: 'live-gps' };
+  return false;
+}
+function dispatchPersistedGuardCoords() {
+  const saved = readGuardGpsPersistedState();
+  if (!saved?.online) return null;
+  const lat = Number(saved.guardLat);
+  const lng = Number(saved.guardLng);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return {
+    lat, lng,
+    source: 'persisted-online',
+    currentAddress: saved.currentAddress || '',
+    accuracy: Number.isFinite(Number(saved.accuracy)) ? Number(saved.accuracy) : null
+  };
+  return null;
+}
+function dispatchFallbackGuardCenter() {
+  const persisted = dispatchPersistedGuardCoords();
+  if (persisted) return persisted;
+  for (const guard of (state.guards || [])) {
+    if (dispatchGuardExplicitOnlineState(guard) === true) {
+      const raw = dispatchGuardRawCoords(guard);
+      if (raw) return raw;
+    }
   }
   return null;
 }
 function dispatchGuardCoords(guard = {}, idx = 0, req = null) {
+  if (dispatchGuardMatchesPersistedOnlineState(guard)) {
+    const persisted = dispatchPersistedGuardCoords();
+    if (persisted) return persisted;
+  }
+
+  const explicit = dispatchGuardExplicitOnlineState(guard);
   const raw = dispatchGuardRawCoords(guard);
-  if (raw) return raw;
+  if (explicit === true && raw) return raw;
 
   const linkedReq = req || activeRequests().find(row => String(row.guard_id || row.assigned_guard_id) === String(guard.id)) || null;
-  if (linkedReq && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) &&
+  if (explicit === true && linkedReq && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) &&
       String(linkedReq.guard_id || linkedReq.assigned_guard_id || '') === String(guard.id || '')) {
     return { lat: liveGps.guardLat, lng: liveGps.guardLng, source: 'live-gps' };
   }
 
   const fallback = dispatchFallbackGuardCenter();
-  if (fallback && dispatchGuardExplicitOnlineState(guard) === true) {
-    const offsets = [[0,0], [0.00032, -0.00028], [-0.00028, 0.00032], [0.00038, 0.00022], [-0.00034, -0.00024]];
+  if (explicit === true && fallback) {
+    const offsets = [[0,0], [0.00022, -0.00020], [-0.00020, 0.00022], [0.00026, 0.00018], [-0.00024, -0.00018]];
     const pair = offsets[idx % offsets.length];
     return { lat: fallback.lat + pair[0], lng: fallback.lng + pair[1], source: 'online-cluster' };
   }
   return null;
 }
 function dispatchGuardIsOnlineForMap(guard = {}, coords = null) {
-  const explicit = dispatchGuardExplicitOnlineState(guard);
-  if (explicit === false) return false;
-  if (explicit === true) return Boolean(coords);
-  return Boolean(coords && coords.source !== 'online-cluster');
+  if (!coords) return false;
+  if (dispatchGuardMatchesPersistedOnlineState(guard)) return true;
+  return dispatchGuardExplicitOnlineState(guard) === true;
 }
 function dispatchMapOnlineGuards() {
   const active = activeRequests();
@@ -1558,6 +1607,10 @@ function dispatchGuardGpsAddress(entry = {}) {
   const coords = entry.coords || null;
   const fromGuard = [guard.current_address, guard.last_address, guard.address, guard.address_line1, guard.city && guard.state ? `${guard.city}, ${guard.state}` : guard.city].filter(Boolean)[0];
   if (fromGuard) return fromGuard;
+  if (entry.positionSource === 'persisted-online') {
+    const saved = readGuardGpsPersistedState();
+    if (saved.currentAddress && saved.currentAddress !== 'Location not active') return saved.currentAddress;
+  }
   if (entry.positionSource === 'live-gps' && liveGps.currentAddress && liveGps.currentAddress !== 'Location not active') {
     return liveGps.currentAddress;
   }
@@ -1625,6 +1678,7 @@ function mapArea() {
   const overlay = dispatchMapOverlay();
   return `
     <div class="guard302-leaflet-wrap dispatch-leaflet-wrap">
+      <button type="button" class="dispatch-map-default-btn" data-action="dispatch-map-default">Default</button>
       <div id="dispatch-live-leaflet-map" class="guard302-leaflet-map" data-online="${guards.length ? '1' : '0'}"></div>
       <div class="guard302-map-fallback" id="dispatch-live-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Decatur Blvd</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
@@ -1730,6 +1784,24 @@ function initDispatchLeafletMap() {
     showDispatchMapFallback('Map could not initialize. Showing fallback dispatch map with clickable markers.');
   }
 }
+function resetDispatchMapToDefault() {
+  liveGps.selectedMapCard = null;
+  document.querySelectorAll('.dispatch-leaflet-wrap .guard302-live-card').forEach(el => el.remove());
+  const points = [];
+  dispatchMapPropertyEntries().forEach(entry => { if (entry.coords) points.push([entry.coords.lat, entry.coords.lng]); });
+  dispatchMapOnlineGuards().forEach(entry => { if (entry.coords) points.push([entry.coords.lat, entry.coords.lng]); });
+  if (window.L && liveGps.leafletMap && points.length) {
+    try {
+      liveGps.leafletMap.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 15 });
+      return;
+    } catch {}
+  }
+  if (window.L && liveGps.leafletMap) {
+    try { liveGps.leafletMap.setView([36.1699, -115.1398], 11); return; } catch {}
+  }
+  scheduleDispatchLeafletMap();
+}
+
 function scheduleDispatchLeafletMap() {
   if (state.role === 'admin' && ['dashboard','dispatch-board','live-gps'].includes(state.view)) {
     requestAnimationFrame(() => {
@@ -4907,6 +4979,10 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'guard-offline') {
       setGuardOffline();
+      return;
+    }
+    if (button.dataset.action === 'dispatch-map-default') {
+      resetDispatchMapToDefault();
       return;
     }
     if (button.dataset.action === 'map-card') {

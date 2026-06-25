@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.41 Settings Page Redesign */
+/* v3.0.42 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.41 Dispatch map blueprint fix */
+/* v3.0.42 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5126,4 +5126,27 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .dispatch-leaflet-wrap .guard302-fallback-property span {
   background: #ff4565;
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
+}
+
+/* v3.0.42 Dispatch online guard filter + default map button */
+.dispatch-map-default-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 850;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(113,169,232,.22);
+  background: rgba(5,16,29,.88);
+  color: #dcecff;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .03em;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0,0,0,.32);
+}
+.dispatch-map-default-btn:hover {
+  border-color: rgba(127,196,255,.42);
+  color: #fff;
 }

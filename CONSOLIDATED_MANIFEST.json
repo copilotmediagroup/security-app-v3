@@ -1,17 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.41",
-  "buildName": "DISPATCH MAP BLUEPRINT FIX",
-  "type": "dispatch-map-blueprint-fix",
+  "version": "3.0.42",
+  "buildName": "DISPATCH ONLINE GUARDS + MAP DEFAULT",
+  "type": "dispatch-online-guards-map-default",
   "sql_required": false,
   "features": [
-    "Dispatch map cards now open in-place without page re-render/scroll jump",
-    "Dispatch map cards are compact like Guard/Client map cards",
-    "Removed far-away invented city seed positioning for guards",
-    "Dispatch shows only online guards with usable position data",
-    "Offline guards are hidden from map visibility",
-    "Property card shows property photo, owner/client, and address",
-    "Guard card shows guard photo, name, rank/status, and current GPS address/coordinates",
+    "Dispatch map no longer treats generic active guards as online",
+    "Dispatch uses persisted guard GPS identity to show the correct online guard",
+    "Offline guards are hidden from Dispatch map visibility",
+    "Guard GPS persistence now includes guard id, email, and name",
+    "Added Dispatch map Default button to reset zoom/pan",
+    "Preserved compact in-place Dispatch map cards",
     "No new SQL required"
   ]
 }

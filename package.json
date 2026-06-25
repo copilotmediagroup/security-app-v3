@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-map-blueprint-fix",
-  "version": "3.0.41",
+  "name": "co-pilot-security-dispatch-online-guards-map-default",
+  "version": "3.0.42",
   "private": true,
-  "description": "Fixes Dispatch live map marker positioning, compact in-place cards, and online-only guard visibility.",
+  "description": "Fixes Dispatch online guard filtering and adds a default map reset button.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

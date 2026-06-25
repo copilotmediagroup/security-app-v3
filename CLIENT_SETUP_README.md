@@ -1,4 +1,4 @@
-# Co Pilot Security v3.0.41 — Settings Page Redesign
+# Co Pilot Security v3.0.42 — Settings Page Redesign
 
 ## What changed
 - Rebuilt the `Settings` page using the selected image 2 direction.
