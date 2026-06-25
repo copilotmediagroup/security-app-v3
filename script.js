@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.4',
-  label: 'v3.0.4 REAL MAP MARKER CARDS'
+  version: '3.0.5',
+  label: 'v3.0.5 REAL MAP INIT FIX'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1076,8 +1076,8 @@ function guard302CurrentAssignment(req) {
       <span>Distance: ${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</span>
     </div>
     <div class="guard302-assignment-actions">
-      <button type="button" class="guard302-online ${liveGps.gpsMode === 'online' ? 'active' : ''}" data-action="guard-online">Go Online</button>
-      <button type="button" class="guard302-offline ${liveGps.gpsMode === 'offline' ? 'active' : ''}" data-action="guard-offline">Go Offline</button>
+      <button type="button" class="guard302-online ${liveGps.gpsMode === 'online' ? 'active' : ''}" data-action="guard-online">Online</button>
+      <button type="button" class="guard302-offline ${liveGps.gpsMode === 'offline' ? 'active' : ''}" data-action="guard-offline">Offline</button>
       <button type="button" class="guard302-primary" data-view="active-job">Open Active Job <b>›</b></button>
     </div>
   </section>`;
@@ -1090,7 +1090,11 @@ function guard302Map(req) {
     <div class="guard302-card-head"><div><h2>Route / GPS <span class="guard302-live ${liveGps.online ? 'on' : ''}">${liveGps.online ? 'Live' : 'Offline'}</span></h2></div></div>
     <div class="guard302-leaflet-wrap">
       <div id="guard302-live-leaflet-map" class="guard302-leaflet-map" data-online="${liveGps.online ? '1' : '0'}"></div>
-      ${!window.L ? `<div class="guard302-map-fallback">Loading real street map layer...</div>` : ''}
+      <div class="guard302-map-fallback" id="guard302-map-fallback">
+        <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
+        <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
+        <small>Loading live street map layer...</small>
+      </div>
       ${liveGps.selectedMapCard === 'guard' && hasGuard ? guard302GuardCard(req) : ''}
       ${liveGps.selectedMapCard === 'property' && hasProperty ? guard302PropertyCard(req) : ''}
       <div class="guard302-map-status">${esc(liveGps.mapNotice)} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
@@ -1329,7 +1333,10 @@ function renderAppShell() {
 
 function scheduleGuardLeafletMap() {
   if (state.role === 'guard' && state.view === 'dashboard') {
-    setTimeout(initGuardLeafletMap, 60);
+    requestAnimationFrame(() => {
+      setTimeout(initGuardLeafletMap, 75);
+      setTimeout(initGuardLeafletMap, 450);
+    });
   }
 }
 function leafletDivIcon(cls, html = '') {
@@ -1340,74 +1347,111 @@ function leafletDivIcon(cls, html = '') {
     iconAnchor: [15, 15]
   });
 }
+function hideMapFallback() {
+  const fallback = document.getElementById('guard302-map-fallback');
+  if (fallback) fallback.classList.add('loaded');
+}
+function showMapFallback(message = 'Live street map layer unavailable. Showing fallback street grid.') {
+  const fallback = document.getElementById('guard302-map-fallback');
+  if (fallback) {
+    fallback.classList.remove('loaded');
+    const small = fallback.querySelector('small');
+    if (small) small.textContent = message;
+  }
+}
 function initGuardLeafletMap() {
   const el = document.getElementById('guard302-live-leaflet-map');
-  if (!el || !window.L) return;
-  const req = guard302CurrentRequest();
-  const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
-  const hasProperty = Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
-  const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : hasProperty ? [liveGps.propertyLat, liveGps.propertyLng] : [36.1699, -115.1398];
+  if (!el) return;
 
-  if (liveGps.leafletMap) {
-    try { liveGps.leafletMap.remove(); } catch {}
-    liveGps.leafletMap = null;
-    liveGps.leafletLayer = null;
+  if (!window.L) {
+    showMapFallback('Leaflet did not load yet. Showing fallback street grid.');
+    return;
   }
 
-  const map = L.map(el, {
-    zoomControl: true,
-    attributionControl: false,
-    dragging: true,
-    scrollWheelZoom: true
-  }).setView(center, hasGuard || hasProperty ? 14 : 11);
-
-  liveGps.leafletMap = map;
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    crossOrigin: true
-  }).addTo(map);
-
-  const markerGroup = L.featureGroup().addTo(map);
-  let routeLayer = null;
-
-  if (hasProperty) {
-    const propertyMarker = L.marker([liveGps.propertyLat, liveGps.propertyLng], {
-      icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>')
-    }).addTo(markerGroup);
-    propertyMarker.on('click', () => openMapCard('property'));
+  if (el.dataset.ready === '1' && liveGps.leafletMap) {
+    try { liveGps.leafletMap.invalidateSize(); } catch {}
+    return;
   }
 
-  if (hasGuard) {
-    const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], {
-      icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>')
-    }).addTo(markerGroup);
-    guardMarker.on('click', () => openMapCard('guard'));
-  }
+  try {
+    if (liveGps.leafletMap) {
+      try { liveGps.leafletMap.remove(); } catch {}
+      liveGps.leafletMap = null;
+      liveGps.leafletLayer = null;
+    }
 
-  if (hasGuard && hasProperty) {
-    const coords = (liveGps.routePoints && liveGps.routePoints.length >= 2)
-      ? liveGps.routePoints.map(p => [p.lat, p.lng])
-      : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + liveGps.propertyLat) / 2 + 0.003, (liveGps.guardLng + liveGps.propertyLng) / 2 - 0.003], [liveGps.propertyLat, liveGps.propertyLng]];
-    routeLayer = L.polyline(coords, {
-      color: '#2e88ff',
-      weight: 5,
-      opacity: .88,
-      dashArray: '10 8',
-      lineCap: 'round',
-      lineJoin: 'round'
-    }).addTo(markerGroup);
-  }
+    const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    const hasProperty = Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng);
+    const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : hasProperty ? [liveGps.propertyLat, liveGps.propertyLng] : [36.1699, -115.1398];
 
-  if (markerGroup.getLayers().length > 0) {
-    try {
-      map.fitBounds(markerGroup.getBounds(), { padding: [36, 36], maxZoom: 15 });
-    } catch {}
-  }
+    const map = L.map(el, {
+      zoomControl: true,
+      attributionControl: false,
+      dragging: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true
+    }).setView(center, hasGuard || hasProperty ? 14 : 11);
 
-  setTimeout(() => {
-    try { map.invalidateSize(); } catch {}
-  }, 100);
+    liveGps.leafletMap = map;
+    el.dataset.ready = '1';
+
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      crossOrigin: true
+    });
+
+    tiles.on('load', hideMapFallback);
+    tiles.on('tileerror', () => showMapFallback('Map tiles blocked or slow. Showing fallback street grid.'));
+    tiles.addTo(map);
+
+    const markerGroup = L.featureGroup().addTo(map);
+
+    if (hasProperty) {
+      const propertyMarker = L.marker([liveGps.propertyLat, liveGps.propertyLng], {
+        icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>')
+      }).addTo(markerGroup);
+      propertyMarker.on('click', () => openMapCard('property'));
+    }
+
+    if (hasGuard) {
+      const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], {
+        icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>')
+      }).addTo(markerGroup);
+      guardMarker.on('click', () => openMapCard('guard'));
+    }
+
+    if (hasGuard && hasProperty) {
+      const coords = (liveGps.routePoints && liveGps.routePoints.length >= 2)
+        ? liveGps.routePoints.map(p => [p.lat, p.lng])
+        : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + liveGps.propertyLat) / 2 + 0.003, (liveGps.guardLng + liveGps.propertyLng) / 2 - 0.003], [liveGps.propertyLat, liveGps.propertyLng]];
+      L.polyline(coords, {
+        color: '#2e88ff',
+        weight: 5,
+        opacity: .88,
+        dashArray: '10 8',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(markerGroup);
+    }
+
+    if (markerGroup.getLayers().length > 0) {
+      try {
+        map.fitBounds(markerGroup.getBounds(), { padding: [36, 36], maxZoom: 15 });
+      } catch {}
+    }
+
+    setTimeout(() => {
+      try { map.invalidateSize(); } catch {}
+    }, 150);
+
+    setTimeout(() => {
+      const tilePane = el.querySelector('.leaflet-tile-pane');
+      const hasTiles = tilePane && tilePane.querySelector('img');
+      if (hasTiles) hideMapFallback();
+    }, 1100);
+  } catch (err) {
+    showMapFallback('Map could not initialize. Showing fallback street grid.');
+  }
 }
 
 
@@ -1416,6 +1460,7 @@ function render() {
   else if (!state.profile) renderPublic();
   else renderAppShell();
   ensureBadge();
+  scheduleGuardLeafletMap();
 }
 
 async function initialize() {

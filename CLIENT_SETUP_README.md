@@ -1,25 +1,20 @@
-# Co Pilot Security v3.0.4 — Real Map Marker Cards
+# Co Pilot Security v3.0.5 — Real Map Init Fix
 
 ## What changed
-- Real Leaflet/OpenStreetMap street map layer added.
-- Guard card does not appear by default.
-- Blue guard marker only appears while online.
-- Click blue guard marker to open guard card.
-- Guard card has an X close button.
-- Red property marker opens property card.
-- Property card shows property photo if available, property name, owner/client name, and property address.
-- Go Offline removes the guard marker.
-- Online button is green only while online.
-- Offline button is red only after clicking offline.
-
-## Notes
-- Browser must allow location permission.
-- Real map tiles require internet access in the browser.
-- For best property marker/routing, property records should include latitude/longitude. Otherwise the app attempts geocoding from the property address.
+- Fixed blank map behavior by forcing Leaflet to initialize after Guard Dashboard render.
+- Added a retry initialization pass.
+- Added a fallback street-grid map with street names if Leaflet/CDN tiles fail.
+- Changed buttons:
+  - `Go Online` is now `Online`
+  - `Go Offline` is now `Offline`
+- Online button turns green only while online.
+- Offline button turns red after clicking offline.
+- Guard marker is hidden while offline and appears when online.
 
 ## Badge
 Bottom-right badge should show:
-`v3.0.4 REAL MAP MARKER CARDS`
+
+`v3.0.5 REAL MAP INIT FIX`
 
 ## SQL
 No new SQL required.

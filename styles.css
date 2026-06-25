@@ -1749,3 +1749,85 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .guard302-map-status{
   z-index:400!important;
 }
+
+
+/* v3.0.5 Map Init Fix + Online/Offline Labels */
+.guard302-leaflet-map{
+  background:#071422!important;
+}
+.guard302-map-fallback{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  display:block;
+  overflow:hidden;
+  pointer-events:none;
+  color:#8fa8c3;
+  background:
+    radial-gradient(circle at 24% 68%, rgba(45,210,116,.16), transparent 16%),
+    radial-gradient(circle at 78% 30%, rgba(230,62,96,.13), transparent 18%),
+    linear-gradient(180deg,#071522,#06111d);
+  transition:opacity .25s ease;
+}
+.guard302-map-fallback.loaded{
+  opacity:0;
+}
+.guard302-map-fallback:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(97,132,170,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(97,132,170,.12) 1px, transparent 1px);
+  background-size:38px 38px;
+  opacity:.65;
+}
+.guard302-map-fallback small{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:42px;
+  z-index:3;
+  min-height:28px;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  border-radius:8px;
+  background:rgba(6,18,31,.88);
+  border:1px solid rgba(113,169,232,.16);
+  color:#d8e8f8;
+  font-weight:850;
+  font-size:11px;
+}
+.fallback-road{
+  position:absolute;
+  z-index:2;
+  height:7px;
+  border-radius:999px;
+  background:rgba(91,123,160,.30);
+  box-shadow:0 0 0 1px rgba(12,28,48,.45);
+}
+.fallback-road.r1{left:-5%;right:-5%;top:46%;transform:rotate(-5deg)}
+.fallback-road.r2{left:9%;right:8%;top:33%;transform:rotate(-29deg)}
+.fallback-road.r3{left:30%;right:-6%;top:62%;transform:rotate(26deg)}
+.fallback-road.r4{left:52%;top:-10%;width:8px;height:120%;transform:rotate(9deg)}
+.street-name{
+  position:absolute;
+  z-index:3;
+  color:#829ab3;
+  font-size:11px;
+  font-weight:800;
+  text-shadow:0 1px 2px #000;
+  opacity:.9;
+}
+.street-name.s1{left:12%;top:50%}
+.street-name.s2{left:47%;top:22%;transform:rotate(90deg)}
+.street-name.s3{left:58%;top:30%}
+.street-name.s4{left:18%;top:76%}
+.guard302-leaflet-map{
+  z-index:3!important;
+}
+.guard302-live-card,
+.guard302-map-status{
+  z-index:500!important;
+}

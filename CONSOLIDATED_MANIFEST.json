@@ -1,17 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.4",
-  "buildName": "REAL MAP MARKER CARDS",
-  "type": "real-map-marker-cards-online-offline",
+  "version": "3.0.5",
+  "buildName": "REAL MAP INIT FIX",
+  "type": "map-init-fix-button-labels",
   "sql_required": false,
   "features": [
-    "Leaflet real street map with OSM tiles",
-    "Guard card opens only on blue marker click",
-    "Property card opens on red marker click",
-    "X close on marker cards",
-    "Guard marker hidden offline",
-    "Online button green while online",
-    "Offline button red after clicked",
-    "Route line between guard and property"
+    "Forced Leaflet init after Guard Dashboard render",
+    "Retry map initialization",
+    "Fallback street grid with street names",
+    "Online/Offline labels",
+    "Online green only while online",
+    "Offline red when clicked",
+    "Bottom-right badge preserved"
   ]
 }

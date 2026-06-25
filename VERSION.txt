@@ -1,25 +1,21 @@
 Co Pilot Security
-Version: 3.0.4
-Build Name: REAL MAP MARKER CARDS
+Version: 3.0.5
+Build Name: REAL MAP INIT FIX
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.3.
-- Guard card no longer opens by default.
-- Blue guard marker only appears when guard is online.
-- Clicking blue guard marker opens guard card.
-- Guard card includes X close button.
-- Red property marker opens matching property card.
-- Property card includes property photo if available, property name, owner/client name, and property address.
-- Offline removes guard marker from map.
-- Online button turns green only when online.
-- Offline button turns red only after offline is clicked.
-- Replaced mockup map surface with real Leaflet/OpenStreetMap street map layer with street names.
-- Route line still displays between guard and property when both locations are available.
+- Built from v3.0.4.
+- Fixes blank map by forcing Leaflet initialization after every Guard Dashboard render.
+- Adds retry initialization after render.
+- Adds a real-looking fallback street grid with street names if Leaflet or map tiles fail/are slow.
+- Buttons now say Online and Offline instead of Go Online and Go Offline.
+- Online button stays green while online.
+- Offline button turns red when offline is clicked.
+- Guard marker remains hidden while offline and appears when online.
 - Bottom-right badge remains active.
 
 Badge:
-v3.0.4 REAL MAP MARKER CARDS
+v3.0.5 REAL MAP INIT FIX
 
 SQL:
 No new SQL required.
