@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.39 Settings Page Redesign */
+/* v3.0.40 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;

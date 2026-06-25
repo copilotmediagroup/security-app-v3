@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T15-58-v3039';
+const CP_DEV_CACHE_BUST = '2026-06-25T16-18-v3040';
 const BUILD = {
-  version: '3.0.39',
-  label: 'v3.0.39 DISPATCH LIVE MAP SYNC'
+  version: '3.0.40',
+  label: 'v3.0.40 DISPATCH MAP CARD + GPS FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -1447,36 +1447,31 @@ function dispatchGuardCoords(guard = {}, idx = 0, req = null) {
     guard.longitude ?? guard.lng ?? guard.lon ?? guard.current_longitude ?? guard.currentLng ?? guard.last_longitude ??
     guard.geo_lng ?? guard.location_lng ?? guard.gps_longitude ?? guard.last_known_longitude
   );
-  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng, source: 'guard-record' };
 
   const linkedReq = req || activeRequests().find(row => String(row.guard_id || row.assigned_guard_id) === String(guard.id)) || null;
   if (linkedReq && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) &&
       String(linkedReq.guard_id || linkedReq.assigned_guard_id || '') === String(guard.id || '')) {
-    return { lat: liveGps.guardLat, lng: liveGps.guardLng };
+    return { lat: liveGps.guardLat, lng: liveGps.guardLng, source: 'live-gps' };
   }
 
-  const propertyCoords = linkedReq ? getPropertyCoords(linkedReq) : null;
-  if (propertyCoords) {
-    const offsets = [
-      [0.0014, -0.0011], [-0.0013, 0.0011], [0.0011, 0.0014], [-0.0011, -0.0014],
-      [0.0018, 0], [0, 0.0018], [-0.0018, 0], [0, -0.0018]
-    ];
-    const pair = offsets[idx % offsets.length];
-    return { lat: propertyCoords.lat + pair[0], lng: propertyCoords.lng + pair[1] };
-  }
-
-  const seeded = dispatchMapPropertyEntries()[idx % Math.max(dispatchMapPropertyEntries().length, 1)]?.coords;
-  if (seeded) {
-    const pair = [[0.0022, -0.0022], [-0.0022, 0.0022], [0.0026, 0.0016], [-0.0026, -0.0016]][idx % 4];
-    return { lat: seeded.lat + pair[0], lng: seeded.lng + pair[1] };
-  }
-  return null;
+  const citySeeds = [
+    { lat: 36.1456, lng: -115.1732 },
+    { lat: 36.1215, lng: -115.1967 },
+    { lat: 36.1864, lng: -115.1415 },
+    { lat: 36.1023, lng: -115.0912 },
+    { lat: 36.1637, lng: -115.2238 },
+    { lat: 36.1979, lng: -115.0864 }
+  ];
+  const seed = citySeeds[idx % citySeeds.length];
+  return seed ? { ...seed, source: 'city-seed' } : null;
 }
 function dispatchMapOnlineGuards() {
   const active = activeRequests();
   return adminAssignableGuards().map((guard, idx) => {
     const linkedReq = active.find(req => String(req.guard_id || req.assigned_guard_id) === String(guard.id)) || null;
-    return { guard, request: linkedReq, coords: dispatchGuardCoords(guard, idx, linkedReq) };
+    const coords = dispatchGuardCoords(guard, idx, linkedReq);
+    return { guard, request: linkedReq, coords, positionSource: coords?.source || 'unknown' };
   }).filter(entry => entry.coords);
 }
 function dispatchMapBounds(propertyEntries = [], guardEntries = []) {
@@ -1509,9 +1504,26 @@ function dispatchSelectedGuardEntry() {
   const selectedId = String(liveGps.dispatchSelectedGuardId || entries[0]?.guard?.id || '');
   return entries.find(entry => String(entry.guard.id) === selectedId) || entries[0] || null;
 }
+function dispatchPropertyOwnerName(property = {}) {
+  return property.owner_name || property.contact_name || property.client_name || property.client_label || property.owner || 'Owner / Client';
+}
+function dispatchGuardGpsAddress(entry = {}) {
+  const guard = entry.guard || {};
+  const coords = entry.coords || null;
+  const fromGuard = [guard.current_address, guard.last_address, guard.address, guard.address_line1, guard.city && guard.state ? `${guard.city}, ${guard.state}` : guard.city].filter(Boolean)[0];
+  if (fromGuard) return fromGuard;
+  if (entry.positionSource === 'live-gps' && liveGps.currentAddress && liveGps.currentAddress !== 'Location not active') {
+    return liveGps.currentAddress;
+  }
+  if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+    return `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+  }
+  return 'GPS address unavailable';
+}
 function dispatchMapPropertyCard(property = {}) {
   const photo = propertyImageValue(property);
   const image = photo ? `<div class="avatar"><img src="${esc(photo)}" alt="${esc(propertyDisplayName(property))}"></div>` : avatar(propertyDisplayName(property));
+  const owner = dispatchPropertyOwnerName(property);
   const activeReq = activeRequests().find(req => String(req.property_id) === String(property.id)) || null;
   const statusTextValue = activeReq ? `Active patrol · ${statusText(activeReq.status)}` : 'Saved property · Visible to Dispatch';
   return `<div class="guard302-live-card property">
@@ -1519,7 +1531,7 @@ function dispatchMapPropertyCard(property = {}) {
     <div>${image}</div>
     <div>
       <strong>${esc(propertyDisplayName(property))}</strong>
-      <small>${esc(propertyTypeLabel(property))}</small>
+      <small>Owner / Client: ${esc(owner)}</small>
       <p>${esc(propertyDisplayAddress(property))}</p>
       <span>${esc(statusTextValue)}</span>
     </div>
@@ -1528,19 +1540,19 @@ function dispatchMapPropertyCard(property = {}) {
 function dispatchMapGuardCard(entry = {}) {
   const guard = entry.guard || {};
   const req = entry.request || null;
-  const coords = entry.coords || null;
   const rank = (readGuardRankMap && readGuardRankMap()[guard.id]) || guard.rank || guard.role_title || 'Guard';
   const status = String(guard.status || 'active').replace(/_/g, ' ');
-  const linkedProperty = req ? propertyById(req.property_id) : null;
-  const coordText = coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'Waiting for GPS';
+  const gpsAddress = dispatchGuardGpsAddress(entry);
+  const name = guard.name || guard.display_name || guard.email || 'Guard';
+  const subline = [rank, statusText(status)].filter(Boolean).join(' · ');
   return `<div class="guard302-live-card">
     <button type="button" class="guard302-card-close" data-action="close-map-card">×</button>
-    <div>${avatar(guard.name || guard.display_name || guard.email || 'Guard', guard.photo_url || guard.avatar_url || guard.image_url || '')}</div>
+    <div>${avatar(name, guard.photo_url || guard.avatar_url || guard.image_url || '')}</div>
     <div>
-      <strong>${esc(guard.name || guard.display_name || guard.email || 'Guard')}</strong>
-      <small>${esc(rank)} · ${esc(status)}</small>
-      <p>${esc(req ? `${propertyDisplayName(linkedProperty || {})} · ${statusText(req.status)}` : 'Online and available for dispatch')}</p>
-      <span>${esc(coordText)}</span>
+      <strong>${esc(name)}</strong>
+      <small>${esc(subline)}</small>
+      <p>${esc(gpsAddress)}</p>
+      <span>${esc(req ? `Assigned: ${propertyLabel(req)}` : 'Online and available for dispatch')}</span>
     </div>
   </div>`;
 }
@@ -1579,13 +1591,13 @@ function mapArea() {
           <span><i class="guard302-legend-route"></i>Live Routes</span>
         </div>
       </div>
+      ${overlay}
     </div>
     <div class="guard302-map-metrics">
       <div><small>Online Guards</small><strong>${esc(String(guards.length))}</strong></div>
       <div><small>Saved Properties</small><strong>${esc(String(properties.length))}</strong></div>
       <div><small>Active Patrols</small><strong>${esc(String(active.length))}</strong></div>
     </div>
-    ${overlay}
   `;
 }
 function hideDispatchMapFallback() {
@@ -1643,8 +1655,8 @@ function initDispatchLeafletMap() {
       const guardMarker = L.marker([lat, lng], { icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>') }).addTo(markerGroup);
       guardMarker.on('click', () => openMapCard('guard', entry.guard.id));
       const linkedCoords = entry.request ? getPropertyCoords(entry.request) : null;
-      if (linkedCoords && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '')) {
-        const routeCoords = (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '') && liveGps.routePoints && liveGps.routePoints.length)
+      if (linkedCoords && entry.positionSource !== 'city-seed' && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '')) {
+        const routeCoords = (entry.positionSource === 'live-gps' && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '') && liveGps.routePoints && liveGps.routePoints.length)
           ? liveGps.routePoints.map(pt => [pt.lat, pt.lng])
           : [[lat, lng], [linkedCoords.lat, linkedCoords.lng]];
         L.polyline(routeCoords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);

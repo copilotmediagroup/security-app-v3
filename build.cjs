@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.39 settings page redesign build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.40 settings page redesign build complete. Copied ${count} files to dist/.`);
