@@ -1,18 +1,21 @@
-# Next Thread Handoff — Co Pilot Security v3.0.2
+# Next Thread Handoff — Co Pilot Security v3.0.3
 
-Latest build: v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH
-
-## Why this build exists
-The prior Guard Dashboard used the Dispatch-style wide map layout. The actual Guard mockup is a 3-column layout.
+Latest build: v3.0.3 LIVE GUARD GPS MAP FUNCTIONS
 
 ## What changed
-- Guard Dashboard only.
-- 3-column grid:
-  - left: Current Assignment + Route/GPS
-  - middle: Job Flow + Today’s Activity
-  - right: Open Job / Messages / Notifications / Status
-- Quick Actions row added at the bottom.
-- Online/Offline buttons added to Current Assignment.
-- Map is now horizontally shorter and placed under Current Assignment.
-- Today's Activity is beside the map, under Job Flow.
-- No new SQL.
+- Built from v3.0.2.
+- Guard Dashboard layout stays in the mockup 3-column structure.
+- Added functional GPS map logic:
+  - Go Online starts navigator.geolocation.watchPosition.
+  - Go Offline stops tracking.
+  - Blue pulsing guard marker.
+  - Red pulsing property marker when active job property coordinates/geocode exists.
+  - Click guard marker for live guard card.
+  - Guard card shows live reverse-geocoded address.
+  - ETA/distance update as guard moves.
+  - Route line uses OSRM if available, fallback curved route if not.
+
+## Notes
+- No new SQL required.
+- For best property routing, property table should include latitude/longitude. Without coords, the app attempts Nominatim geocoding from address.
+- Browser location permission required.

@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.2',
-  label: 'v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH'
+  version: '3.0.3',
+  label: 'v3.0.3 LIVE GUARD GPS MAP FUNCTIONS'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -30,7 +30,26 @@ const state = {
   messages: [],
   selectedThreadId: '',
   thanks: null
-};
+};;
+const liveGps = {
+  online: false,
+  watchId: null,
+  guardLat: null,
+  guardLng: null,
+  accuracy: null,
+  currentAddress: 'Location not active',
+  lastUpdate: null,
+  propertyLat: null,
+  propertyLng: null,
+  propertyAddress: '',
+  routePoints: [],
+  routeDistanceMiles: null,
+  routeEtaMin: null,
+  geocodeBusy: false,
+  routeBusy: false,
+  selectedGuardCard: false,
+  mapNotice: 'Go Online to start live GPS tracking.'
+}
 
 const NAV = {
   admin: [
@@ -765,6 +784,225 @@ function guardDashboardExact() {
 }
 
 
+
+function milesBetween(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const toRad = n => n * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function getPropertyCoords(req) {
+  const p = propertyById(req?.property_id);
+  const lat = Number(p.latitude ?? p.lat ?? p.property_latitude ?? p.geo_lat ?? req?.property_latitude ?? req?.latitude);
+  const lng = Number(p.longitude ?? p.lng ?? p.lon ?? p.property_longitude ?? p.geo_lng ?? req?.property_longitude ?? req?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  return null;
+}
+function getGuardPhotoUrl() {
+  return state.profile?.avatar_url || state.profile?.profile_photo_url || state.profile?.photo_url || '';
+}
+function activeGuardName() {
+  return state.profile?.display_name || state.profile?.name || state.profile?.email || 'Guard';
+}
+function activeGuardEmail() {
+  return state.profile?.email || '';
+}
+function estimateEtaMinutes(distanceMiles) {
+  if (!Number.isFinite(distanceMiles)) return null;
+  const averageCityMph = 28;
+  return Math.max(1, Math.round((distanceMiles / averageCityMph) * 60));
+}
+function mapPercentForPoint(lat, lng, bounds) {
+  if (!bounds || !Number.isFinite(lat) || !Number.isFinite(lng)) return { x: 50, y: 50 };
+  const lngSpan = bounds.maxLng - bounds.minLng || .01;
+  const latSpan = bounds.maxLat - bounds.minLat || .01;
+  return {
+    x: Math.max(4, Math.min(96, ((lng - bounds.minLng) / lngSpan) * 100)),
+    y: Math.max(4, Math.min(96, (1 - ((lat - bounds.minLat) / latSpan)) * 100))
+  };
+}
+function currentMapBounds() {
+  const points = [];
+  if (Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) points.push([liveGps.guardLat, liveGps.guardLng]);
+  if (Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) points.push([liveGps.propertyLat, liveGps.propertyLng]);
+  for (const p of liveGps.routePoints || []) {
+    if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) points.push([p.lat, p.lng]);
+  }
+  if (!points.length) {
+    return { minLat: 36.07, maxLat: 36.20, minLng: -115.30, maxLng: -115.08 };
+  }
+  let minLat = Math.min(...points.map(p => p[0]));
+  let maxLat = Math.max(...points.map(p => p[0]));
+  let minLng = Math.min(...points.map(p => p[1]));
+  let maxLng = Math.max(...points.map(p => p[1]));
+  const latPad = Math.max(.006, (maxLat - minLat) * .35);
+  const lngPad = Math.max(.006, (maxLng - minLng) * .35);
+  return { minLat: minLat - latPad, maxLat: maxLat + latPad, minLng: minLng - lngPad, maxLng: maxLng + lngPad };
+}
+function routeSvgPath(bounds) {
+  const route = liveGps.routePoints && liveGps.routePoints.length ? liveGps.routePoints : [];
+  if (route.length >= 2) {
+    return route.map((pt, idx) => {
+      const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+      return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+  if (Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.propertyLat)) {
+    const g = mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds);
+    const p = mapPercentForPoint(liveGps.propertyLat, liveGps.propertyLng, bounds);
+    const midX = (g.x + p.x) / 2;
+    const midY = (g.y + p.y) / 2;
+    return `M ${g.x.toFixed(2)} ${g.y.toFixed(2)} C ${(midX - 10).toFixed(2)} ${(midY + 16).toFixed(2)}, ${(midX + 12).toFixed(2)} ${(midY - 14).toFixed(2)}, ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  }
+  return '';
+}
+async function reverseGeocodeGuard(lat, lng) {
+  try {
+    const key = `cp_reverse_${lat.toFixed(4)}_${lng.toFixed(4)}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      liveGps.currentAddress = cached;
+      return cached;
+    }
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Reverse geocode failed');
+    const data = await res.json();
+    const address = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    liveGps.currentAddress = address;
+    sessionStorage.setItem(key, address);
+    return address;
+  } catch (err) {
+    liveGps.currentAddress = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return liveGps.currentAddress;
+  }
+}
+async function geocodePropertyIfNeeded(req) {
+  const existing = getPropertyCoords(req);
+  if (existing) {
+    liveGps.propertyLat = existing.lat;
+    liveGps.propertyLng = existing.lng;
+    liveGps.propertyAddress = propertyAddress(req);
+    return existing;
+  }
+  const addr = propertyAddress(req);
+  if (!addr || addr === 'Address unavailable') return null;
+  if (liveGps.geocodeBusy) return null;
+  liveGps.geocodeBusy = true;
+  try {
+    const key = `cp_geo_${addr.toLowerCase()}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      liveGps.propertyLat = parsed.lat;
+      liveGps.propertyLng = parsed.lng;
+      liveGps.propertyAddress = addr;
+      return parsed;
+    }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(addr)}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Geocode failed');
+    const data = await res.json();
+    const item = data[0];
+    if (!item) throw new Error('Property not geocoded');
+    const coords = { lat: Number(item.lat), lng: Number(item.lon) };
+    if (Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+      sessionStorage.setItem(key, JSON.stringify(coords));
+      liveGps.propertyLat = coords.lat;
+      liveGps.propertyLng = coords.lng;
+      liveGps.propertyAddress = addr;
+      return coords;
+    }
+  } catch (err) {
+    liveGps.mapNotice = 'Property address could not be geocoded yet.';
+  } finally {
+    liveGps.geocodeBusy = false;
+  }
+  return null;
+}
+async function fetchRouteIfPossible() {
+  if (!Number.isFinite(liveGps.guardLat) || !Number.isFinite(liveGps.propertyLat)) return;
+  if (liveGps.routeBusy) return;
+  liveGps.routeBusy = true;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${liveGps.guardLng},${liveGps.guardLat};${liveGps.propertyLng},${liveGps.propertyLat}?overview=full&geometries=geojson&steps=false`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Route service failed');
+    const data = await res.json();
+    const route = data?.routes?.[0];
+    const coords = route?.geometry?.coordinates || [];
+    if (coords.length >= 2) {
+      liveGps.routePoints = coords.map(([lng, lat]) => ({ lat, lng }));
+      liveGps.routeDistanceMiles = route.distance ? route.distance / 1609.344 : milesBetween(liveGps.guardLat, liveGps.guardLng, liveGps.propertyLat, liveGps.propertyLng);
+      liveGps.routeEtaMin = route.duration ? Math.max(1, Math.round(route.duration / 60)) : estimateEtaMinutes(liveGps.routeDistanceMiles);
+      liveGps.mapNotice = 'Live route active. ETA updates as guard location changes.';
+    }
+  } catch (err) {
+    const miles = milesBetween(liveGps.guardLat, liveGps.guardLng, liveGps.propertyLat, liveGps.propertyLng);
+    liveGps.routeDistanceMiles = miles;
+    liveGps.routeEtaMin = estimateEtaMinutes(miles);
+    liveGps.routePoints = [];
+    liveGps.mapNotice = 'Route service unavailable; showing estimated path and ETA.';
+  } finally {
+    liveGps.routeBusy = false;
+  }
+}
+async function syncGpsForCurrentJob() {
+  const req = guard302CurrentRequest();
+  if (req) await geocodePropertyIfNeeded(req);
+  if (Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.propertyLat)) {
+    await fetchRouteIfPossible();
+  }
+  render();
+}
+function setGuardOnline() {
+  if (!navigator.geolocation) {
+    liveGps.mapNotice = 'This browser does not support location tracking.';
+    render();
+    return;
+  }
+  if (liveGps.watchId !== null) navigator.geolocation.clearWatch(liveGps.watchId);
+  liveGps.online = true;
+  liveGps.selectedGuardCard = true;
+  liveGps.mapNotice = 'Waiting for live GPS permission/location...';
+  render();
+  liveGps.watchId = navigator.geolocation.watchPosition(async position => {
+    liveGps.guardLat = position.coords.latitude;
+    liveGps.guardLng = position.coords.longitude;
+    liveGps.accuracy = position.coords.accuracy;
+    liveGps.lastUpdate = new Date().toISOString();
+    liveGps.online = true;
+    await reverseGeocodeGuard(liveGps.guardLat, liveGps.guardLng);
+    await syncGpsForCurrentJob();
+  }, error => {
+    liveGps.online = false;
+    liveGps.mapNotice = error?.message || 'Location permission denied or unavailable.';
+    render();
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 15000
+  });
+}
+function setGuardOffline() {
+  if (liveGps.watchId !== null) {
+    navigator.geolocation.clearWatch(liveGps.watchId);
+    liveGps.watchId = null;
+  }
+  liveGps.online = false;
+  liveGps.routePoints = [];
+  liveGps.mapNotice = 'Guard is offline. Live location tracking stopped.';
+  render();
+}
+function toggleGuardCard() {
+  liveGps.selectedGuardCard = !liveGps.selectedGuardCard;
+  render();
+}
+
 function guard302CurrentRequest() {
   return activeRequests()[0] || state.patrolRequests[0] || null;
 }
@@ -802,55 +1040,65 @@ function guard302CurrentAssignment(req) {
     <div class="guard302-assignment-main">
       <div class="guard302-shield">🛡</div>
       <div>
-        <h3>${esc(requestTitle(req))} <span>${esc(statusText(req.status))}</span></h3>
+        <h3>${esc(requestTitle(req))} <span>${esc(liveGps.online ? 'Online' : statusText(req.status))}</span></h3>
         <strong>${esc(propertyLabel(req))}</strong>
         <p>${esc(propertyAddress(req))}</p>
       </div>
     </div>
     <div class="guard302-tags">
-      <span>◴ Since ${esc(fmtTime(req.assigned_at || req.accepted_at || req.created_at))}</span>
-      <span>Patrol Type: ${esc(req.patrol_type || 'Routine')}</span>
-      <span>Priority: ${esc(req.priority || 'Normal')}</span>
+      <span>◴ ${liveGps.online ? 'GPS Live' : 'GPS Offline'}</span>
+      <span>ETA: ${esc(liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</span>
+      <span>Distance: ${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</span>
     </div>
     <div class="guard302-assignment-actions">
-      <button type="button" class="guard302-online">Go Online</button>
-      <button type="button" class="guard302-offline">Go Offline</button>
+      <button type="button" class="guard302-online ${liveGps.online ? 'active' : ''}" data-action="guard-online">Go Online</button>
+      <button type="button" class="guard302-offline" data-action="guard-offline">Go Offline</button>
       <button type="button" class="guard302-primary" data-view="active-job">Open Active Job <b>›</b></button>
     </div>
   </section>`;
 }
 
 function guard302Map(req) {
+  const bounds = currentMapBounds();
+  const guardPos = Number.isFinite(liveGps.guardLat) ? mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds) : null;
+  const propPos = Number.isFinite(liveGps.propertyLat) ? mapPercentForPoint(liveGps.propertyLat, liveGps.propertyLng, bounds) : null;
+  const path = routeSvgPath(bounds);
   return `<section class="panel panel-pad guard302-map-card">
-    <div class="guard302-card-head"><div><h2>Route / GPS <span class="guard302-live">Live</span></h2></div></div>
-    <div class="guard302-map">
+    <div class="guard302-card-head"><div><h2>Route / GPS <span class="guard302-live ${liveGps.online ? 'on' : ''}">${liveGps.online ? 'Live' : 'Offline'}</span></h2></div></div>
+    <div class="guard302-real-map">
       <div class="guard302-map-controls"><button>＋</button><button>−</button><button>⌾</button><button>▰</button></div>
-      <div class="guard302-map-grid"></div>
-      <div class="guard302-road r1"></div>
-      <div class="guard302-road r2"></div>
-      <div class="guard302-road r3"></div>
-      <div class="guard302-road r4"></div>
-      <div class="guard302-route a"></div>
-      <div class="guard302-route b"></div>
-      <div class="guard302-route c"></div>
-      <div class="guard302-pin start"></div>
-      <div class="guard302-pin mid"></div>
-      <div class="guard302-pin end"></div>
-      <span class="guard302-map-label one">W. Flamingo Rd</span>
-      <span class="guard302-map-label two">S. Durango Dr</span>
-      <span class="guard302-map-label three">W. Tropicana Ave</span>
+      <div class="guard302-real-grid"></div>
+      <div class="guard302-real-road rr1"></div><div class="guard302-real-road rr2"></div><div class="guard302-real-road rr3"></div><div class="guard302-real-road rr4"></div><div class="guard302-real-road rr5"></div>
+      ${path ? `<svg class="guard302-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(path)}"></path></svg>` : ''}
+      ${propPos ? `<button type="button" class="guard302-property-pulse" style="left:${propPos.x}%;top:${propPos.y}%;" title="Property location"></button>` : ''}
+      ${guardPos ? `<button type="button" class="guard302-guard-pulse ${liveGps.online ? 'online' : 'offline'}" data-action="guard-card" style="left:${guardPos.x}%;top:${guardPos.y}%;" title="Guard live location"></button>` : `<button type="button" class="guard302-guard-pulse offline demo" data-action="guard-card" title="Guard location offline"></button>`}
+      ${liveGps.selectedGuardCard ? guard302GuardCard(req) : ''}
+      <div class="guard302-map-status">${esc(liveGps.mapNotice)} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
     </div>
     <div class="guard302-map-stats">
-      <div><small>ETA to Next Stop</small><strong>8 min</strong></div>
-      <div><small>Distance Traveled</small><strong>3.2 mi</strong></div>
-      <div><small>Accuracy</small><strong>±8 ft <i></i></strong></div>
+      <div><small>ETA to Property</small><strong>${esc(liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+      <div><small>Accuracy</small><strong>${esc(liveGps.accuracy ? '±' + Math.round(liveGps.accuracy) + ' ft' : '—')} <i></i></strong></div>
     </div>
     <div class="guard302-map-actions">
-      <button type="button">Open in Maps <span>↗</span></button>
-      <button type="button">Share My Location <span>⌁</span></button>
-      <button type="button">Recenter <span>⌾</span></button>
+      <button type="button" data-action="guard-online">Share My Location <span>⌁</span></button>
+      <button type="button" data-action="guard-card">Guard Card <span>▣</span></button>
+      <button type="button" data-view="route-gps">Full Route <span>⌾</span></button>
     </div>
   </section>`;
+}
+function guard302GuardCard(req) {
+  const photo = getGuardPhotoUrl();
+  const name = activeGuardName();
+  return `<div class="guard302-live-card">
+    <div>${avatar(name, photo)}</div>
+    <div>
+      <strong>${esc(name)}</strong>
+      <small>${esc(activeGuardEmail())}</small>
+      <p>${esc(liveGps.currentAddress || 'Waiting for live GPS address...')}</p>
+      <span>${liveGps.online ? 'Online · Live GPS' : 'Offline'}${liveGps.accuracy ? ' · Accuracy ±' + Math.round(liveGps.accuracy) + ' ft' : ''}</span>
+    </div>
+  </div>`;
 }
 
 function guard302Activity(req) {
@@ -1076,6 +1324,18 @@ document.addEventListener('click', async event => {
     if (button.dataset.view) {
       state.view = button.dataset.view;
       render();
+      return;
+    }
+    if (button.dataset.action === 'guard-online') {
+      setGuardOnline();
+      return;
+    }
+    if (button.dataset.action === 'guard-offline') {
+      setGuardOffline();
+      return;
+    }
+    if (button.dataset.action === 'guard-card') {
+      toggleGuardCard();
       return;
     }
     if (button.dataset.action === 'logout') {

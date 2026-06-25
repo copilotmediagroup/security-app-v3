@@ -1461,3 +1461,170 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* v3.0.3 Live Guard GPS Map Functions */
+.guard302-online.active{
+  box-shadow:0 0 0 4px rgba(53,223,121,.12), 0 0 28px rgba(53,223,121,.25);
+}
+.guard302-live.on{
+  background:rgba(24,119,69,.56);
+  color:#79f3a9;
+}
+.guard302-real-map{
+  height:244px;
+  border-radius:8px;
+  border:1px solid rgba(113,169,232,.15);
+  background:
+    radial-gradient(circle at 24% 72%, rgba(22,120,78,.20), transparent 18%),
+    radial-gradient(circle at 82% 28%, rgba(174,44,72,.18), transparent 20%),
+    #06111d;
+  position:relative;
+  overflow:hidden;
+}
+.guard302-real-grid{
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(87,121,160,.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(87,121,160,.10) 1px, transparent 1px);
+  background-size:42px 42px;
+  opacity:.55;
+}
+.guard302-real-road{
+  position:absolute;
+  background:rgba(80,112,150,.24);
+  border-radius:50px;
+  box-shadow:0 0 0 1px rgba(12,28,48,.5);
+}
+.guard302-real-road.rr1{left:-4%;right:-4%;top:47%;height:8px;transform:rotate(-6deg)}
+.guard302-real-road.rr2{left:12%;right:3%;top:31%;height:7px;transform:rotate(-28deg)}
+.guard302-real-road.rr3{left:31%;right:-5%;top:61%;height:7px;transform:rotate(28deg)}
+.guard302-real-road.rr4{left:52%;top:-15%;width:9px;height:130%;transform:rotate(10deg)}
+.guard302-real-road.rr5{left:5%;right:8%;top:78%;height:6px;transform:rotate(2deg)}
+.guard302-route-svg{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  width:100%;
+  height:100%;
+  overflow:visible;
+}
+.guard302-route-svg path{
+  fill:none;
+  stroke:#2e88ff;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px rgba(46,136,255,.75));
+  stroke-dasharray:3 2;
+  animation:routeDash303 2.8s linear infinite;
+}
+@keyframes routeDash303{
+  from{stroke-dashoffset:0}
+  to{stroke-dashoffset:-20}
+}
+.guard302-guard-pulse,
+.guard302-property-pulse{
+  position:absolute;
+  z-index:6;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  border:4px solid #081522;
+}
+.guard302-guard-pulse{
+  background:#2e88ff;
+  box-shadow:0 0 0 10px rgba(46,136,255,.16),0 0 28px rgba(46,136,255,.72);
+}
+.guard302-guard-pulse.online:after,
+.guard302-property-pulse:after{
+  content:"";
+  position:absolute;
+  inset:-14px;
+  border-radius:50%;
+  border:2px solid rgba(46,136,255,.45);
+  animation:pulse303 1.7s ease-out infinite;
+}
+.guard302-guard-pulse.offline{
+  opacity:.65;
+  filter:grayscale(.35);
+}
+.guard302-guard-pulse.demo{
+  left:52%;
+  top:56%;
+}
+.guard302-property-pulse{
+  background:#ff4565;
+  box-shadow:0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
+}
+.guard302-property-pulse:after{
+  border-color:rgba(255,69,101,.45);
+}
+@keyframes pulse303{
+  0%{transform:scale(.65);opacity:.85}
+  100%{transform:scale(1.55);opacity:0}
+}
+.guard302-live-card{
+  position:absolute;
+  z-index:8;
+  left:16px;
+  right:16px;
+  top:58px;
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr);
+  gap:11px;
+  border:1px solid rgba(113,169,232,.28);
+  border-radius:10px;
+  background:rgba(5,16,29,.94);
+  box-shadow:0 18px 45px rgba(0,0,0,.35);
+  padding:12px;
+  backdrop-filter:blur(10px);
+}
+.guard302-live-card .avatar{
+  width:48px;
+  height:48px;
+}
+.guard302-live-card strong{
+  display:block;
+  color:#fff;
+  font-size:14px;
+}
+.guard302-live-card small{
+  display:block;
+  color:#8eb3d9;
+  font-size:11px;
+  margin-top:2px;
+}
+.guard302-live-card p{
+  margin:6px 0 5px;
+  color:#d7e8f8;
+  font-size:12px;
+  line-height:1.35;
+  max-height:50px;
+  overflow:auto;
+}
+.guard302-live-card span{
+  color:#7ff1a2;
+  font-size:11px;
+  font-weight:900;
+}
+.guard302-map-status{
+  position:absolute;
+  left:10px;
+  right:10px;
+  bottom:10px;
+  z-index:5;
+  min-height:30px;
+  border:1px solid rgba(113,169,232,.16);
+  background:rgba(6,18,31,.86);
+  color:#d8e8f8;
+  border-radius:8px;
+  padding:8px 10px;
+  font-size:11px;
+  font-weight:800;
+}
+.guard302-map-card > .guard302-map{
+  display:none;
+}

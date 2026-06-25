@@ -1,29 +1,28 @@
-# Co Pilot Security v3.0.2 — Guard Dashboard Mockup Grid Match
+# Co Pilot Security v3.0.3 — Live Guard GPS Map Functions
 
 ## What changed
-- Guard Dashboard now matches the mockup structure more closely.
-- Left column:
-  - Current Assignment
-  - Route / GPS
-- Middle column:
-  - Job Flow
-  - Today’s Activity
-- Right rail:
-  - Open Job
-  - Messages
-  - Notifications
-  - Status
-- Bottom:
-  - Quick Actions row
-- Current Assignment now includes:
-  - Go Online
-  - Go Offline
-  - Open Active Job
+- Go Online starts browser GPS tracking.
+- Go Offline stops browser GPS tracking.
+- Guard marker is a blue pulse.
+- Property marker is a red pulse when a property coordinate/geocode is available.
+- Clicking the blue marker opens a live guard card with:
+  - photo
+  - name
+  - email
+  - current address from GPS reverse geocoding
+  - accuracy
+  - online/offline status
+- ETA and distance update when GPS changes.
+- Route line uses OSRM routing when available and estimated curved fallback if routing fails.
+
+## Requirements
+The browser must allow location permission.
+For best routing, property records should include latitude/longitude. If not, the app attempts geocoding from the property address.
 
 ## Badge
 Bottom-right badge should show:
 
-`v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH`
+`v3.0.3 LIVE GUARD GPS MAP FUNCTIONS`
 
 ## SQL
 No new SQL required.
