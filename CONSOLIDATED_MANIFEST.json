@@ -1,14 +1,36 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.1",
-  "buildName": "GUARD DASHBOARD EXACT GRID",
-  "type": "clean-v3-guard-dashboard-grid-sidebar-fix",
+  "version": "3.0.2",
+  "buildName": "GUARD DASHBOARD MOCKUP GRID MATCH",
+  "type": "guard-dashboard-true-mockup-grid",
   "sql_required": false,
+  "layout": {
+    "guardBody": "grid-template-columns: minmax(430px,500px) minmax(0,1fr) 300px",
+    "areas": [
+      "left middle rail",
+      "quick quick rail"
+    ],
+    "left": [
+      "Current Assignment",
+      "Route / GPS"
+    ],
+    "middle": [
+      "Job Flow",
+      "Today's Activity"
+    ],
+    "right": [
+      "Open Job",
+      "Messages",
+      "Notifications",
+      "Status"
+    ],
+    "bottom": [
+      "Quick Actions"
+    ]
+  },
   "notes": [
-    "Fixes duplicate sidebar Settings.",
-    "Logout bottom footer only.",
-    "Removes sidebar horizontal scrollbar.",
-    "Guard Dashboard exact grid added.",
-    "Bottom-right badge preserved."
+    "Corrects prior mistake of applying Dispatch grid to Guard dashboard.",
+    "Bottom-right badge preserved.",
+    "No new SQL required."
   ]
 }

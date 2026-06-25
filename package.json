@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-guard-dashboard-exact-grid",
-  "version": "3.0.1",
+  "name": "co-pilot-security-guard-dashboard-mockup-grid-match",
+  "version": "3.0.2",
   "private": true,
-  "description": "Clean v3 Guard Dashboard exact grid and sidebar cleanup.",
+  "description": "Guard Dashboard true 3-column mockup grid match.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

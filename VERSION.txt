@@ -1,26 +1,23 @@
 Co Pilot Security
-Version: 3.0.1
-Build Name: GUARD DASHBOARD EXACT GRID
+Version: 3.0.2
+Build Name: GUARD DASHBOARD MOCKUP GRID MATCH
 Date: 2026-06-24
 
 Summary:
-- Built from clean v3.0.0 exact dashboard grid rebuild.
-- Fixed duplicate Settings in the left sidebar.
-- Settings now appears once in the Account section.
-- Logout is now only in the bottom sidebar footer.
-- Removed sidebar horizontal overflow/scrollbar.
-- Guard Dashboard now has the proper exact grid:
-  - Header
-  - 4 KPI cards
-  - Current Assignment
-  - Job Flow
-  - Route / GPS map
-  - Today’s Activity
+- Built from clean v3.0.1.
+- Corrects the Guard Dashboard architecture to match the provided mockup.
+- Guard Dashboard now uses a real 3-column structure:
+  - Left column: Current Assignment + Route/GPS map
+  - Middle column: Job Flow + Today’s Activity
   - Right rail: Open Job, Messages, Notifications, Status
+  - Bottom Quick Actions row spanning left + middle
+- Adds Go Online / Go Offline / Open Active Job buttons to Current Assignment.
+- Map is no longer full-width; it is positioned under Current Assignment like the mockup.
+- Today’s Activity is now beside the map under Job Flow, not below the map.
 - Bottom-right badge remains active.
 
 Badge:
-v3.0.1 GUARD DASHBOARD EXACT GRID
+v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH
 
 SQL:
 No new SQL required.

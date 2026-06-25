@@ -1,23 +1,29 @@
-# Co Pilot Security v3.0.1 — Guard Dashboard Exact Grid
+# Co Pilot Security v3.0.2 — Guard Dashboard Mockup Grid Match
 
 ## What changed
-- Fixed duplicate Settings in the sidebar.
-- Sidebar now has only one Settings item.
-- Logout is in the bottom footer only.
-- Sidebar horizontal scrollbar removed.
-- Guard Dashboard now uses the exact grid structure:
-  - Header
-  - 4 KPI cards
+- Guard Dashboard now matches the mockup structure more closely.
+- Left column:
   - Current Assignment
+  - Route / GPS
+- Middle column:
   - Job Flow
-  - Route / GPS map
   - Today’s Activity
-  - Right rail with Open Job, Messages, Notifications, Status
+- Right rail:
+  - Open Job
+  - Messages
+  - Notifications
+  - Status
+- Bottom:
+  - Quick Actions row
+- Current Assignment now includes:
+  - Go Online
+  - Go Offline
+  - Open Active Job
 
 ## Badge
 Bottom-right badge should show:
 
-`v3.0.1 GUARD DASHBOARD EXACT GRID`
+`v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH`
 
 ## SQL
 No new SQL required.

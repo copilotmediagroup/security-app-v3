@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.1',
-  label: 'v3.0.1 GUARD DASHBOARD EXACT GRID'
+  version: '3.0.2',
+  label: 'v3.0.2 GUARD DASHBOARD MOCKUP GRID MATCH'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -764,6 +764,188 @@ function guardDashboardExact() {
   </div>`;
 }
 
+
+function guard302CurrentRequest() {
+  return activeRequests()[0] || state.patrolRequests[0] || null;
+}
+
+function guard302Flow(req) {
+  const proof = req ? proofForRequest(req.id)[0] : null;
+  const status = String(req?.status || 'assigned');
+  const steps = req ? [
+    ['Accepted', req.accepted_at || req.assigned_at || req.created_at, ['accepted','in_progress','completed','assigned'].includes(status), '✓'],
+    ['On The Way', req.accepted_at || req.assigned_at, ['accepted','in_progress','completed'].includes(status), '➜'],
+    ['Share GPS', req.started_at || req.accepted_at, ['accepted','in_progress','completed'].includes(status), '⌖'],
+    ['Arrived', req.started_at, ['in_progress','completed'].includes(status), '⌾'],
+    ['Checking', req.started_at, ['in_progress','completed'].includes(status), '◫'],
+    ['Upload Proof', proof?.created_at || proof?.uploaded_at, Boolean(proof), '⬆'],
+    ['Complete', req.completed_at, status === 'completed', '✓']
+  ] : [];
+  return `<section class="panel panel-pad guard302-flow-card">
+    <div class="guard302-card-head"><div><h2>Job Flow</h2><p>Field workflow status</p></div></div>
+    ${steps.length ? `<div class="guard302-flow">
+      ${steps.map(([label,time,done,icon], idx) => {
+        const current = !done && steps.slice(0, idx).every(s => s[2]);
+        return `<div class="guard302-step ${done ? 'done' : current ? 'current' : 'wait'}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${esc(fmtTime(time))}</small></div>`;
+      }).join('')}
+    </div>
+    <div class="guard302-flow-footer"><span><i></i>Status: ${esc(statusText(req.status))}</span><small>Updated ${esc(timeAgo(req.updated_at || req.created_at))} ⟳</small></div>` : `<div class="empty">No active workflow yet.</div>`}
+  </section>`;
+}
+
+function guard302CurrentAssignment(req) {
+  if (!req) {
+    return `<section class="panel panel-pad guard302-current"><div class="empty"><strong>No Current Assignment</strong><br>When Dispatch assigns a patrol, it will appear here.</div></section>`;
+  }
+  return `<section class="panel panel-pad guard302-current">
+    <div class="guard302-card-head"><div><h2>Current Assignment</h2></div></div>
+    <div class="guard302-assignment-main">
+      <div class="guard302-shield">🛡</div>
+      <div>
+        <h3>${esc(requestTitle(req))} <span>${esc(statusText(req.status))}</span></h3>
+        <strong>${esc(propertyLabel(req))}</strong>
+        <p>${esc(propertyAddress(req))}</p>
+      </div>
+    </div>
+    <div class="guard302-tags">
+      <span>◴ Since ${esc(fmtTime(req.assigned_at || req.accepted_at || req.created_at))}</span>
+      <span>Patrol Type: ${esc(req.patrol_type || 'Routine')}</span>
+      <span>Priority: ${esc(req.priority || 'Normal')}</span>
+    </div>
+    <div class="guard302-assignment-actions">
+      <button type="button" class="guard302-online">Go Online</button>
+      <button type="button" class="guard302-offline">Go Offline</button>
+      <button type="button" class="guard302-primary" data-view="active-job">Open Active Job <b>›</b></button>
+    </div>
+  </section>`;
+}
+
+function guard302Map(req) {
+  return `<section class="panel panel-pad guard302-map-card">
+    <div class="guard302-card-head"><div><h2>Route / GPS <span class="guard302-live">Live</span></h2></div></div>
+    <div class="guard302-map">
+      <div class="guard302-map-controls"><button>＋</button><button>−</button><button>⌾</button><button>▰</button></div>
+      <div class="guard302-map-grid"></div>
+      <div class="guard302-road r1"></div>
+      <div class="guard302-road r2"></div>
+      <div class="guard302-road r3"></div>
+      <div class="guard302-road r4"></div>
+      <div class="guard302-route a"></div>
+      <div class="guard302-route b"></div>
+      <div class="guard302-route c"></div>
+      <div class="guard302-pin start"></div>
+      <div class="guard302-pin mid"></div>
+      <div class="guard302-pin end"></div>
+      <span class="guard302-map-label one">W. Flamingo Rd</span>
+      <span class="guard302-map-label two">S. Durango Dr</span>
+      <span class="guard302-map-label three">W. Tropicana Ave</span>
+    </div>
+    <div class="guard302-map-stats">
+      <div><small>ETA to Next Stop</small><strong>8 min</strong></div>
+      <div><small>Distance Traveled</small><strong>3.2 mi</strong></div>
+      <div><small>Accuracy</small><strong>±8 ft <i></i></strong></div>
+    </div>
+    <div class="guard302-map-actions">
+      <button type="button">Open in Maps <span>↗</span></button>
+      <button type="button">Share My Location <span>⌁</span></button>
+      <button type="button">Recenter <span>⌾</span></button>
+    </div>
+  </section>`;
+}
+
+function guard302Activity(req) {
+  const activity = req ? state.patrolActivity.filter(item => String(item.request_id) === String(req.id)).slice(0, 5) : [];
+  const fallback = req ? [
+    { created_at: req.started_at, title: 'Arrived on Site', details: `${propertyLabel(req)} · Check-in confirmed` },
+    { created_at: req.accepted_at || req.assigned_at, title: 'Shared GPS', details: 'Location shared · Accuracy: 28 ft' },
+    { created_at: req.assigned_at || req.created_at, title: 'Job Accepted', details: `${requestTitle(req)} · Routine Patrol` },
+    { created_at: req.created_at, title: 'Dispatch Assigned', details: 'By Dispatch · Officer assigned' }
+  ] : [];
+  const rows = activity.length ? activity : fallback;
+  return `<section class="panel panel-pad guard302-activity">
+    <div class="guard302-card-head"><div><h2>Today’s Activity</h2></div><button class="ghost-button" data-view="activity-log">View All</button></div>
+    <div class="guard302-activity-table">
+      <div class="guard302-activity-head"><span>Time</span><span>Event</span><span>Location / Details</span><span></span></div>
+      ${rows.length ? rows.map(item => `<div class="guard302-activity-row"><span>${esc(fmtTime(item.created_at))}</span><strong>${esc(item.title || item.event_type || 'Patrol Event')}</strong><p>${esc(item.details || item.message || '')}</p><em>—</em></div>`).join('') : `<div class="empty">No activity yet.</div>`}
+    </div>
+  </section>`;
+}
+
+function guard302Rail(req) {
+  const messages = state.messageThreads.slice(0, 2);
+  const notes = state.notifications.slice(0, 3);
+  return `<aside class="guard302-right">
+    <section class="panel panel-pad guard302-open-job">
+      <div class="guard302-card-head"><div><h2>Open Job</h2></div><button class="ghost-button" data-view="active-job">View</button></div>
+      ${req ? `<div class="guard302-open-box"><strong>${esc(requestTitle(req))}</strong><p>${esc(propertyLabel(req))}</p><span>Started: ${esc(fmtTime(req.started_at || req.accepted_at || req.assigned_at || req.created_at))}</span><button type="button" class="guard302-primary" data-view="active-job">Continue Job</button></div>` : `<div class="empty">No open job.</div>`}
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="guard302-card-head"><div><h2>Messages</h2></div><button class="ghost-button" data-view="messages">View All</button></div>
+      <div class="guard302-feed">${messages.length ? messages.map(t => `<button type="button" data-view="messages"><i></i><span><strong>${esc(t.subject || t.title || 'Dispatch')}</strong><small>${esc(t.last_message_preview || 'No messages yet')}</small></span><em>${esc(fmtTime(t.updated_at || t.created_at))}</em></button>`).join('') : `<div class="empty">No messages yet.</div>`}</div>
+    </section>
+
+    <section class="panel panel-pad">
+      <div class="guard302-card-head"><div><h2>Notifications</h2></div><button class="ghost-button" data-view="notifications">View All</button></div>
+      <div class="guard302-feed">${notes.length ? notes.map(n => `<button type="button" data-view="notifications"><i class="green"></i><span><strong>${esc(n.title || n.event_type || 'Notification')}</strong><small>${esc(n.message || n.details || '')}</small></span><em>${esc(fmtTime(n.created_at))}</em></button>`).join('') : `<div class="empty">No notifications yet.</div>`}</div>
+    </section>
+
+    <section class="panel panel-pad guard302-status">
+      <div class="guard302-card-head"><div><h2>Status</h2></div><button class="ghost-button">Refresh</button></div>
+      <div class="guard302-status-grid">
+        <div><strong>${esc(activeRequests().length)}</strong><span>Open Jobs</span></div>
+        <div><strong>0</strong><span>Incidents</span></div>
+        <div class="ring"><strong>100%</strong><span>GPS Signal</span></div>
+      </div>
+      <p>Last Sync: ${esc(new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}))}</p>
+      <p>All Systems Operational <b>✓</b></p>
+    </section>
+  </aside>`;
+}
+
+function guard302QuickActions() {
+  return `<section class="panel panel-pad guard302-quick">
+    <div class="guard302-card-head"><div><h2>Quick Actions</h2></div></div>
+    <div class="guard302-quick-grid">
+      <button type="button" data-view="active-job"><i>▤</i><strong>Open Active Job</strong><span>›</span></button>
+      <button type="button" class="teal" data-view="upload-proof"><i>⇧</i><strong>Upload Proof</strong><span>›</span></button>
+      <button type="button" class="purple" data-view="messages"><i>☵</i><strong>Message Dispatch</strong><span>›</span></button>
+      <button type="button" class="ghost" data-view="route-gps"><i>⌖</i><strong>Share My Location</strong><span>›</span></button>
+    </div>
+  </section>`;
+}
+
+function guardDashboardMockup302() {
+  const req = guard302CurrentRequest();
+  const open = activeRequests();
+  const inProgress = state.patrolRequests.filter(r => String(r.status) === 'in_progress');
+  return `<div class="dashboard guard302-dashboard">
+    <header class="guard302-header">
+      <div class="title-block"><h1>Guard Dashboard</h1><p>Real-time overview of your assignments, patrols, and communications.</p></div>
+      <div class="guard302-header-actions">
+        <span class="system-pill"><i></i>Supabase Connected</span>
+        <button class="guard302-mode">🛡 Guard Mode</button>
+        <button class="header-button">🔔${unreadNotificationsCount() ? `<b>${esc(unreadNotificationsCount())}</b>` : ''}</button>
+        <button class="guard302-logout" data-action="logout">Logout</button>
+      </div>
+    </header>
+
+    <section class="guard302-kpis">
+      ${kpiCard('▤', 'Open Assignments', open.length, open.length ? 'Current field jobs' : 'No pending assignments', '#2f83ff')}
+      ${kpiCard('〽', 'In Progress', inProgress.length, inProgress.length ? 'Patrol active now' : 'Nothing in progress', '#15d1c4')}
+      ${kpiCard('☵', 'Unread Messages', unreadMessagesCount(), unreadMessagesCount() ? 'Needs response' : 'All caught up', '#b05cff')}
+      ${kpiCard('⇧', 'Proof Uploaded', state.proofItems.length, 'Today', '#ff9b38')}
+    </section>
+
+    <section class="guard302-body">
+      <div class="guard302-left">${guard302CurrentAssignment(req)}${guard302Map(req)}</div>
+      <div class="guard302-middle">${guard302Flow(req)}${guard302Activity(req)}</div>
+      ${guard302Rail(req)}
+      <div class="guard302-quick-wrap">${guard302QuickActions()}</div>
+    </section>
+  </div>`;
+}
+
 function compactDashboard(role) {
   const active = activeRequests();
   return `<div class="dashboard">
@@ -835,7 +1017,7 @@ function renderRoleView() {
     if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
   }
   if (state.role === 'guard') {
-    if (state.view === 'dashboard') return guardDashboardExact();
+    if (state.view === 'dashboard') return guardDashboardMockup302();
     if (state.view === 'active-job') return tableView('Active Job', 'Current guard assignments.', state.patrolRequests);
     if (state.view === 'route-gps') return compactDashboard('guard');
     if (state.view === 'upload-proof') return proofUploadView();
