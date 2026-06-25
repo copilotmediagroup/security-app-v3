@@ -1,16 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.36",
-  "buildName": "CLIENT REPORTS REDESIGN",
-  "type": "client-reports-redesign",
+  "version": "3.0.37",
+  "buildName": "CLIENT MESSAGES REDESIGN",
+  "type": "client-messages-redesign",
   "sql_required": false,
   "features": [
-    "Rebuilt Client Reports page into a premium command-center layout",
-    "Added KPI cards: Total Reports, Completed, Pending Review, Attention, This Month",
-    "Added search, property filter, status filter, date range placeholder, and export button",
-    "Added detailed reports table with property photo, report number, property, type, date, status, officer, and actions",
-    "Added right rail analytics: report summary donut, recent activity, and top properties",
-    "Report rows are generated from existing released patrolReports plus completed requests",
+    "Rebuilt Client Messages page to use the same premium layout as Guard messages",
+    "Client now gets Dispatch Inbox, conversation stream, compose box, quick replies, and right detail rail",
+    "Added local Dispatch / Client thread storage for development testing",
+    "Client can send messages to Dispatch channel from the Messages page",
+    "Quick response buttons work for client messaging",
+    "Right rail links to active patrol request/property, recent alerts, and recent reports",
+    "Preserved v3.0.36 Reports page and previous badge/cache fixes",
     "No new SQL required"
   ]
 }

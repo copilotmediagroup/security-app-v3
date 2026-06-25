@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T14-55-v3036';
+const CP_DEV_CACHE_BUST = '2026-06-25T15-12-v3037';
 const BUILD = {
-  version: '3.0.36',
-  label: 'v3.0.36 CLIENT REPORTS REDESIGN'
+  version: '3.0.37',
+  label: 'v3.0.37 CLIENT MESSAGES REDESIGN'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -741,12 +741,173 @@ function messageRolePill(thread = {}) {
   const g = relatedThreadGuard(thread);
   return guardRankFor(g || thread);
 }
+
+function clientDispatchMessageStoreKey() { return 'cp_security_client_dispatch_messages_v1'; }
+function readClientDispatchMessageStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(clientDispatchMessageStoreKey()) || '{}');
+    return {
+      threads: Array.isArray(parsed.threads) ? parsed.threads : [],
+      messages: Array.isArray(parsed.messages) ? parsed.messages : []
+    };
+  } catch {
+    return { threads: [], messages: [] };
+  }
+}
+function writeClientDispatchMessageStore(store = { threads: [], messages: [] }) {
+  try { localStorage.setItem(clientDispatchMessageStoreKey(), JSON.stringify(store)); } catch {}
+}
+function messageClientKey(client = {}) {
+  return String(client.id || client.auth_user_id || client.user_id || client.profile_id || String(client.email || '').trim().toLowerCase() || '').trim();
+}
+function activeClientRecord() {
+  const email = String(state.profile?.email || '').trim().toLowerCase();
+  return (state.clients || []).find(c => String(c.email || '').trim().toLowerCase() === email)
+    || (state.clients || []).find(c => String(c.auth_user_id || c.user_id || c.profile_id || c.id || '') === String(state.profile?.auth_user_id || state.profile?.id || ''))
+    || state.profile
+    || {};
+}
+function activeClientName() {
+  const c = activeClientRecord();
+  return c.name || c.display_name || c.business_name || c.email || state.profile?.display_name || state.profile?.email || 'Client';
+}
+function activeClientEmail() {
+  const c = activeClientRecord();
+  return String(c.email || state.profile?.email || '').trim().toLowerCase();
+}
+function dispatchThreadIdForClient(client = {}) {
+  return `dispatch-client-${messageClientKey(client).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+function syncClientDispatchMessages() {
+  if (state.role !== 'client') return;
+  const store = readClientDispatchMessageStore();
+  const client = activeClientRecord();
+  const now = new Date().toISOString();
+  const id = dispatchThreadIdForClient(client);
+  let thread = store.threads.find(t => String(t.id) === String(id));
+  if (!thread) {
+    thread = {
+      id,
+      type: 'dispatch_client',
+      title: 'Dispatch / Client',
+      client_id: client.id || state.profile?.id || '',
+      client_email: activeClientEmail(),
+      client_name: activeClientName(),
+      created_at: now,
+      updated_at: now,
+      last_message_preview: 'No messages yet',
+      unread_client: 0,
+      unread_admin: 0
+    };
+    store.threads.push(thread);
+  } else {
+    thread.client_id = thread.client_id || client.id || state.profile?.id || '';
+    thread.client_email = thread.client_email || activeClientEmail();
+    thread.client_name = activeClientName();
+    thread.title = 'Dispatch / Client';
+  }
+  writeClientDispatchMessageStore(store);
+  state.messageThreads = store.threads
+    .filter(t => String(t.id) === String(id))
+    .map(t => ({
+      id: t.id,
+      subject: 'Dispatch / Client',
+      title: 'Dispatch / Client',
+      updated_at: t.updated_at,
+      created_at: t.created_at,
+      last_message_preview: t.last_message_preview || 'No messages yet',
+      unread_count: Number(t.unread_client || 0),
+      client_id: t.client_id,
+      client_email: t.client_email,
+      client_name: t.client_name,
+      type: 'dispatch_client'
+    }));
+  state.messages = store.messages.filter(m => state.messageThreads.some(t => String(t.id) === String(m.thread_id)));
+  if ((!state.selectedThreadId || !state.messageThreads.some(t => String(t.id) === String(state.selectedThreadId))) && state.messageThreads[0]) {
+    state.selectedThreadId = state.messageThreads[0].id;
+  }
+}
+function currentClientMessageThread() {
+  syncClientDispatchMessages();
+  return state.messageThreads.find(t => String(t.id) === String(state.selectedThreadId)) || state.messageThreads[0] || null;
+}
+function clientMessagesForThread(threadId) {
+  const store = readClientDispatchMessageStore();
+  return store.messages.filter(m => String(m.thread_id) === String(threadId)).sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+}
+function markCurrentClientThreadRead() {
+  const thread = currentClientMessageThread();
+  if (!thread) return;
+  const store = readClientDispatchMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) return;
+  raw.unread_client = 0;
+  writeClientDispatchMessageStore(store);
+  syncClientDispatchMessages();
+}
+function sendClientDispatchMessage(text) {
+  const body = String(text || '').trim();
+  if (!body) throw new Error('Type a message first.');
+  const thread = currentClientMessageThread();
+  if (!thread) throw new Error('Dispatch channel not found.');
+  const store = readClientDispatchMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) throw new Error('Conversation thread not found.');
+  const now = new Date().toISOString();
+  const msg = {
+    id: `client-msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    thread_id: raw.id,
+    sender_role: 'client',
+    sender_name: activeClientName(),
+    sender_email: activeClientEmail(),
+    body,
+    created_at: now
+  };
+  store.messages.push(msg);
+  raw.updated_at = now;
+  raw.last_message_preview = body;
+  raw.unread_admin = Number(raw.unread_admin || 0) + 1;
+  raw.unread_client = 0;
+  writeClientDispatchMessageStore(store);
+  syncClientDispatchMessages();
+}
+function filteredClientMessageThreads() {
+  syncClientDispatchMessages();
+  let rows = [...state.messageThreads];
+  const q = String(state.messageSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(t => `${t.title || ''} ${t.subject || ''} ${t.last_message_preview || ''}`.toLowerCase().includes(q));
+  if (state.messageFilter === 'unread') rows = rows.filter(t => Number(t.unread_count || 0) > 0);
+  if (state.messageFilter === 'active-job') rows = rows.filter(t => Boolean(clientMessageLinkedRequest()));
+  return rows;
+}
+function clientMessageLinkedRequest() {
+  return clientOpenRequests().find(r => ['assigned','accepted','in_progress','pending_dispatch'].includes(String(r.status || '')))
+    || clientOpenRequests()[0]
+    || completedRequests().find(r => state.properties.some(p => String(p.id) === String(r.property_id)))
+    || null;
+}
+function clientMessagesView() {
+  syncClientDispatchMessages();
+  const threads = filteredClientMessageThreads();
+  const selected = threads.find(t => String(t.id) === String(state.selectedThreadId)) || threads[0] || null;
+  if (selected && String(state.selectedThreadId) !== String(selected.id)) state.selectedThreadId = selected.id;
+  const activeThread = selected || currentClientMessageThread();
+  const req = clientMessageLinkedRequest();
+  const msgs = activeThread ? clientMessagesForThread(activeThread.id) : [];
+  const alerts = notificationsList().slice(0,3);
+  const reports = clientReportSourceRows().slice(0,3);
+  const selectedProperty = req ? propertyById(req.property_id) : selectedClientProperty();
+  const propertyName = selectedProperty ? propertyDisplayName(selectedProperty) : 'Client Property';
+  return `<div class="dashboard messages-shell client-messages-shell"><header class="dashboard-header"><div class="title-block"><h1>Messages</h1><p>Real-time communication between Client and Dispatch.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="messages-layout page-panel"><aside class="messages-inbox panel"><div class="messages-inbox-head"><div><h2>Dispatch Inbox</h2><p>Client conversations</p></div><button class="icon-square">✎</button></div><div class="messages-search-row"><input type="search" placeholder="Search conversations..." value="${esc(state.messageSearch)}" data-message-search><button class="icon-square">⌕</button></div><div class="messages-filter-row"><button type="button" class="filter-pill ${state.messageFilter === 'all' ? 'active' : ''}" data-message-filter="all">All</button><button type="button" class="filter-pill ${state.messageFilter === 'unread' ? 'active' : ''}" data-message-filter="unread">Unread ${unreadMessagesCount() ? `<b>${esc(unreadMessagesCount())}</b>` : ''}</button><button type="button" class="filter-pill ${state.messageFilter === 'active-job' ? 'active' : ''}" data-message-filter="active-job">Active Patrol</button></div><div class="messages-thread-list">${threads.length ? threads.map(thread => `<button type="button" class="messages-thread-row ${activeThread && String(activeThread.id) === String(thread.id) ? 'active' : ''}" data-action="select-client-thread" data-thread-id="${esc(thread.id)}"><div class="thread-avatar">D</div><div class="thread-copy"><div class="thread-top"><strong>Dispatch / Client</strong><em>${esc(fmtTime(thread.updated_at || thread.created_at))}</em></div><small>Client Channel</small><p>${esc(thread.last_message_preview || 'No messages yet')}</p></div>${Number(thread.unread_count || 0) ? `<span class="thread-unread">${esc(thread.unread_count)}</span>` : ''}</button>`).join('') : '<div class="empty">No Dispatch conversations yet.</div>'}</div></aside><section class="messages-conversation panel">${activeThread ? `<div class="conversation-head"><div><h2>Dispatch / Client</h2><p>Online communication with Dispatch</p></div><div class="conversation-actions"><button class="icon-square">☎</button><button class="icon-square">⌕</button><button class="icon-square">⋯</button></div></div><div class="conversation-stream">${msgs.length ? msgs.map(msg => `<div class="chat-row ${msg.sender_role === 'client' ? 'me' : 'them'}"><div class="chat-bubble"><header><strong>${esc(msg.sender_role === 'client' ? 'You' : (msg.sender_name || activeDispatchLabel()))}</strong><span>${esc(fmtTime(msg.created_at))}</span></header><p>${esc(msg.body || '')}</p></div></div>`).join('') : '<div class="empty">No messages yet. Start the conversation below.</div>'}</div><form class="conversation-compose" data-form="client-dispatch-message"><input type="hidden" name="thread_id" value="${esc(activeThread.id)}"><div class="compose-toolbar"><button type="button" class="icon-square small">📎</button><button type="button" class="icon-square small">📷</button></div><div class="compose-input-wrap"><textarea name="message" rows="3" placeholder="Type your message to Dispatch..."></textarea><div class="quick-actions-inline"><button type="button" class="quick-pill" data-action="quick-message" data-text="Can I get an update on my patrol request?">Request Update</button><button type="button" class="quick-pill" data-action="quick-message" data-text="I need assistance at my property.">Need Assistance</button><button type="button" class="quick-pill" data-action="quick-message" data-text="Everything is all set on my end.">All Set</button><button type="button" class="quick-pill" data-action="quick-message" data-text="Please call me when available.">Call Me</button></div></div><button type="submit" class="send-button">Send</button></form>` : `<div class="empty" style="min-height:480px;display:grid;place-items:center;">No conversation selected.</div>`}</section><aside class="messages-detail panel panel-pad">${activeThread ? `<div class="panel-head"><div><h2>Conversation Details</h2><p>Linked to Dispatch support channel</p></div></div><div class="messages-detail-stack"><section class="detail-card"><div class="detail-card-head"><strong>Linked Property / Request</strong>${req ? `<span class="rank-chip active">${esc(statusText(req.status))}</span>` : '<span class="rank-chip">Ready</span>'}</div><h3>${esc(req ? propertyLabel(req) : propertyName)}</h3><p>${esc(req ? propertyAddress(req) : (selectedProperty ? propertyDisplayAddress(selectedProperty) : 'Select a property or request.'))}</p><div class="detail-grid"><span>Request</span><strong>${esc(req ? requestTitle(req) : 'No active request')}</strong><span>Priority</span><strong>${esc(req ? statusText(req.priority || 'Normal') : 'Normal')}</strong><span>Last Message</span><strong>${esc(fmtTime(activeThread.updated_at))}</strong></div><button type="button" class="ghost-button wide" data-view="${req ? 'patrol-requests' : 'properties'}">${req ? 'View Patrol Request' : 'View Property'}</button></section><section class="detail-card"><div class="detail-card-head"><strong>Client Status</strong><span class="rank-chip">Client</span></div><div class="detail-grid"><span>Status</span><strong>Active</strong><span>Channel</span><strong>Dispatch</strong><span>Client</span><strong>${esc(activeClientName())}</strong></div></section><section class="detail-card"><div class="detail-card-head"><strong>Quick Responses</strong></div><div class="quick-response-list"><button type="button" data-action="quick-message" data-text="Can I get an update on my patrol request?">Can I get an update?</button><button type="button" data-action="quick-message" data-text="I need assistance at my property.">Need assistance at property.</button><button type="button" data-action="quick-message" data-text="Please call me when available.">Please call me.</button></div></section><div class="detail-split"><section class="detail-card"><div class="detail-card-head"><strong>Recent Alerts</strong></div>${alerts.length ? alerts.map(n => `<div class="detail-line"><span>${esc(n._title || n.title || 'Alert')}</span><em>${esc(fmtTime(n._created || n.created_at))}</em></div>`).join('') : '<div class="detail-line"><span>No alerts</span></div>'}</section><section class="detail-card"><div class="detail-card-head"><strong>Recent Reports</strong></div>${reports.length ? reports.map(r => `<div class="detail-line"><span>${esc(r.reportNumber || r.title || 'Report')}</span><em>${esc(fmtTime(r.createdAt))}</em></div>`).join('') : '<div class="detail-line"><span>No reports</span></div>'}</section></div></div>` : `<div class="empty">No conversation selected.</div>`}</aside></section></div>`;
+}
+
 function guardApprovalsView() {
   const rows = guardApprovals().map(x => ({ ...x, kind: 'guard' }));
   const rankOptions = ['Guard', 'Sergeant', 'Field Supervisor', 'Supervisor', 'Lead Guard'];
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Guard Approvals</h1><p>Approve guard applications and assign the guard rank for Dispatch workflows.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div class="cards-grid cards-grid-guard-approvals">${rows.length ? rows.map(item => `<article class="panel panel-pad guard-approval-card"><div class="guard-approval-head"><div class="avatar">${esc(initials(item.name || item.display_name || item.email || 'G'))}</div><div><h2>${esc(item.name || item.display_name || 'Guard Applicant')}</h2><p>${esc(item.email || '')}</p><small>${esc(item.phone || 'No phone listed')}</small></div><span class="rank-chip pending">Pending</span></div><div class="guard-approval-body"><div class="guard-approval-meta"><span>Requested Role</span><strong>Guard</strong><span>Notes</span><strong>${esc(item.notes || 'No notes added')}</strong></div><label class="form-field"><span>Guard Rank</span><select data-guard-rank="${esc(item.id)}">${rankOptions.map(rank => `<option value="${esc(rank)}" ${rank === guardRankFor(item) ? 'selected' : ''}>${esc(rank)}</option>`).join('')}</select></label><div class="button-row"><button class="btn success" data-approve="guard" data-id="${esc(item.id)}">Approve Guard</button><button class="btn secondary" data-reject="guard" data-id="${esc(item.id)}">Reject</button></div></div></article>`).join('') : '<div class="empty">No pending guard applications.</div>'}</div></section></div>`;
 }
 function messagesView() {
+  if (state.role === 'client') return clientMessagesView();
   if (!['admin','guard'].includes(state.role)) return cardsView('Messages', 'Dispatch inbox and conversations.', state.messageThreads.map(t => ({ title: t.subject || t.title || 'Conversation', message: t.last_message_preview || 'No messages yet' })), 'message');
   syncDispatchGuardMessages();
   const threads = filteredMessageThreads();
@@ -4382,9 +4543,16 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'quick-message') {
-      sendDispatchGuardMessage(button.dataset.text || '');
+      if (state.role === 'client') sendClientDispatchMessage(button.dataset.text || '');
+      else sendDispatchGuardMessage(button.dataset.text || '');
       render();
       toast('Message sent.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'select-client-thread') {
+      state.selectedThreadId = button.dataset.threadId || '';
+      markCurrentClientThreadRead();
+      render();
       return;
     }
     if (button.dataset.action === 'confirm-inline-proof') {
@@ -4468,6 +4636,12 @@ document.addEventListener('submit', async event => {
     if (form.dataset.form === 'client-property-edit') await saveClientPropertyEdit(form);
     if (form.dataset.form === 'dispatch-guard-message') {
       sendDispatchGuardMessage(form.message.value);
+      form.reset();
+      render();
+      toast('Message sent.', 'success');
+    }
+    if (form.dataset.form === 'client-dispatch-message') {
+      sendClientDispatchMessage(form.message.value);
       form.reset();
       render();
       toast('Message sent.', 'success');

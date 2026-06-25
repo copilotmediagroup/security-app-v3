@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-reports-redesign",
-  "version": "3.0.36",
+  "name": "co-pilot-security-client-messages-redesign",
+  "version": "3.0.37",
   "private": true,
-  "description": "Redesigns the Client Reports page into a premium command-center report table with KPIs, filters, analytics rail, and report actions.",
+  "description": "Builds the Client Messages page to match the Guard/Dispatch messaging layout with Dispatch channel, conversation stream, compose box, quick replies, and detail rail.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

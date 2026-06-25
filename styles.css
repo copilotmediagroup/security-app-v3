@@ -4928,3 +4928,35 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
     padding: 16px 18px;
   }
 }
+
+/* v3.0.37 Client Messages redesign */
+.client-messages-shell .messages-inbox-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.client-messages-shell .thread-avatar {
+  background: linear-gradient(180deg, rgba(46,125,255,.92), rgba(24,88,220,.92));
+  box-shadow: 0 12px 28px rgba(46,125,255,.18);
+}
+.client-messages-shell .conversation-head h2 {
+  letter-spacing: -.03em;
+}
+.client-messages-shell .chat-row.me .chat-bubble {
+  background: linear-gradient(180deg, rgba(46,125,255,.95), rgba(30,91,225,.95));
+}
+.client-messages-shell .chat-row.them .chat-bubble {
+  background: rgba(8, 22, 38, .92);
+  border: 1px solid rgba(113,169,232,.12);
+}
+.client-messages-shell .detail-card h3 {
+  font-size: 20px;
+  margin: 8px 0 6px;
+}
+.client-messages-shell .detail-card p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.client-messages-shell .quick-response-list button {
+  text-align: left;
+}

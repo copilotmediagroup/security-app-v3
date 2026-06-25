@@ -1,20 +1,20 @@
 Co Pilot Security
-Version: 3.0.36
-Build Name: CLIENT REPORTS REDESIGN
+Version: 3.0.37
+Build Name: CLIENT MESSAGES REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.35.
-- Rebuilt the Client Reports page into a premium command-center report dashboard.
-- Added KPI cards for Total Reports, Completed, Pending Review, Attention, and This Month.
-- Added search, property filter, status filter, date range placeholder, and export action.
-- Added a detailed reports table with property photo, report number, property, type, date/time, status, officer, and actions.
-- Added right-side analytics rail with Report Summary donut, Recent Activity, and Top Properties.
-- Report rows are generated from existing patrolReports and completed patrol requests.
+- Built from v3.0.36.
+- Rebuilt the Client Messages page to match the same premium message layout used by Guard.
+- Client now has Dispatch Inbox, conversation stream, compose box, quick replies, and conversation details rail.
+- Added local Dispatch / Client message thread storage for development testing.
+- Client can send messages to Dispatch from the Messages page.
+- Quick response buttons now work for client messages.
+- Right rail shows linked property/request context, client status, quick responses, recent alerts, and recent reports.
 - No new SQL required.
 
 Badge:
-v3.0.36 CLIENT REPORTS REDESIGN
+v3.0.37 CLIENT MESSAGES REDESIGN
 
 SQL:
 No new SQL required.
