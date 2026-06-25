@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.22',
-  label: 'v3.0.22 NOTIFICATIONS REDESIGN'
+  version: '3.0.23',
+  label: 'v3.0.23 NOTIFICATIONS POLISH'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};

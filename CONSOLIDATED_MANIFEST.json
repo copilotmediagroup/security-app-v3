@@ -1,15 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.22",
-  "buildName": "NOTIFICATIONS REDESIGN",
-  "type": "notifications-redesign",
+  "version": "3.0.23",
+  "buildName": "NOTIFICATIONS POLISH",
+  "type": "notifications-polish",
   "sql_required": false,
   "features": [
-    "Redesigned Notifications page to match premium command-center mockup",
-    "Search, filters, grouped notification feed, and right detail rail",
-    "Summary KPI cards for total, unread, patrol updates, and dispatch messages",
-    "Local read/acknowledge state for development testing",
-    "Quick actions for linked job, open messages, and acknowledge",
+    "Polished Notifications right detail rail so it scrolls cleanly",
+    "Added bottom padding to prevent version badge overlap",
+    "Tightened notification detail cards and action buttons",
+    "Improved notification row spacing and selected-state styling",
+    "Kept search, filters, grouped feed, read/acknowledge actions, and detail rail",
     "No new SQL required"
   ]
 }

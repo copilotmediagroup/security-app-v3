@@ -1,15 +1,16 @@
-# Co Pilot Security v3.0.22 — Notifications Redesign
+# Co Pilot Security v3.0.23 — Notifications Polish
 
 ## What changed
-- Rebuilt the `Notifications` page to match the premium command-center mockup style.
-- Added:
-  - notification search
-  - filters: All / Unread / Patrols / Messages / System
-  - summary KPI cards
-  - grouped notification feed
-  - right-side detail rail
-  - mark all read and acknowledge actions for development use
-- Local browser storage is used for read state during testing.
+- Polished the Notifications redesign from v3.0.22.
+- Right detail rail now scrolls cleanly.
+- Added bottom padding so the build badge does not cover the lower-right detail content.
+- Improved notification row spacing and selected-row styling.
+- Tightened detail cards, metadata, message box, and action buttons.
 
-## SQL
-No new SQL required.
+## Preserved
+- Search and filters.
+- Summary KPI cards.
+- Grouped notification feed.
+- Detail rail actions.
+- Local read/acknowledge behavior.
+- No new SQL required.

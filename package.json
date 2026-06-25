@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-notifications-redesign",
-  "version": "3.0.22",
+  "name": "co-pilot-security-notifications-polish",
+  "version": "3.0.23",
   "private": true,
-  "description": "Rebuilds the Notifications page with a premium alerts center layout, filters, detail rail, and local read state.",
+  "description": "Polishes the Notifications redesign with cleaner right rail scrolling, tighter detail cards, and improved notification row spacing.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

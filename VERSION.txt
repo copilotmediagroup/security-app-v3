@@ -1,18 +1,19 @@
 Co Pilot Security
-Version: 3.0.22
-Build Name: NOTIFICATIONS REDESIGN
+Version: 3.0.23
+Build Name: NOTIFICATIONS POLISH
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.21.
-- Rebuilt the Notifications page into a premium alerts center layout.
-- Added notification search, filter pills, summary KPI cards, grouped feed, and detail rail.
-- Added local read/acknowledge behavior for development testing.
-- Added quick actions for linked job, open messages, and acknowledge.
+- Built from v3.0.22.
+- Polishes the Notifications page after visual testing.
+- Right detail rail now scrolls cleanly and has bottom padding so the version badge does not cover content.
+- Notification rows have better spacing and a cleaner selected state.
+- Detail cards, message box, metadata grid, and action buttons are tighter.
+- Preserves search, filters, summary cards, grouped feed, acknowledge/read actions, and quick actions.
 - No new SQL required.
 
 Badge:
-v3.0.22 NOTIFICATIONS REDESIGN
+v3.0.23 NOTIFICATIONS POLISH
 
 SQL:
 No new SQL required.
