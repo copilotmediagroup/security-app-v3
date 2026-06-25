@@ -1,18 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.14",
-  "buildName": "LOCKED WORKFLOW STAGES",
-  "type": "guard-active-job-locked-stage-flow",
+  "version": "3.0.15",
+  "buildName": "COMPLETED JOBS FILTERS",
+  "type": "guard-completed-jobs-sidebar-filter-page",
   "sql_required": false,
   "features": [
-    "Previous Guard Active Job workflow stages lock after advancing",
-    "Locked stages are disabled and cannot be clicked again",
-    "Locked stages use amber/steel locked styling instead of red error styling",
-    "Current stage remains green",
-    "Future stages remain default until selected",
-    "Workflow status text updates with current stage",
-    "Inline proof upload remains inside Active Job only",
-    "Removed standalone Guard Upload Proof page remains preserved",
-    "Preserves Dispatch Assign Now and Client Patrol Request flow"
+    "Added Guard sidebar 'Completed' page",
+    "Default filter shows today's completed jobs only",
+    "Filters: Today, This Week, This Month, This Year",
+    "Completed job stats cards",
+    "Completed job list with clickable detail panel",
+    "Proof count and proof preview tiles",
+    "No new SQL required"
   ]
 }

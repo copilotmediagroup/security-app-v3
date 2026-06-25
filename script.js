@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.14',
-  label: 'v3.0.14 LOCKED WORKFLOW STAGES'
+  version: '3.0.15',
+  label: 'v3.0.15 COMPLETED JOBS FILTERS'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -29,7 +29,9 @@ const state = {
   messageThreads: [],
   messages: [],
   selectedThreadId: '',
-  thanks: null
+  thanks: null,
+  completedFilter: 'today',
+  selectedCompletedRequestId: ''
 };;
 const liveGps = {
   online: false,
@@ -78,6 +80,7 @@ const NAV = {
   guard: [
     ['dashboard', '⌂', 'Dashboard'],
     ['active-job', '▤', 'Active Job'],
+    ['completed', '✓', 'Completed'],
     ['route-gps', '⌖', 'Route / GPS'],
     ['messages', '☵', 'Messages'],
     ['notifications', '♧', 'Notifications'],
@@ -536,6 +539,7 @@ function navBadge(view) {
   if (view === 'pending-dispatch') return pendingRequests().length;
   if (view === 'guard-approvals') return guardApprovals().length;
   if (view === 'proof-review') return proofWaiting().length;
+  if (view === 'completed' && state.role === 'guard') return guardCompletedJobsForFilter('today').length;
   return '';
 }
 
@@ -1731,6 +1735,145 @@ function activeJobNotificationsCard() {
     <div class="active-notice-list">${notes.length ? notes.map(n => `<button type="button" data-view="notifications"><i></i><span><strong>${esc(n.title || n.event_type || 'Notification')}</strong><small>${esc(n.message || n.details || '')}</small></span><em>${esc(fmtTime(n.created_at))}</em></button>`).join('') : `<div class="empty">No notifications yet.</div>`}</div>
   </section>`;
 }
+
+function requestCompletedAt(req = {}) {
+  return req.completed_at || req.closed_at || req.updated_at || req.created_at || null;
+}
+function completedRangeLabel(filter = 'today') {
+  return ({ today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year' })[filter] || 'Today';
+}
+function activeGuardRecord() {
+  const profileId = String(state.profile?.id || state.profile?.auth_user_id || state.profile?.user_id || '');
+  const email = String(activeGuardEmail() || '').toLowerCase();
+  const name = String(activeGuardName() || '').trim().toLowerCase();
+  return state.guards.find(g => [g.id, g.auth_user_id, g.user_id, g.profile_id].some(v => String(v || '') && String(v || '') === profileId))
+    || state.guards.find(g => String(g.email || '').toLowerCase() === email)
+    || state.guards.find(g => String(g.name || g.display_name || '').trim().toLowerCase() === name)
+    || null;
+}
+function requestMatchesActiveGuard(req = {}) {
+  const record = activeGuardRecord();
+  const ids = [record?.id, record?.auth_user_id, record?.user_id, record?.profile_id, state.profile?.id, state.profile?.auth_user_id, state.profile?.user_id]
+    .map(v => String(v || ''))
+    .filter(Boolean);
+  if (ids.length && ids.includes(String(req.guard_id || req.assigned_guard_id || ''))) return true;
+  const reqGuardName = String(requestGuardName(req) || '').trim().toLowerCase();
+  const reqGuardEmail = String(guardById(req.guard_id || req.assigned_guard_id)?.email || '').trim().toLowerCase();
+  const selfName = String(activeGuardName() || '').trim().toLowerCase();
+  const selfEmail = String(activeGuardEmail() || '').trim().toLowerCase();
+  if (selfEmail && reqGuardEmail && selfEmail === reqGuardEmail) return true;
+  if (selfName && reqGuardName && selfName === reqGuardName) return true;
+  return false;
+}
+function completedFilterMatch(dateValue, filter = 'today') {
+  const d = new Date(dateValue || 0);
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (filter === 'today') return d >= startToday;
+  if (filter === 'week') {
+    const start = new Date(startToday);
+    start.setDate(startToday.getDate() - startToday.getDay());
+    return d >= start;
+  }
+  if (filter === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  if (filter === 'year') return d.getFullYear() === now.getFullYear();
+  return true;
+}
+function guardCompletedRequestsBase() {
+  const all = completedRequests().filter(requestMatchesActiveGuard);
+  return all.length ? all : completedRequests();
+}
+function guardCompletedJobsForFilter(filter = state.completedFilter || 'today') {
+  return guardCompletedRequestsBase()
+    .filter(req => completedFilterMatch(requestCompletedAt(req), filter))
+    .sort((a, b) => new Date(requestCompletedAt(b) || 0) - new Date(requestCompletedAt(a) || 0));
+}
+function guardCompletedDurationMinutes(req = {}) {
+  const start = new Date(req.started_at || req.accepted_at || req.assigned_at || req.created_at || 0).getTime();
+  const end = new Date(requestCompletedAt(req) || 0).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.max(1, Math.round((end - start) / 60000));
+}
+function guardCompletedStats(filter = state.completedFilter || 'today') {
+  const rows = guardCompletedJobsForFilter(filter);
+  const proofCount = rows.reduce((sum, req) => sum + proofForRequest(req.id).length, 0);
+  const durations = rows.map(guardCompletedDurationMinutes).filter(Number.isFinite);
+  const avgDuration = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+  const totalMinutes = durations.length ? durations.reduce((a, b) => a + b, 0) : 0;
+  return { rows, proofCount, avgDuration, totalMinutes };
+}
+function guardCompletedSelectedRequest(rows = []) {
+  return rows.find(r => String(r.id) === String(state.selectedCompletedRequestId || '')) || rows[0] || null;
+}
+function completedJobStatCard(icon, title, value, sub, tone = '') {
+  return `<article class="completed-stat-card ${esc(tone)}"><div class="completed-stat-icon">${esc(icon)}</div><div><strong>${esc(title)}</strong><b>${esc(value)}</b><span>${esc(sub)}</span></div></article>`;
+}
+function completedFilterButton(filter, label) {
+  const active = (state.completedFilter || 'today') === filter;
+  return `<button type="button" class="completed-filter-btn ${active ? 'active' : ''}" data-completed-filter="${esc(filter)}">${esc(label)}</button>`;
+}
+function completedProofStack(req = {}) {
+  const proofs = proofForRequest(req.id).slice(0, 3);
+  if (!proofs.length) return `<span class="completed-proof-none">0</span>`;
+  return `<div class="completed-proof-stack">${proofs.map((item, idx) => `<span style="z-index:${4-idx}">${esc(String((item.file_type || 'proof')).startsWith('video/') ? '▶' : '▣')}</span>`).join('')}<b>${esc(proofForRequest(req.id).length)}</b></div>`;
+}
+function completedJobRow(req = {}, selected = false) {
+  const completedAt = requestCompletedAt(req);
+  const duration = guardCompletedDurationMinutes(req);
+  return `<button type="button" class="completed-job-row ${selected ? 'active' : ''}" data-action="select-completed-request" data-request-id="${esc(req.id)}">
+    <div class="completed-request-col"><strong>${esc(requestTitle(req))}</strong><span>${esc(propertyLabel(req))}</span></div>
+    <div class="completed-prop-col"><strong>${esc(propertyAddress(req))}</strong><span>${esc(requestClientName(req))}</span></div>
+    <div class="completed-date-col"><strong>${esc(fmtDate(completedAt))}</strong><span>${esc(timeAgo(completedAt))}</span></div>
+    <div class="completed-duration-col"><strong>${esc(duration ? duration + ' min' : '—')}</strong><span>Duration</span></div>
+    <div class="completed-proof-col">${completedProofStack(req)}</div>
+    <div class="completed-status-col">${statusChip('completed')}</div>
+  </button>`;
+}
+function completedProofPreview(item = {}) {
+  const url = item.public_url || item.file_url || item.url || '';
+  const name = item.file_name || 'Proof file';
+  const isVideo = String(item.file_type || '').startsWith('video/');
+  if (!url) return `<div class="completed-proof-tile empty"><span>${esc(name)}</span></div>`;
+  return `<div class="completed-proof-tile">${isVideo ? `<video src="${esc(url)}" muted playsinline preload="metadata"></video>` : `<img src="${esc(url)}" alt="${esc(name)}">`}<div><strong>${esc(name)}</strong><span>${esc(item.file_type || (isVideo ? 'Video' : 'Image'))}</span></div></div>`;
+}
+function guardCompletedJobsView() {
+  const filter = state.completedFilter || 'today';
+  const stats = guardCompletedStats(filter);
+  const rows = stats.rows;
+  const selected = guardCompletedSelectedRequest(rows);
+  const proofs = selected ? proofForRequest(selected.id) : [];
+  const durations = rows.map(guardCompletedDurationMinutes).filter(Number.isFinite);
+  const completionRate = rows.length ? '100%' : '—';
+  return `<div class="dashboard completed-page">
+    <header class="dashboard-header completed-header">
+      <div class="title-block"><h1>Completed</h1><p>Review finished patrols, proof, and job history.</p></div>
+      <div class="header-actions completed-toolbar">${completedFilterButton('today', 'Today')}${completedFilterButton('week', 'This Week')}${completedFilterButton('month', 'This Month')}${completedFilterButton('year', 'This Year')}</div>
+    </header>
+    <section class="completed-stats-grid">
+      ${completedJobStatCard('✓', 'Completed Jobs', rows.length, completedRangeLabel(filter), 'green')}
+      ${completedJobStatCard('◷', 'Total Time', stats.totalMinutes ? Math.floor(stats.totalMinutes / 60) + 'h ' + String(stats.totalMinutes % 60).padStart(2, '0') + 'm' : '—', completedRangeLabel(filter), 'blue')}
+      ${completedJobStatCard('▣', 'Proof Uploaded', stats.proofCount, completedRangeLabel(filter), 'purple')}
+      ${completedJobStatCard('◎', 'Completion Rate', completionRate, completedRangeLabel(filter), 'teal')}
+    </section>
+    <section class="completed-layout">
+      <div class="panel completed-list-panel">
+        <div class="completed-list-head"><span>Request</span><span>Property / Address</span><span>Completed</span><span>Duration</span><span>Proof</span><span>Status</span></div>
+        <div class="completed-list-body">${rows.length ? rows.map(req => completedJobRow(req, selected && String(selected.id) === String(req.id))).join('') : `<div class="empty completed-empty"><strong>No completed jobs for ${esc(completedRangeLabel(filter))}.</strong><br>By default this page only shows today's completed jobs. Change the filter above to view more history.</div>`}</div>
+        <div class="completed-list-foot"><span>Showing ${esc(rows.length)} result${rows.length === 1 ? '' : 's'}</span><span>Default filter: Today</span></div>
+      </div>
+      <aside class="panel panel-pad completed-detail-rail">
+        ${selected ? `
+          <div class="active-rail-head completed-detail-head"><h2>Job Details</h2><button class="ghost-button" data-view="active-job">Open Active Job</button></div>
+          <div class="completed-detail-summary"><div class="completed-detail-photo">${(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url) ? `<img src="${esc(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url)}" alt="${esc(propertyLabel(selected))}">` : `<div>${esc(propertyLabel(selected).slice(0,1) || 'P')}</div>`}</div><div><strong>${esc(requestTitle(selected))}</strong><span>${esc(propertyLabel(selected))}</span><small>${esc(propertyAddress(selected))}</small></div>${statusChip('completed')}</div>
+          <div class="active-detail-list completed-detail-list"><span>Completed</span><strong>${esc(fmtDate(requestCompletedAt(selected)))}</strong><span>Duration</span><strong>${esc(guardCompletedDurationMinutes(selected) ? guardCompletedDurationMinutes(selected) + ' min' : '—')}</strong><span>Patrol Type</span><strong>${esc(selected.patrol_type || selected.request_type || 'Patrol Check')}</strong><span>Priority</span><strong>${esc(statusText(selected.priority || 'Normal'))}</strong><span>Client</span><strong>${esc(requestClientName(selected))}</strong><span>Assigned Guard</span><strong>${esc(requestGuardName(selected))}</strong></div>
+          <div class="completed-timeline"><h3>Job Timeline</h3><div>${['accepted','on_the_way','arrived','checking_property','upload_proof','completed'].map(step => `<div><i>✓</i><span>${esc(guardWorkflowStageText(step))}</span></div>`).join('')}</div></div>
+          <div class="completed-proof-section"><div class="active-rail-head"><h2>Proof Files (${esc(proofs.length)})</h2></div><div class="completed-proof-grid">${proofs.length ? proofs.slice(0, 4).map(completedProofPreview).join('') : `<div class="empty">No proof files uploaded.</div>`}</div></div>
+        ` : `<div class="empty"><strong>No job selected.</strong><br>Select a completed job on the left to see its details.</div>`}
+      </aside>
+    </section>
+  </div>`;
+}
 function guardActiveJobWorkflowView() {
   const req = guard302CurrentRequest();
   if (!req) {
@@ -1905,6 +2048,7 @@ function renderRoleView() {
   if (state.role === 'guard') {
     if (state.view === 'dashboard') return guardDashboardMockup302();
     if (state.view === 'active-job') return guardActiveJobWorkflowView();
+    if (state.view === 'completed') return guardCompletedJobsView();
     if (state.view === 'route-gps') return compactDashboard('guard');
     if (state.view === 'upload-proof') return proofUploadView();
   }
@@ -2114,6 +2258,12 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.completedFilter) {
+      state.completedFilter = button.dataset.completedFilter;
+      state.selectedCompletedRequestId = '';
+      render();
+      return;
+    }
     if (button.dataset.action === 'guard-online') {
       setGuardOnline();
       return;
@@ -2143,6 +2293,11 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'admin-assign-now') {
       await assignPatrolNow(button.dataset.requestId);
+      return;
+    }
+    if (button.dataset.action === 'select-completed-request') {
+      state.selectedCompletedRequestId = button.dataset.requestId || '';
+      render();
       return;
     }
     if (button.dataset.action === 'guard-workflow-step') {

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-locked-workflow-stages",
-  "version": "3.0.14",
+  "name": "co-pilot-security-completed-jobs-filters",
+  "version": "3.0.15",
   "private": true,
-  "description": "Locks prior Guard Active Job workflow stages after the guard advances so completed stages cannot be reopened.",
+  "description": "Adds a Guard Completed sidebar page with Today/This Week/This Month/This Year filters. Defaults to today's completed jobs.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
