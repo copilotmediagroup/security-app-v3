@@ -1,20 +1,20 @@
 Co Pilot Security
-Version: 3.0.10
-Build Name: CLIENT PATROL REQUEST FLOW
+Version: 3.0.11
+Build Name: DISPATCH ASSIGN NOW
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.9 ACTIVE JOB WORKFLOW.
-- Adds a client-facing Request Patrol page for development/testing.
-- Client can choose a saved property, priority, patrol type, proof preference, and instructions.
-- Submits to the existing Supabase cp_submit_patrol_request RPC.
-- New requests should show for Dispatch/Admin under Pending Dispatch.
-- Request history remains visible so the client can see pending, assigned, active, and completed patrols.
-- No new SQL required if the existing consolidated SQL/RPCs are already installed.
-- Preserves Guard Active Job workflow and map marker visibility rules.
+- Built from v3.0.10 CLIENT PATROL REQUEST FLOW.
+- Adds a fully functional Dispatch Dashboard Assign Now shortcut for pending client patrol requests.
+- Pending requests now show in a dashboard shortcut panel with request details, property/address, guard selector, and Assign Now button.
+- Assign Now calls the existing Supabase RPC cp_admin_assign_patrol_request with request_id and guard_id.
+- After assignment, the app reloads data and the request changes from Pending Dispatch to Assigned.
+- Assigned request should then appear in the selected guard's dashboard / Active Job workflow.
+- No new SQL required if the existing consolidated assignment RPC is already installed.
+- Preserves Client Request Patrol flow, Guard Active Job workflow, and map marker visibility rules.
 
 Badge:
-v3.0.10 CLIENT PATROL REQUEST FLOW
+v3.0.11 DISPATCH ASSIGN NOW
 
 SQL:
 No new SQL required.

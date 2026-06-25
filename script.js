@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.10',
-  label: 'v3.0.10 CLIENT PATROL REQUEST FLOW'
+  version: '3.0.11',
+  label: 'v3.0.11 DISPATCH ASSIGN NOW'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -390,6 +390,27 @@ async function uploadProof(form) {
 }
 
 
+async function assignPatrolNow(requestId) {
+  const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
+  if (!req) throw new Error('Pending patrol request not found. Refresh Dispatch and try again.');
+  if (String(req.status || '') === 'completed') throw new Error('Completed jobs cannot be assigned.');
+  const guards = adminAssignableGuards();
+  if (!guards.length) throw new Error('No approved active guards found. Approve or create a guard before assigning.');
+  const select = document.querySelector(`select[data-assign-guard="${String(requestId).replace(/"/g, '&quot;')}"]`);
+  const selectedGuardId = select?.value || guards[0]?.id || '';
+  if (!selectedGuardId) throw new Error('Choose a guard before assigning.');
+  const result = await supabase.rpc('cp_admin_assign_patrol_request', {
+    p_request_id: requestId,
+    p_guard_id: selectedGuardId
+  });
+  if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
+  await loadData();
+  state.view = 'dashboard';
+  render();
+  const guardName = result.guard?.name || result.guard?.display_name || result.guard?.email || 'guard';
+  toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
+}
+
 async function submitClientPatrolRequest(form) {
   const propertyId = form.property_id?.value || '';
   const priority = form.priority?.value || 'normal';
@@ -595,6 +616,32 @@ function feedRow(icon, title, body, time, iconClass = '') {
   </button>`;
 }
 
+function adminAssignableGuards() {
+  return (state.guards || []).filter(g => {
+    const status = String(g.status || 'active').toLowerCase();
+    return !['inactive', 'disabled', 'rejected', 'pending'].includes(status);
+  });
+}
+function adminGuardOptionLabel(g = {}) {
+  const name = g.name || g.display_name || g.email || 'Guard';
+  const unit = [g.vehicle, g.license_plate].filter(Boolean).join(' · ');
+  return unit ? `${name} — ${unit}` : name;
+}
+function adminAssignNowPanel(pending = []) {
+  const guards = adminAssignableGuards();
+  const rows = pending.slice(0, 4);
+  const guardOptions = guards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  return `<section class="panel panel-pad assign-now-panel">
+    <div class="panel-head"><div><h2>Assign Now</h2><p>Development shortcut: assign a pending client request directly from the dashboard.</p></div><button class="ghost-button" data-view="pending-dispatch">Pending Dispatch</button></div>
+    ${rows.length ? `<div class="assign-now-list">${rows.map(req => `<article class="assign-now-row">
+      <div class="assign-now-main"><strong>${esc(requestTitle(req))}</strong><span>${esc(propertyLabel(req))}</span><small>${esc(propertyAddress(req))}</small></div>
+      <div class="assign-now-meta"><b>${esc(req.priority || 'Normal')}</b><small>${esc(fmtTime(req.created_at))}</small></div>
+      <label class="assign-now-select"><span>Guard</span><select data-assign-guard="${esc(req.id)}">${guardOptions || '<option value="">No active guards</option>'}</select></label>
+      <button type="button" class="assign-now-button" data-action="admin-assign-now" data-request-id="${esc(req.id)}" ${guards.length ? '' : 'disabled'}>Assign Now</button>
+    </article>`).join('')}</div>` : `<div class="assign-now-empty"><strong>No pending requests.</strong><span>When a client requests patrol, the job will appear here with an Assign Now shortcut.</span></div>`}
+  </section>`;
+}
+
 function adminDashboard() {
   const pending = pendingRequests();
   const active = activeRequests();
@@ -637,6 +684,8 @@ function adminDashboard() {
             </div>
           </section>
         </div>
+
+        ${adminAssignNowPanel(pending)}
 
         <section class="panel map-card">
           <div class="panel-head"><div><h2>Dispatch Command Map</h2><p>Live view of patrols and incidents</p></div><div class="map-head-actions"><button class="ghost-button" data-view="dispatch-board">Open Dispatch Board</button><button class="primary-button" data-view="live-gps">Live GPS</button><button class="ghost-button">⛶</button></div></div>
@@ -1957,6 +2006,10 @@ document.addEventListener('click', async event => {
       await loadData();
       render();
       toast('Data refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'admin-assign-now') {
+      await assignPatrolNow(button.dataset.requestId);
       return;
     }
     if (button.dataset.action === 'guard-workflow-step') {

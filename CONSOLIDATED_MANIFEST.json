@@ -1,16 +1,19 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.10",
-  "buildName": "CLIENT PATROL REQUEST FLOW",
-  "type": "client-request-patrol-dev-flow",
+  "version": "3.0.11",
+  "buildName": "DISPATCH ASSIGN NOW",
+  "type": "dispatch-dashboard-assign-now-shortcut",
   "sql_required": false,
   "features": [
-    "Client Patrol Requests page now includes a real New Patrol Request form",
-    "Form submits to existing Supabase cp_submit_patrol_request RPC",
-    "Submitted requests appear in Dispatch/Admin Pending Dispatch",
-    "Development flow card explains Client to Dispatch to Guard to Report cycle",
-    "Saved property picker can prefill the request form",
-    "Request history remains visible under the form",
-    "Preserves Guard Active Job workflow and marker visibility rules"
+    "Dispatch Dashboard now includes an Assign Now shortcut panel",
+    "Pending client patrol requests show directly on Dispatch Dashboard",
+    "Each pending request shows request number, property, address, priority/time, guard selector, and Assign Now button",
+    "Assign Now calls existing Supabase RPC cp_admin_assign_patrol_request",
+    "Successful assignment refreshes app data and moves request to assigned status",
+    "Selected guard should see the assigned job in Guard Dashboard / Active Job workflow",
+    "No new SQL required if existing consolidated assignment RPC is installed",
+    "Preserves Client Patrol Request flow",
+    "Preserves Guard Active Job workflow",
+    "Preserves map marker visibility rules"
   ]
 }
