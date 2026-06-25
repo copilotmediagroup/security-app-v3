@@ -2771,3 +2771,55 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .detail-line { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:34px; border-top:1px solid rgba(113,169,232,.08); padding-top:8px; margin-top:8px; }
 @media (max-width: 1420px) { .messages-layout { grid-template-columns:290px minmax(0,1fr) 300px; } }
 @media (max-width: 1200px) { .messages-layout { grid-template-columns:1fr; } .messages-inbox, .messages-conversation, .messages-detail { border-right:0; border-bottom:1px solid rgba(113,169,232,.10); } .cards-grid-guard-approvals { grid-template-columns:1fr; } }
+
+/* v3.0.21 Messaging layout polish */
+.conversation-stream {
+  align-content: start !important;
+  grid-auto-rows: max-content !important;
+}
+.chat-row {
+  align-items: flex-start !important;
+  min-height: auto !important;
+}
+.chat-row.me {
+  justify-content: flex-end !important;
+}
+.chat-row.them {
+  justify-content: flex-start !important;
+}
+.chat-bubble {
+  width: auto !important;
+  min-width: 210px;
+  max-width: min(72%, 560px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  align-self: flex-start !important;
+  overflow-wrap: anywhere;
+}
+.chat-row.me .chat-bubble {
+  border-bottom-right-radius: 8px;
+}
+.chat-row.them .chat-bubble {
+  border-bottom-left-radius: 8px;
+}
+.chat-bubble header {
+  min-height: 18px;
+}
+.chat-bubble p {
+  max-width: 100%;
+}
+.conversation-compose {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(3, 13, 24, .90), rgba(3, 13, 24, .98));
+}
+.messages-conversation {
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+}
+.messages-detail {
+  overflow: auto;
+}
+.messages-thread-row {
+  min-height: 78px;
+}

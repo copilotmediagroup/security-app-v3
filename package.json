@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-guard-messaging",
-  "version": "3.0.20",
+  "name": "co-pilot-security-message-layout-polish",
+  "version": "3.0.21",
   "private": true,
-  "description": "Adds a redesigned Dispatch/Guard messaging page and guard approval rank selector.",
+  "description": "Polishes Dispatch/Guard messaging layout so chat bubbles stay compact and conversation panel matches the mockup.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

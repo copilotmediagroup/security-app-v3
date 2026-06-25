@@ -1,9 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.20
+# Next Thread Handoff — Co Pilot Security v3.0.21
 
-Latest build: v3.0.20 DISPATCH GUARD MESSAGING
+Latest build: v3.0.21 MESSAGE LAYOUT POLISH
 
 ## What changed
-- Rebuilt the Messages page for Dispatch/Guard messaging.
-- Added functional local development messaging between Dispatch and guards.
-- Added Guard rank selection on the Guard Approvals page.
+- Built from v3.0.20.
+- Fixed tall skinny chat bubble behavior on Messages page.
+- Chat stream now stacks messages normally.
+- Sent messages show as `You`.
 - No new SQL required.

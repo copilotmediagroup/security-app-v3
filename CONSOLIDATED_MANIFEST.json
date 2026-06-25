@@ -1,15 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.20",
-  "buildName": "DISPATCH GUARD MESSAGING",
-  "type": "dispatch-guard-messaging-and-ranks",
+  "version": "3.0.21",
+  "buildName": "MESSAGE LAYOUT POLISH",
+  "type": "dispatch-guard-message-layout-polish",
   "sql_required": false,
   "features": [
-    "Redesigned Messages page for Dispatch and guards with inbox, chat, and details rail",
-    "Functional local development messaging between Dispatch and guards",
-    "Quick reply buttons and searchable/filterable inbox",
-    "Guard Approvals page now includes a guard rank selector before approval",
-    "Saved guard ranks display in messaging details",
+    "Fixes sent message bubble stretching vertically",
+    "Keeps chat bubbles compact and top-aligned",
+    "Conversation stream now stacks messages normally",
+    "Current user's messages show sender as You",
+    "Details rail labels completed linked jobs correctly",
+    "Dispatch/Guard local development messaging preserved",
     "No new SQL required"
   ]
 }
