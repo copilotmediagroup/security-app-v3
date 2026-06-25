@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T14-35-v3035';
+const CP_DEV_CACHE_BUST = '2026-06-25T14-55-v3036';
 const BUILD = {
-  version: '3.0.35',
-  label: 'v3.0.35 LIVE REQUEST SUMMARY'
+  version: '3.0.36',
+  label: 'v3.0.36 CLIENT REPORTS REDESIGN'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -48,7 +48,11 @@ const state = {
   clientPropertyView: 'list',
   clientPatrolPrefillPropertyId: '',
   clientRequestType: 'immediate',
-  clientRequestHistoryFilter: 'all'
+  clientRequestHistoryFilter: 'all',
+  clientReportSearch: '',
+  clientReportStatusFilter: 'all',
+  clientReportPropertyFilter: 'all',
+  clientReportPage: 1
 };;
 const liveGps = {
   online: false,
@@ -3782,6 +3786,204 @@ function settingsView() {
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Settings</h1><p>Account and app status.</p></div></header><section class="page-panel"><div class="top-panel-grid"><div><p class="eyebrow">Account</p><h2>${esc(name)}</h2><p style="color:var(--muted)">${esc(state.profile?.email || '')}</p><p>${statusChip(state.role)}</p></div><div><p class="eyebrow">Build</p><h2>${esc(BUILD.label)}</h2><p style="color:var(--muted)">Bottom-right badge is hard coded and refreshed after every render.</p></div></div></section></div>`;
 }
 
+
+function clientReportSourceRows() {
+  const fromReports = (state.patrolReports || []).map(report => {
+    const req = report.request_id ? requestById(report.request_id) : null;
+    return {
+      id: report.id || `report-${report.request_id || Math.random()}`,
+      report,
+      req,
+      reportNumber: report.report_number || report.reference_id || `RPT-${String(report.id || report.request_id || '').slice(0, 8)}`,
+      title: report.title || report.name || (req ? `${propertyLabel(req)} Patrol Report` : 'Patrol Report'),
+      description: report.summary || report.notes || report.final_notes || report.details || (req?.instructions || 'Released patrol report.'),
+      status: report.status || (report.released_at ? 'completed' : 'pending_review'),
+      createdAt: report.released_at || report.created_at || req?.updated_at || req?.created_at,
+      propertyId: req?.property_id || report.property_id || '',
+      propertyName: req ? propertyLabel(req) : report.property_name || 'Property',
+      propertyAddress: req ? propertyAddress(req) : report.property_address || '',
+      type: req?.patrol_type || report.patrol_type || report.type || 'Patrol',
+      guardName: req ? requestGuardName(req) : report.guard_name || 'Unassigned',
+      requestId: report.request_id || req?.id || '',
+      proofCount: report.proof_count || (req ? proofForRequest(req.id).length : 0),
+      url: report.public_url || report.file_url || report.url || report.pdf_url || ''
+    };
+  });
+
+  const reportReqIds = new Set(fromReports.map(row => String(row.requestId || '')).filter(Boolean));
+  const fromCompleted = completedRequests()
+    .filter(req => !reportReqIds.has(String(req.id)))
+    .map(req => ({
+      id: `completed-${req.id}`,
+      report: null,
+      req,
+      reportNumber: `RPT-${String(req.id || '').slice(0, 8)}`,
+      title: `${propertyLabel(req)} Final Patrol Report`,
+      description: req.instructions || 'Completed patrol report ready for review.',
+      status: 'completed',
+      createdAt: req.completed_at || req.updated_at || req.created_at,
+      propertyId: req.property_id || '',
+      propertyName: propertyLabel(req),
+      propertyAddress: propertyAddress(req),
+      type: req.patrol_type || req.schedule_type || 'Patrol',
+      guardName: requestGuardName(req),
+      requestId: req.id,
+      proofCount: proofForRequest(req.id).length,
+      url: ''
+    }));
+
+  return [...fromReports, ...fromCompleted].sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+function clientReportTypeLabel(value = '') {
+  const v = String(value || '').toLowerCase();
+  if (v.includes('immediate')) return 'Immediate Patrol';
+  if (v.includes('vacation')) return 'Vacation Watch';
+  if (v.includes('recurring')) return 'Recurring Patrol';
+  if (v.includes('scheduled')) return 'Scheduled Patrol';
+  return statusText(value || 'Patrol');
+}
+function clientReportTypeIcon(value = '') {
+  const label = clientReportTypeLabel(value).toLowerCase();
+  if (label.includes('immediate')) return 'ϟ';
+  if (label.includes('vacation')) return '▣';
+  if (label.includes('recurring')) return '↻';
+  if (label.includes('scheduled')) return '▦';
+  return '▤';
+}
+function clientReportStatus(row = {}) {
+  const raw = String(row.status || '').toLowerCase();
+  if (raw.includes('attention') || raw.includes('incident') || raw.includes('flag')) return 'attention';
+  if (raw.includes('pending') || raw.includes('review')) return 'pending_review';
+  if (raw.includes('progress')) return 'in_progress';
+  if (raw.includes('complete') || raw.includes('released') || raw.includes('approved')) return 'completed';
+  return 'completed';
+}
+function clientReportStatusLabel(status = '') {
+  if (status === 'pending_review') return 'Pending Review';
+  if (status === 'in_progress') return 'In Progress';
+  if (status === 'attention') return 'Attention';
+  return 'Completed';
+}
+function filteredClientReports() {
+  let rows = clientReportSourceRows();
+  const q = String(state.clientReportSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(row => [row.reportNumber, row.title, row.description, row.propertyName, row.propertyAddress, row.guardName, clientReportTypeLabel(row.type)].join(' ').toLowerCase().includes(q));
+  if (state.clientReportStatusFilter && state.clientReportStatusFilter !== 'all') rows = rows.filter(row => clientReportStatus(row) === state.clientReportStatusFilter);
+  if (state.clientReportPropertyFilter && state.clientReportPropertyFilter !== 'all') rows = rows.filter(row => String(row.propertyId) === String(state.clientReportPropertyFilter));
+  return rows;
+}
+function clientReportCounts() {
+  const rows = clientReportSourceRows();
+  const total = rows.length;
+  const completed = rows.filter(row => clientReportStatus(row) === 'completed').length;
+  const pending = rows.filter(row => clientReportStatus(row) === 'pending_review').length;
+  const attention = rows.filter(row => clientReportStatus(row) === 'attention').length;
+  const now = new Date();
+  const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const thisMonth = rows.filter(row => new Date(row.createdAt || 0).getTime() >= startMonth).length;
+  return { total, completed, pending, attention, thisMonth };
+}
+function clientReportKpi(icon, label, value, sub, tone = 'blue') {
+  return `<article class="client-report-kpi ${esc(tone)}"><div class="icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div></article>`;
+}
+function clientReportPropertyOptions() {
+  const rows = clientReportSourceRows();
+  const ids = new Set(rows.map(r => String(r.propertyId || '')).filter(Boolean));
+  const props = (state.properties || []).filter(p => ids.has(String(p.id)));
+  return `<option value="all">All Properties</option>${props.map(p => `<option value="${esc(p.id)}" ${String(state.clientReportPropertyFilter) === String(p.id) ? 'selected' : ''}>${esc(propertyDisplayName(p))}</option>`).join('')}`;
+}
+function clientReportStatusChip(row = {}) {
+  const status = clientReportStatus(row);
+  return `<span class="report-status-chip ${esc(status)}">${esc(clientReportStatusLabel(status))}</span>`;
+}
+function clientReportImage(row = {}) {
+  const p = propertyById(row.propertyId);
+  const img = propertyImageValue(p);
+  if (img) return `<img src="${esc(img)}" alt="${esc(row.propertyName)}">`;
+  return `<span>${esc(initials(row.propertyName || 'Report'))}</span>`;
+}
+function clientReportOfficerAvatar(row = {}) {
+  const guard = state.guards.find(g => (g.name || g.display_name || g.email) === row.guardName) || {};
+  const img = guard.photo_url || guard.avatar_url || guard.profile_photo_url || '';
+  if (img) return `<img src="${esc(img)}" alt="${esc(row.guardName)}">`;
+  return `<span>${esc(initials(row.guardName || 'G'))}</span>`;
+}
+function clientReportRow(row = {}) {
+  return `<div class="client-report-row">
+    <div class="report-main"><div class="report-thumb">${clientReportImage(row)}</div><div><strong>${esc(row.reportNumber)}</strong><small>${esc(row.description)}</small></div></div>
+    <div class="report-property"><strong>${esc(row.propertyName)}</strong><small>${esc(row.propertyAddress || 'Address unavailable')}</small></div>
+    <div class="report-type"><i>${esc(clientReportTypeIcon(row.type))}</i><span>${esc(clientReportTypeLabel(row.type))}</span></div>
+    <div class="report-date"><strong>${esc(fmtDate(row.createdAt))}</strong><small>${esc(fmtTime(row.createdAt))}</small></div>
+    <div>${clientReportStatusChip(row)}</div>
+    <div class="report-officer"><div>${clientReportOfficerAvatar(row)}</div><span>${esc(row.guardName)}</span></div>
+    <div class="report-actions"><button type="button" data-action="view-client-report" data-report-id="${esc(row.id)}" title="View report">⊙</button><button type="button" data-action="download-client-report" data-report-id="${esc(row.id)}" title="Download report">⇩</button></div>
+  </div>`;
+}
+function clientReportSummaryCard() {
+  const counts = clientReportCounts();
+  const total = counts.total || 1;
+  const completedPct = Math.round((counts.completed / total) * 100);
+  const pendingPct = Math.round((counts.pending / total) * 100);
+  const attentionPct = Math.round((counts.attention / total) * 100);
+  return `<section class="panel panel-pad report-summary-card"><div class="panel-head"><div><h2>Report Summary</h2></div></div><div class="report-donut-wrap"><div class="report-donut" style="--completed:${completedPct};--pending:${pendingPct};--attention:${attentionPct};"></div><div class="report-donut-legend"><span><i class="green"></i>Completed <b>${completedPct}% (${counts.completed})</b></span><span><i class="yellow"></i>Pending Review <b>${pendingPct}% (${counts.pending})</b></span><span><i class="red"></i>Attention <b>${attentionPct}% (${counts.attention})</b></span></div></div></section>`;
+}
+function clientReportActivityCard() {
+  const rows = clientReportSourceRows().slice(0, 3);
+  return `<section class="panel panel-pad report-activity-card"><div class="panel-head"><div><h2>Recent Activity</h2></div></div><div class="report-activity-list">${rows.length ? rows.map(row => `<div><i class="${esc(clientReportStatus(row))}"></i><span><strong>${esc(row.reportNumber)}</strong><small>${esc(clientReportStatusLabel(clientReportStatus(row)))} • ${esc(timeAgo(row.createdAt))}</small></span></div>`).join('') : '<div class="empty">No recent report activity.</div>'}</div><button class="ghost-button wide" type="button" data-action="view-all-report-activity">View All Activity</button></section>`;
+}
+function clientReportTopPropertiesCard() {
+  const map = new Map();
+  clientReportSourceRows().forEach(row => {
+    const key = row.propertyName || 'Property';
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  const rows = [...map.entries()].sort((a,b) => b[1]-a[1]).slice(0,5);
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  return `<section class="panel panel-pad report-top-properties-card"><div class="panel-head"><div><h2>Top Properties</h2></div></div><div class="report-property-bars">${rows.length ? rows.map(([name,count]) => `<div><span>${esc(name)}</span><b><i style="width:${Math.max(10, Math.round((count/max)*100))}%"></i></b><em>${esc(count)}</em></div>`).join('') : '<div class="empty">No property report totals yet.</div>'}</div><button class="ghost-button wide" type="button" data-view="properties">View All Properties</button></section>`;
+}
+function clientReportsView() {
+  const counts = clientReportCounts();
+  const rows = filteredClientReports();
+  const pageSize = 6;
+  const page = Math.max(1, Math.min(state.clientReportPage || 1, Math.max(1, Math.ceil(rows.length / pageSize))));
+  state.clientReportPage = page;
+  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
+  const completedPct = counts.total ? Math.round((counts.completed / counts.total) * 100) : 0;
+  const pendingPct = counts.total ? Math.round((counts.pending / counts.total) * 100) : 0;
+  const attentionPct = counts.total ? Math.round((counts.attention / counts.total) * 100) : 0;
+  return `<div class="dashboard client-reports-shell">
+    <header class="dashboard-header"><div class="title-block"><h1>Reports</h1><p>View and manage all security reports generated from patrols and activity.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div></header>
+    <section class="client-report-kpi-row">
+      ${clientReportKpi('▤','Total Reports',counts.total,'All time','blue')}
+      ${clientReportKpi('✓','Completed',counts.completed,`${completedPct}%`,'green')}
+      ${clientReportKpi('◷','Pending Review',counts.pending,`${pendingPct}%`,'yellow')}
+      ${clientReportKpi('⚑','Attention',counts.attention,`${attentionPct}%`,'purple')}
+      ${clientReportKpi('▣','This Month',counts.thisMonth,'Released this month','orange')}
+    </section>
+    <section class="client-reports-layout">
+      <main class="client-reports-main panel">
+        <div class="client-report-toolbar">
+          <div class="client-report-search"><span>⌕</span><input type="search" placeholder="Search reports..." value="${esc(state.clientReportSearch)}" data-client-report-search></div>
+          <select data-client-report-property-filter>${clientReportPropertyOptions()}</select>
+          <select data-client-report-status-filter><option value="all">All Statuses</option><option value="completed" ${state.clientReportStatusFilter === 'completed' ? 'selected' : ''}>Completed</option><option value="pending_review" ${state.clientReportStatusFilter === 'pending_review' ? 'selected' : ''}>Pending Review</option><option value="attention" ${state.clientReportStatusFilter === 'attention' ? 'selected' : ''}>Attention</option><option value="in_progress" ${state.clientReportStatusFilter === 'in_progress' ? 'selected' : ''}>In Progress</option></select>
+          <button type="button" class="ghost-button report-date-range">▣ This Month</button>
+          <button type="button" class="primary-button" data-action="export-client-reports">⇩ Export</button>
+        </div>
+        <div class="client-report-table">
+          <div class="client-report-head"><span>Report</span><span>Property</span><span>Type</span><span>Date & Time</span><span>Status</span><span>Officer</span><span>Actions</span></div>
+          ${pageRows.length ? pageRows.map(clientReportRow).join('') : '<div class="empty">No reports match your filters.</div>'}
+        </div>
+        <footer class="client-report-footer"><span>Showing ${rows.length ? `${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, rows.length)}` : '0'} of ${rows.length} reports</span><div class="report-pagination"><button type="button" data-action="client-report-page-prev">‹</button><strong>${esc(page)}</strong><button type="button" data-action="client-report-page-next">›</button></div><label>Rows per page:<select><option>6</option></select></label></footer>
+      </main>
+      <aside class="client-reports-rail">
+        ${clientReportSummaryCard()}
+        ${clientReportActivityCard()}
+        ${clientReportTopPropertiesCard()}
+      </aside>
+    </section>
+  </div>`;
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -3808,7 +4010,7 @@ function renderRoleView() {
     if (state.view === 'dashboard') return clientDashboardView();
     if (state.view === 'properties') return clientPropertiesView();
     if (state.view === 'patrol-requests') return clientPatrolRequestsView();
-    if (state.view === 'reports') return cardsView('Reports', 'Released client reports.', state.patrolReports);
+    if (state.view === 'reports') return clientReportsView();
   }
   if (state.view === 'messages') return messagesView();
   if (state.view === 'notifications') return notificationsView();
@@ -4058,6 +4260,36 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.action === 'export-client-reports') {
+      toast('Reports export is queued for the next reporting build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'view-client-report') {
+      const row = clientReportSourceRows().find(r => String(r.id) === String(button.dataset.reportId));
+      if (row?.url) window.open(row.url, '_blank', 'noopener');
+      else toast('Report preview panel is the next reports feature to build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'download-client-report') {
+      const row = clientReportSourceRows().find(r => String(r.id) === String(button.dataset.reportId));
+      if (row?.url) window.open(row.url, '_blank', 'noopener');
+      else toast('Download will be available when the final report PDF is generated.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'view-all-report-activity') {
+      toast('Full report activity timeline coming next.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'client-report-page-prev') {
+      state.clientReportPage = Math.max(1, (state.clientReportPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'client-report-page-next') {
+      state.clientReportPage = (state.clientReportPage || 1) + 1;
+      render();
+      return;
+    }
     if (button.dataset.action === 'save-client-request-draft') {
       toast('Draft saved locally for this development session.', 'success');
       return;
@@ -4248,6 +4480,18 @@ document.addEventListener('submit', async event => {
 document.addEventListener('input', event => {
   const input = event.target;
 
+  if (input && input.hasAttribute('data-client-report-property-filter')) {
+    state.clientReportPropertyFilter = input.value || 'all';
+    state.clientReportPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-client-report-status-filter')) {
+    state.clientReportStatusFilter = input.value || 'all';
+    state.clientReportPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-client-request-type-select')) {
     state.clientRequestType = input.value || 'immediate';
     updateClientRequestSummaryFromForm(input.closest('[data-form="client-patrol-request"]'));
@@ -4265,6 +4509,11 @@ document.addEventListener('input', event => {
     state.clientPropertySearch = input.value || '';
     render();
   }
+  if (input && input.hasAttribute('data-client-report-search')) {
+    state.clientReportSearch = input.value || '';
+    state.clientReportPage = 1;
+    render();
+  }
   if (input && input.closest?.('[data-form="client-patrol-request"]')) {
     syncClientRequestFormStateFromInput(input);
   }
@@ -4272,6 +4521,18 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-client-report-property-filter')) {
+    state.clientReportPropertyFilter = input.value || 'all';
+    state.clientReportPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-client-report-status-filter')) {
+    state.clientReportStatusFilter = input.value || 'all';
+    state.clientReportPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-client-request-type-select')) {
     state.clientRequestType = input.value || 'immediate';
     updateClientRequestSummaryFromForm(input.closest('[data-form="client-patrol-request"]'));

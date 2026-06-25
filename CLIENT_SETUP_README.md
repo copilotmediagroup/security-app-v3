@@ -1,22 +1,20 @@
-# Co Pilot Security v3.0.35 — Live Request Summary
+# Co Pilot Security v3.0.36 — Client Reports Redesign
 
 ## What changed
-- The Client Patrol Request `Request Summary` now updates in real time.
-- Live fields:
-  - Request Type
-  - Priority
-  - Property
-  - When / schedule
-  - Duration
-  - Requested Services
-  - Special Instructions
-  - Reference Upload file name
+- Rebuilt the Client `Reports` page.
+- Added:
+  - KPI summary cards
+  - report search
+  - property filter
+  - status filter
+  - report table
+  - view/download action buttons
+  - right rail analytics
+  - report summary donut
+  - recent activity
+  - top properties chart
 
-## Preserved
-- v3.0.34 Patrol Request mockup layout.
-- v3.0.33 badge/cache sync fix.
-- Device-only photo/video upload.
-- No URL input for photo/video.
-
-## SQL
-No new SQL required.
+## Data behavior
+- Uses existing `patrolReports` when available.
+- Also displays completed patrol requests as report-ready rows.
+- No new SQL required.

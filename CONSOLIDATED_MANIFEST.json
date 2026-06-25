@@ -1,17 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.35",
-  "buildName": "LIVE REQUEST SUMMARY",
-  "type": "client-request-summary-live-sync",
+  "version": "3.0.36",
+  "buildName": "CLIENT REPORTS REDESIGN",
+  "type": "client-reports-redesign",
   "sql_required": false,
   "features": [
-    "Request Summary now reflects form changes in real time",
-    "Priority updates live when Normal / High / Emergency is selected",
-    "Property updates live when selected property changes",
-    "Request type updates live when request type dropdown changes",
-    "When / duration / services / instructions / reference upload update live",
-    "Reference upload summary shows selected device file name",
-    "Preserves v3.0.34 Patrol Request mockup layout and v3.0.33 badge/cache fix",
+    "Rebuilt Client Reports page into a premium command-center layout",
+    "Added KPI cards: Total Reports, Completed, Pending Review, Attention, This Month",
+    "Added search, property filter, status filter, date range placeholder, and export button",
+    "Added detailed reports table with property photo, report number, property, type, date, status, officer, and actions",
+    "Added right rail analytics: report summary donut, recent activity, and top properties",
+    "Report rows are generated from existing released patrolReports plus completed requests",
     "No new SQL required"
   ]
 }

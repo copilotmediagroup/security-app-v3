@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-live-request-summary",
-  "version": "3.0.35",
+  "name": "co-pilot-security-client-reports-redesign",
+  "version": "3.0.36",
   "private": true,
-  "description": "Makes the Client Patrol Request summary update in real time as form fields change.",
+  "description": "Redesigns the Client Reports page into a premium command-center report table with KPIs, filters, analytics rail, and report actions.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

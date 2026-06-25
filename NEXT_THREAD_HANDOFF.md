@@ -1,10 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.35
+# Next Thread Handoff — Co Pilot Security v3.0.36
 
-Latest build: v3.0.35 LIVE REQUEST SUMMARY
+Latest build: v3.0.36 CLIENT REPORTS REDESIGN
 
 ## What changed
-- Built from v3.0.34.
-- Request Summary on Client Patrol Requests now updates in real time from the form.
-- Priority, request type, property, schedule, duration, services, instructions, and uploaded reference file name all sync live.
-- Preserved v3.0.34 layout and v3.0.33 badge/cache sync fix.
+- Built from v3.0.35.
+- Redesigned Client Reports page into the premium command-center layout.
+- Added KPIs, filters, report table, actions, and right-side analytics rail.
+- Rows come from existing patrolReports plus completed patrol requests.
 - No new SQL required.
