@@ -2338,6 +2338,48 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .assign-now-meta { border: 0; padding: 0; }
 }
 
+
+/* v3.0.14 Locked Workflow Stage Buttons */
+.active-step.locked-stage {
+  border-color: rgba(255, 181, 61, .34);
+  background: linear-gradient(180deg, rgba(70, 50, 24, .48), rgba(25, 18, 12, .72));
+  color: #d9c195;
+  opacity: .86;
+  cursor: not-allowed;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.active-step.locked-stage i {
+  background: rgba(255, 181, 61, .16);
+  border-color: rgba(255, 181, 61, .38);
+  color: #ffd58b;
+  box-shadow: 0 0 0 7px rgba(255,181,61,.08);
+}
+.active-step.locked-stage small { color: #ffd58b; }
+.active-step.locked-stage:hover {
+  transform: none;
+  border-color: rgba(255, 181, 61, .34);
+}
+.active-job-action.locked-stage,
+.ghost-button.locked-stage {
+  background: linear-gradient(180deg, rgba(70, 50, 24, .50), rgba(21, 16, 12, .78));
+  border-color: rgba(255, 181, 61, .34);
+  color: #d9c195;
+  cursor: not-allowed;
+  opacity: .86;
+  box-shadow: none;
+}
+.active-job-action.locked-stage i { color: #ffd58b; }
+.active-job-action.locked-stage:hover,
+.ghost-button.locked-stage:hover {
+  transform: none;
+  border-color: rgba(255, 181, 61, .34);
+}
+.active-step:disabled,
+.active-job-action:disabled,
+.ghost-button:disabled {
+  pointer-events: none;
+}
+
 /* v3.0.13 Inline Proof Upload Modal */
 .inline-proof-modal {
   position: fixed;

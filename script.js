@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.13',
-  label: 'v3.0.13 INLINE PROOF UPLOAD FLOW'
+  version: '3.0.14',
+  label: 'v3.0.14 LOCKED WORKFLOW STAGES'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1402,6 +1402,17 @@ function guardWorkflowInstruction(stage) {
 function guardWorkflowIndex(stage) {
   return Math.max(0, guardWorkflowValidStages().indexOf(stage));
 }
+function guardWorkflowStageState(req, targetStage) {
+  const currentStage = guardWorkflowStage(req);
+  const currentIndex = guardWorkflowIndex(currentStage);
+  const targetIndex = guardWorkflowIndex(targetStage);
+  if (targetIndex < currentIndex) return 'locked';
+  if (targetStage === currentStage) return 'current';
+  return 'default';
+}
+function guardWorkflowIsLocked(req, targetStage) {
+  return guardWorkflowStageState(req, targetStage) === 'locked';
+}
 function guardWorkflowLocalLogs(req) {
   if (!req) return [];
   try {
@@ -1425,15 +1436,17 @@ function setGuardWorkflowLocalStage(req, stage) {
 function syncGuardWorkflowDom(req, stage) {
   document.querySelectorAll('[data-action="guard-workflow-step"][data-request-id]').forEach(btn => {
     if (String(btn.dataset.requestId) !== String(req?.id || '')) return;
-    const isCurrent = btn.dataset.step === stage;
+    const stateName = guardWorkflowStageState(req, btn.dataset.step);
+    const isCurrent = stateName === 'current';
+    const isLocked = stateName === 'locked';
+    btn.classList.toggle('current-stage', isCurrent);
+    btn.classList.toggle('locked-stage', isLocked);
+    btn.classList.toggle('default-stage', stateName === 'default');
+    btn.disabled = isLocked;
+    btn.setAttribute('aria-disabled', isLocked ? 'true' : 'false');
     if (btn.classList.contains('active-step')) {
-      btn.classList.toggle('current-stage', isCurrent);
-      btn.classList.toggle('default-stage', !isCurrent);
       const small = btn.querySelector('small');
-      if (small) small.textContent = isCurrent ? 'Current' : 'Default';
-    }
-    if (btn.classList.contains('active-job-action')) {
-      btn.classList.toggle('current-stage', isCurrent);
+      if (small) small.textContent = isLocked ? 'Locked' : isCurrent ? 'Current' : 'Default';
     }
   });
   const status = document.querySelector('.active-workflow-status');
@@ -1535,6 +1548,11 @@ async function updateGuardWorkflowStep(requestId, step) {
   const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
   if (!req) throw new Error('Active job not found.');
   const beforeStatus = String(req.status || 'assigned');
+  const currentStage = guardWorkflowStage(req);
+  if (guardWorkflowIndex(step) < guardWorkflowIndex(currentStage)) {
+    toast(`${guardWorkflowStageText(step)} is locked. Continue from ${guardWorkflowStageText(currentStage)}.`, 'error');
+    return;
+  }
 
   if (step === 'upload_proof') {
     setGuardWorkflowLocalStage(req, 'upload_proof');
@@ -1617,19 +1635,35 @@ function activeJobWorkflowPanel(req) {
     ['upload_proof', '⇧', 'Upload Proof'],
     ['complete', '✓', 'Complete']
   ];
-  const actionClass = actionStage => `active-job-action${stage === actionStage ? ' current-stage' : ''}`;
+  const stageMeta = actionStage => {
+    const stateName = guardWorkflowStageState(req, actionStage);
+    return {
+      stateName,
+      cls: stateName === 'current' ? 'current-stage' : stateName === 'locked' ? 'locked-stage' : 'default-stage',
+      label: stateName === 'current' ? 'Current' : stateName === 'locked' ? 'Locked' : 'Default',
+      disabled: stateName === 'locked' ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'
+    };
+  };
+  const actionClass = actionStage => {
+    const meta = stageMeta(actionStage);
+    return `active-job-action ${meta.cls}`;
+  };
+  const actionDisabled = actionStage => stageMeta(actionStage).disabled;
   return `<section class="panel panel-pad active-workflow-panel">
-    <div class="panel-head"><div><h2>Workflow Progress</h2><p>Tap the stage the patrol is currently in. Only the active stage turns green.</p></div></div>
+    <div class="panel-head"><div><h2>Workflow Progress</h2><p>Move forward through the job. Once the next stage is clicked, previous stages lock and cannot be reopened.</p></div></div>
     <div class="active-stepper">
-      ${steps.map(([key, icon, label]) => `<button type="button" class="active-step ${stage === key ? 'current-stage' : 'default-stage'}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="${esc(key)}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${stage === key ? 'Current' : 'Default'}</small></button>`).join('')}
+      ${steps.map(([key, icon, label]) => {
+        const meta = stageMeta(key);
+        return `<button type="button" class="active-step ${meta.cls}" ${meta.disabled} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="${esc(key)}"><i>${esc(icon)}</i><strong>${esc(label)}</strong><small>${esc(meta.label)}</small></button>`;
+      }).join('')}
     </div>
     <div class="active-workflow-status"><strong>Current Status: <b>${esc(guardWorkflowStageText(stage))}</b></strong><p>${esc(guardWorkflowInstruction(stage))}</p></div>
     <div class="active-job-action-row">
-      <button type="button" class="${actionClass('on_way')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
-      <button type="button" class="${actionClass('arrived')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
-      <button type="button" class="${actionClass('checking')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
-      <button type="button" class="${actionClass('upload_proof')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Upload Proof</button>
-      <button type="button" class="${actionClass('complete')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
+      <button type="button" class="${actionClass('on_way')}" ${actionDisabled('on_way')} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
+      <button type="button" class="${actionClass('arrived')}" ${actionDisabled('arrived')} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
+      <button type="button" class="${actionClass('checking')}" ${actionDisabled('checking')} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
+      <button type="button" class="${actionClass('upload_proof')}" ${actionDisabled('upload_proof')} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Upload Proof</button>
+      <button type="button" class="${actionClass('complete')}" ${actionDisabled('complete')} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
     </div>
   </section>`;
 }
@@ -1682,8 +1716,9 @@ function activeJobDetailsCard(req) {
 function activeJobProofNotesCard(req) {
   const proof = guardWorkflowProofProgress(req);
   const local = guardWorkflowLocalLogs(req)[0];
+  const proofLocked = guardWorkflowIsLocked(req, 'upload_proof');
   return `<section class="panel panel-pad active-rail-card">
-    <div class="active-rail-head"><h2>Proof / Notes</h2><button class="ghost-button" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">Upload Proof</button></div>
+    <div class="active-rail-head"><h2>Proof / Notes</h2><button class="ghost-button ${proofLocked ? 'locked-stage' : ''}" ${proofLocked ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">${proofLocked ? 'Proof Locked' : 'Upload Proof'}</button></div>
     <div class="active-proof-row"><span>Proof Progress</span><b>${esc(proof.count)} / ${esc(proof.target)} uploaded</b></div>
     <div class="active-proof-bar"><i style="width:${esc(proof.pct)}%"></i></div>
     <div class="active-note-box"><small>Notes from Guard</small><p>${esc(local?.details || req.instructions || 'No guard notes yet.')}</p><em>— ${esc(activeGuardName())}</em></div>

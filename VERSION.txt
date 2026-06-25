@@ -1,22 +1,21 @@
 Co Pilot Security
-Version: 3.0.13
-Build Name: INLINE PROOF UPLOAD FLOW
+Version: 3.0.14
+Build Name: LOCKED WORKFLOW STAGES
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.12.
-- Removed Upload Proof from the Guard sidebar.
-- Removed the standalone Guard Upload Proof page from the guard workflow.
-- Upload Proof now happens inside Active Job only.
-- When guard taps Upload Proof, the device file picker opens for photo/video selection.
-- After selection, an inline preview confirmation modal appears.
-- Guard can cancel or confirm the selected proof upload.
-- On confirmation, proof uploads to the existing patrol-proof storage flow and registers through the existing Supabase proof RPC.
-- Guard stays on the Active Job workflow and can then tap Complete Job.
-- Preserves v3.0.12 green current-stage button behavior.
+- Built from v3.0.13.
+- Tightens the Guard Active Job workflow stage behavior.
+- When the guard advances to the next workflow stage, all previous stages become locked.
+- Locked stages are disabled, cannot be clicked again, and display a premium amber/steel locked state.
+- Current stage remains green.
+- Future stages remain default until selected.
+- Upload Proof remains inline inside Active Job with device photo/video picker and confirmation preview.
+- Removed standalone Upload Proof page remains preserved from v3.0.13.
+- Preserves Client Patrol Request, Dispatch Assign Now, and marker visibility rules.
 
 Badge:
-v3.0.13 INLINE PROOF UPLOAD FLOW
+v3.0.14 LOCKED WORKFLOW STAGES
 
 SQL:
 No new SQL required.

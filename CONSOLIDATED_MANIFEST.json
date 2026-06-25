@@ -1,18 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.13",
-  "buildName": "INLINE PROOF UPLOAD FLOW",
-  "type": "guard-active-job-inline-proof-upload",
+  "version": "3.0.14",
+  "buildName": "LOCKED WORKFLOW STAGES",
+  "type": "guard-active-job-locked-stage-flow",
   "sql_required": false,
   "features": [
-    "Removed Upload Proof from guard sidebar",
-    "Removed separate guard proof upload page from navigation",
-    "Upload Proof opens device photo/video picker from Active Job workflow",
-    "Preview confirmation modal before upload",
-    "Confirm Upload registers proof without leaving Active Job",
-    "Proof/Notes card updates after reload",
-    "Complete Job remains inside Active Job workflow",
-    "Preserves current-stage green workflow buttons",
+    "Previous Guard Active Job workflow stages lock after advancing",
+    "Locked stages are disabled and cannot be clicked again",
+    "Locked stages use amber/steel locked styling instead of red error styling",
+    "Current stage remains green",
+    "Future stages remain default until selected",
+    "Workflow status text updates with current stage",
+    "Inline proof upload remains inside Active Job only",
+    "Removed standalone Guard Upload Proof page remains preserved",
     "Preserves Dispatch Assign Now and Client Patrol Request flow"
   ]
 }

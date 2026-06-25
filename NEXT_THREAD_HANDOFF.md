@@ -1,22 +1,24 @@
-# Next Thread Handoff — Co Pilot Security v3.0.13
+# Next Thread Handoff — Co Pilot Security v3.0.14
 
-Latest build: **v3.0.13 INLINE PROOF UPLOAD FLOW**
+Latest build: **v3.0.14 LOCKED WORKFLOW STAGES**
 
 ## Current project rule
 User has no Bolt tokens. Do not suggest Bolt AI prompts. Continue by creating complete GitHub-ready ZIP replacement packages only.
 
-## What was built in v3.0.13
-- Removed **Upload Proof** from the Guard sidebar.
-- Removed the standalone Guard Upload Proof page from the visible guard flow.
-- Proof upload now stays inside the **Active Job** workflow.
-- Active Job **Upload Proof** button opens device/browser file picker.
-- After selecting photo/video proof, a preview confirmation modal appears.
-- Guard confirms the upload, proof is uploaded through existing `patrol-proof` storage and `cp_guard_register_patrol_proof`.
-- Guard stays on Active Job and can hit **Complete Job** after proof.
+## What was built in v3.0.14
+- Tightened the Guard Active Job workflow.
+- Workflow is now forward-only from the UI.
+- Once the guard advances to the next stage, previous stages lock and cannot be clicked again.
+- Locked stage buttons are disabled.
+- Locked stages use amber/steel styling, not red, because red suggests an error/danger state.
+- Current stage remains green.
+- Future stages stay default until selected.
+- Added a guard in the workflow update function to prevent backwards stage changes even if a click slips through.
 - No new SQL required.
 
 ## Preserved from prior builds
-- v3.0.12 stage buttons: only current stage turns green; all others stay default.
+- v3.0.13 Inline Proof Upload: Upload Proof is inside Active Job only, opens device picker, shows preview, confirms upload, and keeps guard in the job flow.
+- Upload Proof is removed from the Guard sidebar.
 - v3.0.11 Dispatch Dashboard Assign Now shortcut.
 - v3.0.10 Client Patrol Request flow.
 - v3 Guard Active Job workflow design.
@@ -26,8 +28,8 @@ User has no Bolt tokens. Do not suggest Bolt AI prompts. Continue by creating co
 1. Client submits patrol request.
 2. Dispatch uses Assign Now.
 3. Guard opens Active Job.
-4. Guard taps stages.
-5. Guard taps Upload Proof and selects a photo/video.
-6. Confirm preview upload.
-7. Proof count updates.
-8. Guard taps Complete Job.
+4. Guard clicks Mark On The Way.
+5. Confirm Accepted locks and On The Way turns green.
+6. Guard clicks Mark Arrived.
+7. Confirm Accepted + On The Way lock and Arrived turns green.
+8. Continue through Checking Property, Upload Proof, and Complete Job.

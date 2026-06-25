@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.13 inline proof upload flow build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.14 locked workflow stages build complete. Copied ${count} files to dist/.`);

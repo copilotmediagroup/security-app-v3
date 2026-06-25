@@ -1,28 +1,36 @@
-# Co Pilot Security v3.0.13 — Inline Proof Upload Flow
+# Co Pilot Security v3.0.14 — Locked Workflow Stages
 
 ## What changed
-- Guard sidebar no longer shows **Upload Proof**.
-- There is no separate guard Upload Proof page in the workflow.
-- Proof upload now happens inside **Active Job** only.
-- When guard taps **Upload Proof** inside the job flow:
-  1. The device/browser file picker opens.
-  2. Guard selects photo or video proof.
-  3. A preview confirmation modal appears.
-  4. Guard confirms or cancels.
-  5. On confirm, proof uploads through the existing proof storage/RPC flow.
-  6. Guard stays on Active Job and can press **Complete Job** next.
+- Guard Active Job workflow is now forward-only.
+- When a guard moves to the next stage, the previous stage locks.
+- Locked stages cannot be clicked again.
+- Current stage turns green.
+- Future stages stay default until selected.
+- Locked stages use an amber/steel locked color because red reads like an error or danger state.
+
+## Flow behavior
+Example:
+1. Guard starts at **Accepted**.
+2. Guard clicks **Mark On The Way**.
+3. **Accepted** locks.
+4. **On The Way** turns green.
+5. Guard clicks **Mark Arrived**.
+6. **Accepted** and **On The Way** lock.
+7. **Arrived** turns green.
 
 ## Preserved
-- v3.0.12 green current-stage button behavior.
+- Upload Proof stays inline inside Active Job.
+- No separate Guard Upload Proof page in sidebar.
+- Proof picker opens device/browser photo-video selection.
+- Preview confirmation appears before upload.
 - Client Request Patrol flow.
 - Dispatch Assign Now shortcut.
-- Guard Active Job workflow layout.
 - Same Supabase config.
 
 ## Badge
 Bottom-right badge should show:
 
-`v3.0.13 INLINE PROOF UPLOAD FLOW`
+`v3.0.14 LOCKED WORKFLOW STAGES`
 
 ## SQL
 No new SQL required.

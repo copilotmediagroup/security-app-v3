@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-inline-proof-upload-flow",
-  "version": "3.0.13",
+  "name": "co-pilot-security-locked-workflow-stages",
+  "version": "3.0.14",
   "private": true,
-  "description": "Removes the separate guard proof page and adds inline proof selection, preview confirmation, and upload inside the Active Job workflow.",
+  "description": "Locks prior Guard Active Job workflow stages after the guard advances so completed stages cannot be reopened.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
