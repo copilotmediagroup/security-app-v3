@@ -1,0 +1,21 @@
+{
+  "project": "Co Pilot Security",
+  "version": "3.0.0",
+  "buildName": "EXACT DASHBOARD GRID REBUILD",
+  "type": "fresh-bolt-clean-rebuild",
+  "targetLayout": {
+    "appShell": "grid-template-columns: 220px 1fr",
+    "dashboardGrid": "grid-template-columns: minmax(0, 1fr) 340px",
+    "kpiRow": "grid-template-columns: repeat(4, 1fr)",
+    "topPanelGrid": "grid-template-columns: 1.35fr 1fr",
+    "badge": "fixed bottom-right"
+  },
+  "sql_required": false,
+  "notes": [
+    "Clean package for fresh Bolt/GitHub import.",
+    "No legacy v1/v2 patch layering.",
+    "Same Supabase backend preserved.",
+    "Bottom-right badge included.",
+    "No new SQL required."
+  ]
+}

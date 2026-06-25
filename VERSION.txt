@@ -1,0 +1,22 @@
+Co Pilot Security
+Version: 3.0.0
+Build Name: EXACT DASHBOARD GRID REBUILD
+Date: 2026-06-24
+
+Summary:
+- Clean package intended for a fresh Bolt project / cleared GitHub repository.
+- Codes the exact grid layout specification from the dashboard breakdown.
+- 220px left sidebar + flexible dashboard content.
+- KPI row with 4 equal cards.
+- Main dashboard grid: wide left canvas + 340px right rail.
+- Top panel row: Dispatch Overview + Priority Queue.
+- Large Dispatch Command Map as visual anchor.
+- Recent Activity table.
+- Right rail: Active Patrols, Messages, Notifications, System Status.
+- Hard bottom-right badge restored and reinforced.
+
+Badge:
+v3.0.0 EXACT DASHBOARD GRID REBUILD
+
+SQL:
+No new SQL required.
