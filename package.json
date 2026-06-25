@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-live-guard-gps-map-functions",
-  "version": "3.0.3",
+  "name": "co-pilot-security-real-map-marker-cards-online-offline",
+  "version": "3.0.4",
   "private": true,
-  "description": "Guard Dashboard live GPS map functions: online/offline location, guard marker card, property marker, route and ETA.",
+  "description": "Real Leaflet street map, marker cards, and proper online/offline button states.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

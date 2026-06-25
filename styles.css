@@ -1628,3 +1628,124 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .guard302-map-card > .guard302-map{
   display:none;
 }
+
+
+/* v3.0.4 Real Leaflet Street Map + Marker Cards + Online/Offline States */
+.guard302-offline.active{
+  background:linear-gradient(180deg,#e84f68,#a91e38)!important;
+  border-color:rgba(255,111,132,.55)!important;
+  color:#fff!important;
+  box-shadow:0 0 0 4px rgba(232,79,104,.12), 0 0 28px rgba(232,79,104,.22);
+}
+.guard302-online:not(.active){
+  background:rgba(7,18,31,.84)!important;
+  color:#dcecff!important;
+  border:1px solid rgba(113,169,232,.18)!important;
+  box-shadow:none!important;
+}
+.guard302-online.active{
+  background:linear-gradient(180deg,#26c879,#119c56)!important;
+  color:#fff!important;
+}
+.guard302-offline:not(.active){
+  background:rgba(7,18,31,.84)!important;
+  color:#dcecff!important;
+  border:1px solid rgba(113,169,232,.18)!important;
+}
+.guard302-leaflet-wrap{
+  height:244px;
+  border-radius:8px;
+  border:1px solid rgba(113,169,232,.15);
+  position:relative;
+  overflow:hidden;
+  background:#06111d;
+}
+.guard302-leaflet-map{
+  position:absolute;
+  inset:0;
+  z-index:1;
+}
+.guard302-leaflet-map .leaflet-tile{
+  filter: invert(1) hue-rotate(180deg) brightness(.62) contrast(1.25) saturate(.85);
+}
+.guard302-leaflet-map .leaflet-control-zoom{
+  border:0!important;
+  box-shadow:none!important;
+}
+.guard302-leaflet-map .leaflet-control-zoom a{
+  background:rgba(8,22,38,.92)!important;
+  color:#fff!important;
+  border:1px solid rgba(113,169,232,.22)!important;
+}
+.guard302-map-fallback{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  display:grid;
+  place-items:center;
+  color:#9fb6cc;
+  background:rgba(6,17,29,.88);
+}
+.leaflet-guard-pulse-icon,
+.leaflet-property-pulse-icon{
+  background:transparent!important;
+  border:0!important;
+}
+.leaflet-guard-pulse-icon span,
+.leaflet-property-pulse-icon span{
+  width:24px;
+  height:24px;
+  display:block;
+  border-radius:50%;
+  border:4px solid #071321;
+  position:relative;
+}
+.leaflet-guard-pulse-icon span{
+  background:#2e88ff;
+  box-shadow:0 0 0 10px rgba(46,136,255,.16),0 0 28px rgba(46,136,255,.72);
+}
+.leaflet-property-pulse-icon span{
+  background:#ff4565;
+  box-shadow:0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
+}
+.leaflet-guard-pulse-icon span:after,
+.leaflet-property-pulse-icon span:after{
+  content:"";
+  position:absolute;
+  inset:-15px;
+  border-radius:50%;
+  border:2px solid rgba(46,136,255,.48);
+  animation:pulse303 1.7s ease-out infinite;
+}
+.leaflet-property-pulse-icon span:after{
+  border-color:rgba(255,69,101,.48);
+}
+.leaflet-overlay-pane path{
+  filter:drop-shadow(0 0 5px rgba(46,136,255,.65));
+}
+.guard302-live-card{
+  top:14px!important;
+  left:14px!important;
+  right:14px!important;
+  z-index:500!important;
+}
+.guard302-live-card.property span{
+  color:#ff9aac;
+}
+.guard302-card-close{
+  position:absolute;
+  top:8px;
+  right:8px;
+  z-index:3;
+  width:28px;
+  height:28px;
+  border-radius:7px;
+  border:1px solid rgba(113,169,232,.18);
+  background:rgba(3,11,20,.90);
+  color:#dcecff;
+  font-size:18px;
+  font-weight:900;
+}
+.guard302-map-status{
+  z-index:400!important;
+}

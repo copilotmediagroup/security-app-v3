@@ -1,21 +1,21 @@
-# Next Thread Handoff — Co Pilot Security v3.0.3
+# Next Thread Handoff — Co Pilot Security v3.0.4
 
-Latest build: v3.0.3 LIVE GUARD GPS MAP FUNCTIONS
+Latest build: v3.0.4 REAL MAP MARKER CARDS
 
 ## What changed
-- Built from v3.0.2.
-- Guard Dashboard layout stays in the mockup 3-column structure.
-- Added functional GPS map logic:
-  - Go Online starts navigator.geolocation.watchPosition.
-  - Go Offline stops tracking.
-  - Blue pulsing guard marker.
-  - Red pulsing property marker when active job property coordinates/geocode exists.
-  - Click guard marker for live guard card.
-  - Guard card shows live reverse-geocoded address.
-  - ETA/distance update as guard moves.
-  - Route line uses OSRM if available, fallback curved route if not.
-
-## Notes
-- No new SQL required.
-- For best property routing, property table should include latitude/longitude. Without coords, the app attempts Nominatim geocoding from address.
-- Browser location permission required.
+- Built from v3.0.3.
+- Guard Dashboard layout remains the v3.0.2 mockup 3-column grid.
+- Map now uses Leaflet + OpenStreetMap tiles for a real street map with street names.
+- Guard marker:
+  - blue pulse
+  - only visible when online
+  - click opens guard card
+  - card has X close
+- Property marker:
+  - red pulse
+  - click opens property card
+  - property card shows image/name/owner/address
+- Go Online/Offline state colors fixed:
+  - Online green only when online
+  - Offline red only after offline clicked
+- No new SQL.

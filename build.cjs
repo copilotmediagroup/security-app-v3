@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.3 live guard GPS map functions build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.4 real map marker cards build complete. Copied ${count} files to dist/.`);

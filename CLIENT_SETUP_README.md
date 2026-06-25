@@ -1,28 +1,25 @@
-# Co Pilot Security v3.0.3 — Live Guard GPS Map Functions
+# Co Pilot Security v3.0.4 — Real Map Marker Cards
 
 ## What changed
-- Go Online starts browser GPS tracking.
-- Go Offline stops browser GPS tracking.
-- Guard marker is a blue pulse.
-- Property marker is a red pulse when a property coordinate/geocode is available.
-- Clicking the blue marker opens a live guard card with:
-  - photo
-  - name
-  - email
-  - current address from GPS reverse geocoding
-  - accuracy
-  - online/offline status
-- ETA and distance update when GPS changes.
-- Route line uses OSRM routing when available and estimated curved fallback if routing fails.
+- Real Leaflet/OpenStreetMap street map layer added.
+- Guard card does not appear by default.
+- Blue guard marker only appears while online.
+- Click blue guard marker to open guard card.
+- Guard card has an X close button.
+- Red property marker opens property card.
+- Property card shows property photo if available, property name, owner/client name, and property address.
+- Go Offline removes the guard marker.
+- Online button is green only while online.
+- Offline button is red only after clicking offline.
 
-## Requirements
-The browser must allow location permission.
-For best routing, property records should include latitude/longitude. If not, the app attempts geocoding from the property address.
+## Notes
+- Browser must allow location permission.
+- Real map tiles require internet access in the browser.
+- For best property marker/routing, property records should include latitude/longitude. Otherwise the app attempts geocoding from the property address.
 
 ## Badge
 Bottom-right badge should show:
-
-`v3.0.3 LIVE GUARD GPS MAP FUNCTIONS`
+`v3.0.4 REAL MAP MARKER CARDS`
 
 ## SQL
 No new SQL required.

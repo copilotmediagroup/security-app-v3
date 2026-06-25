@@ -1,18 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.3",
-  "buildName": "LIVE GUARD GPS MAP FUNCTIONS",
-  "type": "guard-live-gps-functions",
+  "version": "3.0.4",
+  "buildName": "REAL MAP MARKER CARDS",
+  "type": "real-map-marker-cards-online-offline",
   "sql_required": false,
   "features": [
-    "Go Online starts browser geolocation watch",
-    "Go Offline stops browser geolocation watch",
-    "Blue pulsing guard marker",
-    "Guard marker click opens live card",
-    "Live reverse geocoded address",
-    "Red pulsing property marker",
-    "Route style line between guard and property",
-    "ETA and distance update as guard moves",
-    "OSRM route when available with fallback estimate"
+    "Leaflet real street map with OSM tiles",
+    "Guard card opens only on blue marker click",
+    "Property card opens on red marker click",
+    "X close on marker cards",
+    "Guard marker hidden offline",
+    "Online button green while online",
+    "Offline button red after clicked",
+    "Route line between guard and property"
   ]
 }

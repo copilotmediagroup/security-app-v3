@@ -1,23 +1,25 @@
 Co Pilot Security
-Version: 3.0.3
-Build Name: LIVE GUARD GPS MAP FUNCTIONS
+Version: 3.0.4
+Build Name: REAL MAP MARKER CARDS
 Date: 2026-06-24
 
 Summary:
-- Built from clean v3.0.2 Guard Dashboard Mockup Grid Match.
-- Adds real browser geolocation for Guard Go Online / Go Offline.
-- Go Online starts live GPS watchPosition.
-- Go Offline stops live GPS watchPosition.
-- Guard appears as a blue pulsing map marker.
-- Property appears as a red pulsing map marker when coordinates or geocoded address are available.
-- Clicking blue guard pulse opens a guard card with photo, name, email, live current address, accuracy, and status.
-- Live current address uses reverse geocoding from the browser GPS location.
-- If the active job/property has coordinates or can be geocoded, the map draws a route-style path and updates ETA/distance.
-- Uses OSRM route service when available; falls back to estimated curved path/distance/ETA if route service is unavailable.
+- Built from v3.0.3.
+- Guard card no longer opens by default.
+- Blue guard marker only appears when guard is online.
+- Clicking blue guard marker opens guard card.
+- Guard card includes X close button.
+- Red property marker opens matching property card.
+- Property card includes property photo if available, property name, owner/client name, and property address.
+- Offline removes guard marker from map.
+- Online button turns green only when online.
+- Offline button turns red only after offline is clicked.
+- Replaced mockup map surface with real Leaflet/OpenStreetMap street map layer with street names.
+- Route line still displays between guard and property when both locations are available.
 - Bottom-right badge remains active.
 
 Badge:
-v3.0.3 LIVE GUARD GPS MAP FUNCTIONS
+v3.0.4 REAL MAP MARKER CARDS
 
 SQL:
 No new SQL required.
