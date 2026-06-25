@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.29',
-  label: 'v3.0.29 CLIENT PROPERTY PHOTO UPLOAD FIX'
+  version: '3.0.30',
+  label: 'v3.0.30 CLIENT PATROL REQUESTS REDESIGN'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -42,7 +42,9 @@ const state = {
   clientSelectedPropertyId: '',
   clientPropertyTab: 'overview',
   clientPropertyView: 'list',
-  clientPatrolPrefillPropertyId: ''
+  clientPatrolPrefillPropertyId: '',
+  clientRequestType: 'immediate',
+  clientRequestHistoryFilter: 'all'
 };;
 const liveGps = {
   online: false,
@@ -961,31 +963,74 @@ async function assignPatrolNow(requestId) {
   toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
 }
 
+
 async function submitClientPatrolRequest(form) {
   const propertyId = form.property_id?.value || '';
   const priority = form.priority?.value || 'normal';
-  const patrolType = form.patrol_type?.value || 'standard';
+  const scheduleType = form.schedule_type?.value || 'on_demand';
+  const patrolType = form.patrol_type?.value || (scheduleType === 'vacation_watch' ? 'vacation_watch' : scheduleType === 'on_demand' ? 'urgent' : 'standard');
   const proofPreference = form.proof_preference?.value || 'photo';
+  const duration = form.estimated_duration?.value || '';
   const instructions = form.instructions?.value?.trim() || '';
+  const scheduleNotes = form.schedule_notes?.value?.trim() || '';
+  const services = Array.from(form.querySelectorAll('input[name="requested_services"]:checked')).map(input => input.value);
+  const recurrenceDays = Array.from(form.querySelectorAll('input[name="recurrence_days"]:checked')).map(input => input.value);
+  const referenceFile = form.reference_photo_file?.files?.[0] || null;
   if (!propertyId) throw new Error('Choose a saved property before requesting patrol.');
+
+  const date = form.scheduled_date?.value || '';
+  const time = form.scheduled_time?.value || '';
+  const scheduledFor = (scheduleType === 'scheduled' && date && time) ? `${date}T${time}` : '';
+  const startDate = form.schedule_start_date?.value || '';
+  const endDate = form.schedule_end_date?.value || '';
+  const preferredTimeWindow = form.preferred_time_window?.value || '';
+  const recurrencePattern = form.recurrence_pattern?.value || '';
+  const referenceNote = referenceFile ? `Reference upload selected from device: ${referenceFile.name}` : '';
+  const details = [
+    instructions,
+    duration ? `Estimated duration: ${duration}` : '',
+    services.length ? `Requested services: ${services.join(', ')}` : '',
+    referenceNote,
+    scheduleNotes ? `Schedule notes: ${scheduleNotes}` : ''
+  ].filter(Boolean).join('\n');
 
   let result = null;
   try {
     result = await supabase.rpc('cp_submit_patrol_request', {
       p_property_id: propertyId,
       p_priority: priority,
-      p_instructions: instructions,
+      p_instructions: details,
       p_patrol_type: patrolType,
-      p_proof_preference: proofPreference
+      p_proof_preference: proofPreference,
+      p_schedule_type: scheduleType,
+      p_scheduled_for: scheduledFor || null,
+      p_schedule_start_date: startDate || null,
+      p_schedule_end_date: endDate || null,
+      p_preferred_time_window: preferredTimeWindow,
+      p_recurrence_pattern: recurrencePattern,
+      p_recurrence_days: recurrenceDays.join(','),
+      p_schedule_notes: scheduleNotes
     });
   } catch (err) {
     const msg = String(err?.message || err || '').toLowerCase();
     if (!(msg.includes('function') || msg.includes('argument') || msg.includes('schema cache'))) throw err;
-    result = await supabase.rpc('cp_submit_patrol_request', {
-      p_property_id: propertyId,
-      p_priority: priority,
-      p_instructions: instructions
-    });
+    try {
+      result = await supabase.rpc('cp_submit_patrol_request', {
+        p_property_id: propertyId,
+        p_priority: priority,
+        p_instructions: details,
+        p_patrol_type: patrolType,
+        p_proof_preference: proofPreference
+      });
+    } catch (err2) {
+      const msg2 = String(err2?.message || err2 || '').toLowerCase();
+      if (!(msg2.includes('function') || msg2.includes('argument') || msg2.includes('schema cache'))) throw err2;
+      result = await supabase.rpc('cp_submit_patrol_request', {
+        p_property_id: propertyId,
+        p_priority: priority,
+        p_instructions: details
+      });
+    }
   }
 
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be submitted.');
@@ -994,6 +1039,7 @@ async function submitClientPatrolRequest(form) {
   render();
   toast('Patrol request submitted to Dispatch.', 'success');
 }
+
 
 function renderLoading() {
   app.innerHTML = `<div class="auth-shell"><div class="auth-card"><section class="auth-hero"><div class="brand-row"><div class="logo-box">CP</div><div><strong>Co Pilot</strong><small>Security</small></div></div><h1>Loading Command Center</h1><p>Connecting to Supabase.</p></section><section class="auth-panel"><div class="auth-box"><p class="eyebrow">Loading</p><h2>Preparing app</h2><p class="auth-note">Loading your role, patrol data, messages, notifications, and reports.</p></div></section></div></div>`;
@@ -3552,47 +3598,87 @@ function clientPropertiesView() {
   return `<div class="dashboard client-properties-shell"><header class="dashboard-header"><div class="title-block"><h1>Properties</h1><p>Manage and monitor all properties under your account.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="client-properties-toolbar"><div class="client-properties-search"><span>⌕</span><input type="search" placeholder="Search properties..." value="${esc(state.clientPropertySearch)}" data-client-property-search></div><button class="ghost-button" data-action="cycle-client-property-filter">⎚ ${esc(state.clientPropertyFilter === 'all' ? 'Filters' : 'Filter: ' + (state.clientPropertyFilter === 'open' ? 'Open Requests' : statusText(state.clientPropertyFilter)))}</button><button class="primary-button" data-action="add-client-property">＋ Add Property</button></section><section class="kpi-row client-properties-kpis">${kpiCard('⌂', 'Total Properties', counts.total, 'All properties', '#2f83ff')}${kpiCard('◉', 'Active Patrols', counts.activePatrols, 'Currently in progress', '#37dc72')}${kpiCard('▣', 'Open Requests', counts.openRequests, 'Needs attention', '#ffb53d')}${kpiCard('⌁', 'Saved Properties', counts.saved, 'In database', '#b05cff')}</section><section class="client-properties-filter-pills"><button class="filter-pill ${state.clientPropertyFilter === 'all' ? 'active' : ''}" data-client-property-filter="all">All</button><button class="filter-pill ${state.clientPropertyFilter === 'active' ? 'active' : ''}" data-client-property-filter="active">Active Patrol</button><button class="filter-pill ${state.clientPropertyFilter === 'open' ? 'active' : ''}" data-client-property-filter="open">Open Requests</button><button class="filter-pill ${state.clientPropertyFilter === 'retail' ? 'active' : ''}" data-client-property-filter="retail">Retail</button><button class="filter-pill ${state.clientPropertyFilter === 'residential' ? 'active' : ''}" data-client-property-filter="residential">Residential</button></section><section class="client-properties-layout"><div class="client-properties-main panel"><div class="client-properties-list-head"><div><h2>All Properties (${rows.length})</h2></div><div class="client-properties-view-toggle"><button class="${state.clientPropertyView === 'list' ? 'active' : ''}" data-property-view="list">☰</button><button class="${state.clientPropertyView === 'grid' ? 'active' : ''}" data-property-view="grid">☷</button></div></div>${state.clientPropertyView === 'grid' ? `<div class="client-property-grid">${rows.length ? rows.map(clientPropertyGridCard).join('') : '<div class="empty">No properties match your filters.</div>'}</div>` : `<div class="client-property-table-head"><span>Property</span><span>Address</span><span>Type</span><span>Active Patrol</span><span>Last Activity</span><span></span></div><div class="client-property-list">${rows.length ? rows.map(clientPropertyRow).join('') : '<div class="empty">No properties match your filters.</div>'}</div>`}<div class="client-property-list-footer">Showing ${rows.length ? `1 to ${rows.length}` : '0'} of ${state.properties.length} properties</div></div>${clientPropertyDetailPanel(selected)}</section></div>`;
 }
 
+
+function clientRequestTypeConfig(type = state.clientRequestType || 'immediate') {
+  const map = {
+    immediate: { icon:'⚡', label:'Immediate Patrol', sub:'Request a patrol as soon as possible.', schedule:'on_demand', patrol:'urgent', tone:'blue' },
+    vacation: { icon:'▣', label:'Vacation Watch', sub:'Schedule patrols while you are away.', schedule:'vacation_watch', patrol:'vacation_watch', tone:'green' },
+    recurring: { icon:'↻', label:'Recurring Patrol', sub:'Set up repeated patrol schedules.', schedule:'recurring', patrol:'standard', tone:'purple' },
+    scheduled: { icon:'▦', label:'Scheduled Patrol', sub:'Schedule a one-time future patrol.', schedule:'scheduled', patrol:'standard', tone:'orange' }
+  };
+  return map[type] || map.immediate;
+}
+function clientRequestTypeCard(type) {
+  const cfg = clientRequestTypeConfig(type);
+  const active = (state.clientRequestType || 'immediate') === type;
+  return `<button type="button" class="client-request-type-card ${active ? 'active' : ''} ${esc(cfg.tone)}" data-client-request-type="${esc(type)}"><i>${esc(cfg.icon)}</i><span><strong>${esc(cfg.label)}</strong><small>${esc(cfg.sub)}</small></span></button>`;
+}
+function clientRequestTypeCounts() {
+  const requests = clientRecentRequests();
+  return {
+    open: clientOpenRequests().length,
+    immediate: requests.filter(r => ['on_demand','immediate'].includes(String(r.schedule_type || 'on_demand')) || String(r.patrol_type || '').includes('urgent')).length,
+    vacation: requests.filter(r => String(r.schedule_type || '') === 'vacation_watch' || String(r.patrol_type || '') === 'vacation_watch').length,
+    recurring: requests.filter(r => String(r.schedule_type || '') === 'recurring').length
+  };
+}
+function clientSelectedRequestProperty() {
+  const id = String(state.clientPatrolPrefillPropertyId || state.clientSelectedPropertyId || '');
+  return (state.properties || []).find(p => String(p.id) === id) || (state.properties || [])[0] || null;
+}
+function clientRequestRecentForProperty(property) {
+  const rows = clientRecentRequests().filter(req => !property || String(req.property_id) === String(property.id));
+  return rows.slice(0, 3);
+}
+function clientScheduleFields() {
+  const type = state.clientRequestType || 'immediate';
+  if (type === 'vacation') return `<div class="client-request-schedule-grid"><label>Start Date<input type="date" name="schedule_start_date" required></label><label>End Date<input type="date" name="schedule_end_date" required></label><label>Preferred Time Window<select name="preferred_time_window"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="overnight">Overnight</option></select></label></div>`;
+  if (type === 'recurring') return `<div class="client-request-schedule-grid recurring"><label>Start Date<input type="date" name="schedule_start_date" required></label><label>End Date<input type="date" name="schedule_end_date"></label><label>Pattern<select name="recurrence_pattern" required><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="custom_days">Custom Days</option></select></label><label>Time Window<select name="preferred_time_window"><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="overnight">Overnight</option></select></label><div class="client-request-days"><span>Days</span>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => `<label><input type="checkbox" name="recurrence_days" value="${esc(d.toLowerCase())}"> ${esc(d)}</label>`).join('')}</div></div>`;
+  if (type === 'scheduled') return `<div class="client-request-schedule-grid"><label>Date<input type="date" name="scheduled_date" required></label><label>Time<input type="time" name="scheduled_time" required></label><label>Estimated Duration<select name="estimated_duration"><option value="30 minutes">30 minutes</option><option value="60 minutes" selected>60 minutes</option><option value="90 minutes">90 minutes</option><option value="120 minutes">120 minutes</option></select></label></div>`;
+  return `<div class="client-request-schedule-grid"><label>Date<input type="text" value="Today" disabled></label><label>Time<select name="preferred_time_window"><option value="asap">Now (ASAP)</option><option value="within_1_hour">Within 1 hour</option><option value="tonight">Tonight</option></select></label><label>Estimated Duration<select name="estimated_duration"><option value="30 minutes">30 minutes</option><option value="60 minutes" selected>60 minutes</option><option value="90 minutes">90 minutes</option></select></label></div>`;
+}
+function clientRequestSummary(property) {
+  const cfg = clientRequestTypeConfig();
+  const when = state.clientRequestType === 'immediate' ? 'ASAP' : state.clientRequestType === 'vacation' ? 'Date range' : state.clientRequestType === 'recurring' ? 'Repeating schedule' : 'Future date/time';
+  return `<section class="panel panel-pad client-request-summary-card"><div class="panel-head"><div><h2>Request Summary</h2></div></div><div class="client-request-summary-list"><span>Type</span><strong>${esc(cfg.label)}</strong><span>Property</span><strong>${esc(property ? propertyDisplayName(property) : 'Choose property')}</strong><span>When</span><strong>${esc(when)}</strong><span>Dispatch Status</span><strong>Pending after submit</strong><span>Proof</span><strong>Photo / Video options</strong></div></section>`;
+}
+function clientRequestPropertyPanel(property) {
+  if (!property) return `<section class="panel panel-pad client-selected-request-property"><div class="empty">Add a property before requesting patrol.</div></section>`;
+  const image = propertyImageValue(property);
+  return `<section class="panel panel-pad client-selected-request-property"><div class="panel-head"><div><h2>Selected Property</h2></div></div><div class="client-request-property-hero"><div>${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><aside><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small><em>${clientPropertyStatusChip(property)}</em></aside></div><button type="button" class="ghost-button wide" data-view="properties">View Property</button></section>`;
+}
+function clientRequestHistoryRows() {
+  let rows = clientRecentRequests();
+  const f = state.clientRequestHistoryFilter || 'all';
+  if (f === 'immediate') rows = rows.filter(r => ['on_demand','immediate'].includes(String(r.schedule_type || 'on_demand')) || String(r.patrol_type || '').includes('urgent'));
+  if (f === 'vacation') rows = rows.filter(r => String(r.schedule_type || '') === 'vacation_watch' || String(r.patrol_type || '') === 'vacation_watch');
+  if (f === 'recurring') rows = rows.filter(r => String(r.schedule_type || '') === 'recurring');
+  if (f === 'scheduled') rows = rows.filter(r => String(r.schedule_type || '') === 'scheduled');
+  return rows.slice(0, 12);
+}
+function clientRequestHistoryTableRow(req = {}) {
+  const type = req.schedule_type === 'vacation_watch' ? 'Vacation Watch' : req.schedule_type === 'recurring' ? 'Recurring Patrol' : req.schedule_type === 'scheduled' ? 'Scheduled Patrol' : (req.patrol_type === 'urgent' ? 'Immediate Patrol' : statusText(req.patrol_type || 'Patrol'));
+  const scheduled = req.scheduled_for || req.schedule_start_date || req.requested_at || req.created_at;
+  return `<div class="client-request-history-row"><span>${esc(type)}</span><span>${esc(propertyLabel(req))}</span><span>${statusChip(req.priority || 'normal')}</span><span>${statusChip(req.status || 'pending_dispatch')}</span><span>${esc(fmtDate(req.created_at || req.requested_at))}</span><span>${esc(fmtDate(scheduled))}</span><span>${esc(requestGuardName(req) === 'Unassigned' ? '—' : requestGuardName(req))}</span><button type="button" class="icon-square small">⋯</button></div>`;
+}
+function clientRequestRecentList(property) {
+  const rows = clientRequestRecentForProperty(property);
+  return `<section class="panel panel-pad client-request-recent-card"><div class="active-rail-head"><h2>Recent Requests</h2><button class="ghost-button" data-client-request-history-filter="all">View all</button></div><div class="client-request-recent-list">${rows.length ? rows.map(req => `<div><i>${esc(clientRequestTypeConfig(req.schedule_type === 'vacation_watch' ? 'vacation' : req.schedule_type === 'recurring' ? 'recurring' : req.schedule_type === 'scheduled' ? 'scheduled' : 'immediate').icon)}</i><span><strong>${esc(requestTitle(req))}</strong><small>${esc(fmtDate(req.created_at || req.requested_at))}</small></span>${statusChip(req.status || 'pending_dispatch')}</div>`).join('') : '<div class="empty">No requests for this property yet.</div>'}</div></section>`;
+}
+function clientRequestPropertyMiniMap(property) {
+  return `<section class="panel panel-pad client-request-property-map-card"><div class="panel-head"><div><h2>Property Location</h2></div></div><div class="client-request-mini-map"><span class="street-name s1">W Main St</span><span class="street-name s2">S Eastern Ave</span><div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><button type="button" class="guard302-fallback-marker property"><span></span></button></div></section>`;
+}
 function clientPatrolRequestsView() {
   const properties = state.properties || [];
-  const recent = clientRecentRequests();
-  const open = clientOpenRequests();
-  const completed = completedRequests();
-  const latest = recent[0] || null;
-  const prefillPropertyId = String(state.clientPatrolPrefillPropertyId || '');
+  const counts = clientRequestTypeCounts();
+  const selectedProperty = clientSelectedRequestProperty();
+  const cfg = clientRequestTypeConfig();
+  const prefillPropertyId = String(selectedProperty?.id || state.clientPatrolPrefillPropertyId || '');
   const propertyOptions = properties.map(p => `<option value="${esc(p.id)}" ${String(p.id) === prefillPropertyId ? 'selected' : ''}>${esc(clientPropertyOptionLabel(p))}</option>`).join('');
-  return `<div class="dashboard client-request-dashboard">
-    <header class="dashboard-header"><div class="title-block"><h1>Request Patrol</h1><p>Development request flow: client submits a patrol, Dispatch sees it in Pending Dispatch, then a guard can be assigned.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header>
-    <section class="kpi-row">
-      ${kpiCard('▤', 'Open Requests', open.length, 'Pending or active', '#2f83ff')}
-      ${kpiCard('⌂', 'Saved Properties', properties.length, 'Available for patrol', '#37dc72')}
-      ${kpiCard('✓', 'Completed', completed.length, 'Finished patrols', '#b05cff')}
-      ${kpiCard('▣', 'Proof Items', state.proofItems.length, 'Uploaded by guards', '#ffb53d')}
-    </section>
-    <section class="client-request-layout">
-      <div class="client-request-main">
-        <section class="panel panel-pad client-request-form-card">
-          <div class="panel-head"><div><h2>New Patrol Request</h2><p>Use this form to create a real pending dispatch request for testing the full app workflow.</p></div><span class="client-flow-pill">Client → Dispatch → Guard → Report</span></div>
-          ${properties.length ? `<form class="client-request-form" data-form="client-patrol-request">
-            <label>Property<select name="property_id" required><option value="">Choose property</option>${propertyOptions}</select></label>
-            <div class="form-row"><label>Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Patrol Type<select name="patrol_type"><option value="standard">Standard Patrol</option><option value="suspicious_activity">Suspicious Activity</option><option value="alarm_response">Alarm Response</option><option value="vacation_watch">Vacation Watch</option><option value="custom">Custom</option></select></label></div>
-            <label>Proof Preference<select name="proof_preference"><option value="photo">Photo proof</option><option value="video">Video proof</option><option value="photo_video">Photo + video proof</option><option value="none">No proof required</option></select></label>
-            <label>Instructions<textarea name="instructions" placeholder="Example: Check front entrance, rear door, parking lot, and upload photos of all gates."></textarea></label>
-            <div class="client-request-submit-row"><button class="btn success" type="submit">Submit Patrol Request</button><button class="btn secondary" type="button" data-view="properties">View Properties</button></div>
-          </form>` : `<div class="empty"><strong>No saved properties yet.</strong><br>Add or assign a client property first, then this request form will submit real patrol jobs to Dispatch.</div>`}
-        </section>
-        <section class="panel panel-pad client-request-history-card">
-          <div class="panel-head"><div><h2>Request History</h2><p>Recent client patrol requests</p></div><button class="ghost-button" data-action="refresh-data">Refresh</button></div>
-          <div class="client-request-list">${recent.length ? recent.slice(0, 8).map(clientRequestCard).join('') : `<div class="empty">No patrol requests yet.</div>`}</div>
-        </section>
-      </div>
-      <aside class="client-request-right">
-        <section class="panel panel-pad client-flow-card"><div class="panel-head"><div><h2>Testing Flow</h2><p>What should happen after submit</p></div></div><div class="client-flow-steps"><div><i>1</i><span><strong>Client submits</strong><small>Status becomes Pending Dispatch</small></span></div><div><i>2</i><span><strong>Dispatch sees request</strong><small>Admin Pending Dispatch count increases</small></span></div><div><i>3</i><span><strong>Guard gets assigned</strong><small>Guard Active Job workflow appears</small></span></div><div><i>4</i><span><strong>Proof + report</strong><small>Guard uploads proof, Admin builds final report</small></span></div></div></section>
-        <section class="panel panel-pad client-selected-card"><div class="panel-head"><div><h2>Saved Properties</h2><p>Click a property to pre-fill the request form</p></div></div><div class="client-property-pick-list">${properties.length ? properties.slice(0, 5).map(clientPropertyCardForRequest).join('') : `<div class="empty">No properties available.</div>`}</div></section>
-        <section class="panel panel-pad client-latest-card"><div class="panel-head"><div><h2>Latest Request</h2><p>Newest client activity</p></div></div>${latest ? `<div class="client-latest-box"><strong>${esc(requestTitle(latest))}</strong><span>${esc(propertyLabel(latest))}</span><p>${statusChip(latest.status)}</p><small>${esc(fmtDate(latest.updated_at || latest.created_at))}</small></div>` : `<div class="empty">Submit the first request to start testing.</div>`}</section>
-      </aside>
-    </section>
-  </div>`;
+  const historyRows = clientRequestHistoryRows();
+  return `<div class="dashboard client-patrol-request-command"><header class="dashboard-header"><div class="title-block"><h1>Patrol Requests</h1><p>Request immediate, vacation, recurring, or scheduled patrol coverage for your properties.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="kpi-row client-request-kpis">${kpiCard('◈','Open Requests',counts.open,'Needs attention','#2f83ff')}${kpiCard('▣','Immediate Patrols',counts.immediate,'Active now','#37dc72')}${kpiCard('✪','Vacation Watches',counts.vacation,'Scheduled','#b05cff')}${kpiCard('↻','Recurring Patrols',counts.recurring,'Active schedules','#ffb53d')}</section><section class="client-patrol-request-layout"><div class="client-patrol-request-main"><section class="panel panel-pad client-request-type-section"><div class="panel-head"><div><h2>Select Request Type</h2><p>Choose the type of patrol service you need.</p></div></div><div class="client-request-type-grid">${['immediate','vacation','recurring','scheduled'].map(clientRequestTypeCard).join('')}</div></section><section class="panel panel-pad client-request-details-card"><div class="panel-head"><div><h2>Request Details</h2><p>${esc(cfg.sub)}</p></div><span class="client-flow-pill">Client → Dispatch → Guard</span></div>${properties.length ? `<form class="client-patrol-request-form" data-form="client-patrol-request"><input type="hidden" name="schedule_type" value="${esc(cfg.schedule)}"><input type="hidden" name="patrol_type" value="${esc(cfg.patrol)}"><label>Property <select name="property_id" required><option value="">Choose property</option>${propertyOptions}</select></label><div class="client-request-priority-line"><label>Priority <select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Emergency</option></select></label><label>Proof Preference <select name="proof_preference"><option value="photo">Photo proof</option><option value="video">Video proof</option><option value="photo_video">Photo + video proof</option><option value="none">No proof required</option></select></label></div>${clientScheduleFields()}<div class="client-request-services"><span>Requested Services</span><label><input type="checkbox" name="requested_services" value="Check doors" checked> Check doors</label><label><input type="checkbox" name="requested_services" value="Check perimeter" checked> Check perimeter</label><label><input type="checkbox" name="requested_services" value="Check windows"> Check windows</label><label><input type="checkbox" name="requested_services" value="Photo proof required" checked> Photo proof required</label><label><input type="checkbox" name="requested_services" value="Lock up if needed"> Lock up if needed</label></div><label>Special Instructions <textarea name="instructions" maxlength="500" placeholder="Example: Front door alarm triggered. Please check all perimeter doors and upload proof."></textarea></label><label>Schedule Notes <textarea name="schedule_notes" maxlength="300" placeholder="Optional recurring/vacation notes, access details, preferred route, or gate code instructions."></textarea></label><div class="client-request-reference-upload"><label><input type="file" name="reference_photo_file" accept="image/*,video/*" data-client-request-reference-file><strong>Reference Photo / Video</strong><small>Upload from device only. No URL entry.</small></label><div data-client-request-reference-preview></div></div><div class="client-request-submit-row"><button class="ghost-button" type="button">Save Draft</button><button class="primary-button" type="submit">➤ Submit Request</button></div></form>` : `<div class="empty"><strong>No saved properties yet.</strong><br>Add a property first, then request immediate, vacation, recurring, or scheduled patrols.</div>`}</section><section class="panel panel-pad client-request-history-card"><div class="panel-head"><div><h2>Request History</h2><p>All patrol requests for your properties.</p></div></div><div class="client-request-history-tabs">${['all','immediate','vacation','recurring','scheduled'].map(f => `<button class="${state.clientRequestHistoryFilter === f ? 'active' : ''}" data-client-request-history-filter="${esc(f)}">${esc(f === 'all' ? 'All Requests' : statusText(f))}</button>`).join('')}</div><div class="client-request-history-table"><div class="client-request-history-head"><span>Type</span><span>Property</span><span>Priority</span><span>Status</span><span>Created</span><span>Scheduled</span><span>Assigned Guard</span><span></span></div>${historyRows.length ? historyRows.map(clientRequestHistoryTableRow).join('') : '<div class="empty">No requests found.</div>'}</div></section></div><aside class="client-patrol-request-rail">${clientRequestPropertyPanel(selectedProperty)}${clientRequestSummary(selectedProperty)}${clientRequestRecentList(selectedProperty)}${clientRequestPropertyMiniMap(selectedProperty)}</aside></section></div>`;
 }
+
 
 function settingsView() {
   const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'User';
@@ -3849,6 +3935,16 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.clientRequestType) {
+      state.clientRequestType = button.dataset.clientRequestType;
+      render();
+      return;
+    }
+    if (button.dataset.clientRequestHistoryFilter) {
+      state.clientRequestHistoryFilter = button.dataset.clientRequestHistoryFilter;
+      render();
+      return;
+    }
     if (button.dataset.clientPropertyFilter) {
       state.clientPropertyFilter = button.dataset.clientPropertyFilter;
       render();
@@ -4078,6 +4174,13 @@ document.addEventListener('change', event => {
       const url = URL.createObjectURL(file);
       preview.innerHTML = `<img src="${esc(url)}" alt="Property photo preview">`;
     }
+  }
+  if (input && input.hasAttribute('data-client-request-reference-file')) {
+    const file = input.files?.[0];
+    const preview = document.querySelector('[data-client-request-reference-preview]');
+    if (!file || !preview) return;
+    const url = URL.createObjectURL(file);
+    preview.innerHTML = file.type.startsWith('video/') ? `<video src="${esc(url)}" muted controls playsinline></video><span>${esc(file.name)}</span>` : `<img src="${esc(url)}" alt="Reference preview"><span>${esc(file.name)}</span>`;
   }
 });
 

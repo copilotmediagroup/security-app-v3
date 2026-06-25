@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-property-photo-upload-fix",
-  "version": "3.0.29",
+  "name": "co-pilot-security-client-patrol-requests-redesign",
+  "version": "3.0.30",
   "private": true,
-  "description": "Fixes client property save RPC and replaces photo URL field with device-only property photo upload.",
+  "description": "Redesigns the Client Patrol Requests page with immediate, vacation, recurring, and scheduled patrol request flows.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

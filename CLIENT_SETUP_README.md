@@ -1,12 +1,17 @@
-# Co Pilot Security v3.0.29 — Client Property Photo Upload Fix
+# Co Pilot Security v3.0.30 — Client Patrol Requests Redesign
 
 ## What changed
-- Fixed the Client Edit Property save error by using the existing `cp_core_save_property` RPC first.
-- Added compatibility fallback attempts for older property save RPC names/signatures.
-- Removed the visible `Property Photo URL` input.
-- Client property photos are now changed only by uploading an image from the device.
-- Existing photo is preserved when no new image is selected.
-- New property photo uploads use Supabase Storage bucket `property-photos`.
+- Rebuilt the Client `Patrol Requests` page.
+- Added request types:
+  - Immediate Patrol
+  - Vacation Watch
+  - Recurring Patrol
+  - Scheduled Patrol
+- Added dynamic fields for vacation, recurring, scheduled, and immediate requests.
+- Added requested service checkboxes, proof preference, instructions, and schedule notes.
+- Added device-only reference photo/video picker with preview. No URL input is shown.
+- Added right rail with selected property, request summary, recent requests, and property location.
+- Added request history table with filters.
 
 ## SQL
 No new SQL required.
