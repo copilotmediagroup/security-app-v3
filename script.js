@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.24',
-  label: 'v3.0.24 CLIENT DASHBOARD REDESIGN'
+  version: '3.0.25',
+  label: 'v3.0.25 CLIENT MAP LIVE SYNC'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -63,7 +63,8 @@ const liveGps = {
   onlineSince: null,
   offlineAt: null,
   statusChangedAt: null,
-  restoredFromStorage: false
+  restoredFromStorage: false,
+  clientSelectedPropertyId: ''
 }
 
 const NAV = {
@@ -993,6 +994,8 @@ function renderLoading() {
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  scheduleClientMapPrep();
+  scheduleClientLeafletMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -1695,7 +1698,19 @@ function setGuardOffline() {
   writeGuardGpsPersistedState({ online: false });
   render();
 }
-function openMapCard(type) {
+
+function openMapCard(type, propertyId = '') {
+  if (state.role === 'client' && state.view === 'dashboard') {
+    const activeReq = clientAcceptedMapRequest();
+    const entries = clientMapPropertyEntries();
+    const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    if (type === 'guard' && !hasGuard) return;
+    if (type === 'property' && !entries.length) return;
+    liveGps.clientSelectedPropertyId = propertyId || liveGps.clientSelectedPropertyId || String(activeReq?.property_id || entries[0]?.property?.id || '');
+    liveGps.selectedMapCard = type;
+    render();
+    return;
+  }
   const req = guard302CurrentRequest();
   const hasGuard = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
   const hasProperty = liveGps.online && Boolean(req);
@@ -1704,6 +1719,7 @@ function openMapCard(type) {
   liveGps.selectedMapCard = type;
   render();
 }
+
 function closeMapCard() {
   liveGps.selectedMapCard = null;
   render();
@@ -2522,6 +2538,271 @@ function clientActivityEntries() {
 function clientActivityRow(entry = {}) {
   return `<div class="client-activity-row"><span>${esc(fmtDate(entry.timestamp))}</span><strong>${esc(entry.event)}</strong><span>${esc(entry.property)}</span><span>${esc(entry.person)}</span><span>${statusChip(entry.status)}</span></div>`;
 }
+
+function clientOwnedPropertyIds() {
+  return new Set((state.properties || []).map(p => String(p.id)));
+}
+function clientAcceptedMapRequest() {
+  const owned = clientOwnedPropertyIds();
+  return [...(state.patrolRequests || [])]
+    .filter(r => owned.has(String(r.property_id)) && ['accepted', 'in_progress'].includes(String(r.status || '')))
+    .sort((a, b) => new Date(b.updated_at || b.accepted_at || b.created_at || 0) - new Date(a.updated_at || a.accepted_at || a.created_at || 0))[0] || null;
+}
+function restoreClientViewOfGuardGps() {
+  const saved = readGuardGpsPersistedState();
+  if (!saved?.online) return false;
+  liveGps.online = true;
+  liveGps.gpsMode = 'online';
+  liveGps.onlineSince = saved.onlineSince || saved.statusChangedAt || saved.savedAt || liveGps.onlineSince || new Date().toISOString();
+  liveGps.statusChangedAt = saved.statusChangedAt || liveGps.onlineSince;
+  liveGps.offlineAt = saved.offlineAt || null;
+  liveGps.lastUpdate = saved.lastUpdate || null;
+  liveGps.guardLat = Number.isFinite(Number(saved.guardLat)) ? Number(saved.guardLat) : liveGps.guardLat;
+  liveGps.guardLng = Number.isFinite(Number(saved.guardLng)) ? Number(saved.guardLng) : liveGps.guardLng;
+  liveGps.accuracy = Number.isFinite(Number(saved.accuracy)) ? Number(saved.accuracy) : liveGps.accuracy;
+  liveGps.currentAddress = saved.currentAddress || liveGps.currentAddress || 'Waiting for live guard GPS update...';
+  return true;
+}
+function clientMapPropertyEntries() {
+  const activeReq = clientAcceptedMapRequest();
+  return (state.properties || []).slice(0, 12).map((property, idx) => {
+    const req = { property_id: property.id };
+    let coords = getPropertyCoords(req);
+    if ((!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) && activeReq && String(activeReq.property_id) === String(property.id) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) {
+      coords = { lat: liveGps.propertyLat, lng: liveGps.propertyLng };
+    }
+    const fallback = [
+      { x: 26, y: 64 }, { x: 42, y: 39 }, { x: 60, y: 54 }, { x: 76, y: 36 }, { x: 87, y: 60 }, { x: 30, y: 28 }
+    ][idx] || { x: 50, y: 50 };
+    return { property, coords, fallback, isActive: activeReq && String(activeReq.property_id) === String(property.id) };
+  });
+}
+function clientMapBounds(entries = []) {
+  const points = [];
+  for (const entry of entries) {
+    if (entry.coords && Number.isFinite(entry.coords.lat) && Number.isFinite(entry.coords.lng)) points.push([entry.coords.lat, entry.coords.lng]);
+  }
+  if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) points.push([liveGps.guardLat, liveGps.guardLng]);
+  for (const p of (liveGps.routePoints || [])) {
+    if (Number.isFinite(p.lat) && Number.isFinite(p.lng)) points.push([p.lat, p.lng]);
+  }
+  if (!points.length) return { minLat: 36.07, maxLat: 36.20, minLng: -115.30, maxLng: -115.08 };
+  let minLat = Math.min(...points.map(p => p[0]));
+  let maxLat = Math.max(...points.map(p => p[0]));
+  let minLng = Math.min(...points.map(p => p[1]));
+  let maxLng = Math.max(...points.map(p => p[1]));
+  const latPad = Math.max(.006, (maxLat - minLat) * .35);
+  const lngPad = Math.max(.006, (maxLng - minLng) * .35);
+  return { minLat: minLat - latPad, maxLat: maxLat + latPad, minLng: minLng - lngPad, maxLng: maxLng + lngPad };
+}
+function clientMapRoutePath(bounds, activeEntry) {
+  if (liveGps.routePoints && liveGps.routePoints.length >= 2) {
+    return liveGps.routePoints.map((pt, idx) => {
+      const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+      return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+  if (activeEntry && activeEntry.coords && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)) {
+    const g = mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds);
+    const p = mapPercentForPoint(activeEntry.coords.lat, activeEntry.coords.lng, bounds);
+    const midX = (g.x + p.x) / 2;
+    const midY = (g.y + p.y) / 2;
+    return `M ${g.x.toFixed(2)} ${g.y.toFixed(2)} C ${(midX - 10).toFixed(2)} ${(midY + 16).toFixed(2)}, ${(midX + 12).toFixed(2)} ${(midY - 14).toFixed(2)}, ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  }
+  return '';
+}
+function clientSelectedProperty() {
+  const entries = clientMapPropertyEntries();
+  const activeReq = clientAcceptedMapRequest();
+  const activePropertyId = String(activeReq?.property_id || '');
+  const selectedId = String(liveGps.clientSelectedPropertyId || activePropertyId || entries[0]?.property?.id || '');
+  return entries.find(entry => String(entry.property.id) === selectedId)?.property || entries[0]?.property || null;
+}
+function clientMapGuardCard(req) {
+  return `<div class="guard302-live-card">
+    <button type="button" class="guard302-card-close" data-action="close-map-card">×</button>
+    <div>${avatar(requestGuardName(req) || activeGuardName(), getGuardPhotoUrl())}</div>
+    <div>
+      <strong>${esc(requestGuardName(req) || activeGuardName())}</strong>
+      <small>${esc(activeGuardEmail() || 'Assigned guard')}</small>
+      <p>${esc(liveGps.currentAddress || 'Waiting for live guard GPS address...')}</p>
+      <span>${liveGps.online ? 'Accepted assignment · Live GPS visible to client' : 'GPS waiting'}${liveGps.accuracy ? ' · Accuracy ±' + Math.round(liveGps.accuracy) + ' ft' : ''}</span>
+    </div>
+  </div>`;
+}
+function clientMapPropertyCard(property) {
+  if (!property) return '';
+  const photo = property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || property.logo_url || '';
+  const label = property.label || property.name || property.property_name || 'Property';
+  const address = [property.address || property.address_line1, property.city, property.state, property.zip_code].filter(Boolean).join(', ');
+  const owner = property.owner_name || property.contact_name || state.profile?.display_name || state.profile?.name || state.profile?.email || 'Client';
+  const img = photo ? `<div class="avatar"><img src="${esc(photo)}" alt="${esc(label)}"></div>` : `<div class="avatar">${esc(initials(label || owner))}</div>`;
+  return `<div class="guard302-live-card property">
+    <button type="button" class="guard302-card-close" data-action="close-map-card">×</button>
+    <div>${img}</div>
+    <div>
+      <strong>${esc(label)}</strong>
+      <small>Client Property: ${esc(owner)}</small>
+      <p>${esc(address || 'Address unavailable')}</p>
+      <span>Your property marker · Visible in client map only</span>
+    </div>
+  </div>`;
+}
+function clientLivePatrolMapCard() {
+  const activeReq = clientAcceptedMapRequest();
+  const entries = clientMapPropertyEntries();
+  const selectedProperty = clientSelectedProperty();
+  const activeEntry = entries.find(entry => entry.isActive) || null;
+  const bounds = clientMapBounds(entries);
+  const routePath = activeReq && liveGps.online ? clientMapRoutePath(bounds, activeEntry) : '';
+  const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  return `<section class="panel panel-pad guard302-map-card client-live-map-card">
+    <div class="guard302-card-head"><div><h2>Client Patrol Map <span class="guard302-live ${hasGuard ? 'on' : ''}">${hasGuard ? 'Live' : 'Tracking Idle'}</span></h2></div></div>
+    <div class="guard302-leaflet-wrap client-leaflet-wrap">
+      <div id="client-live-leaflet-map" class="guard302-leaflet-map" data-online="${hasGuard ? '1' : '0'}"></div>
+      <div class="guard302-map-fallback" id="client-live-map-fallback">
+        <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
+        <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        ${entries.map(entry => {
+          const pos = entry.coords ? mapPercentForPoint(entry.coords.lat, entry.coords.lng, bounds) : entry.fallback;
+          return `<button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(entry.property.id)}" style="left:${pos.x.toFixed ? pos.x.toFixed(2) : pos.x}%;top:${pos.y.toFixed ? pos.y.toFixed(2) : pos.y}%" aria-label="Open property card"><span></span></button>`;
+        }).join('')}
+        ${hasGuard ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds).x.toFixed(2)}%;top:${mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds).y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
+        <small>${esc(liveGps.mapNotice || 'Client map ready.')}</small>
+      </div>
+      ${liveGps.selectedMapCard === 'guard' && hasGuard && activeReq ? clientMapGuardCard(activeReq) : ''}
+      ${liveGps.selectedMapCard === 'property' && selectedProperty ? clientMapPropertyCard(selectedProperty) : ''}
+      <div class="guard302-map-status">${esc(liveGps.mapNotice || 'Client map ready.')} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
+    </div>
+    <div class="guard302-map-stats">
+      <div><small>Tracked Property</small><strong>${esc(activeReq ? propertyLabel(activeReq) : (state.properties[0]?.label || state.properties[0]?.name || '—'))}</strong></div>
+      <div><small>ETA</small><strong>${esc(activeReq && liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(activeReq && liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+      <div><small>Accuracy</small><strong>${esc(hasGuard && liveGps.accuracy ? '±' + Math.round(liveGps.accuracy) + ' ft' : '—')} <i></i></strong></div>
+    </div>
+    <div class="guard302-map-actions client-map-note"><span>Client view only · You see only your properties. Guard appears after accepting your patrol and route updates live from the guard GPS.</span></div>
+  </section>`;
+}
+function hideClientMapFallback() {
+  const fallback = document.getElementById('client-live-map-fallback');
+  if (fallback) fallback.classList.add('loaded');
+}
+function showClientMapFallback(message = 'Live street map layer unavailable. Showing fallback street grid.') {
+  const fallback = document.getElementById('client-live-map-fallback');
+  if (fallback) {
+    fallback.classList.remove('loaded');
+    const small = fallback.querySelector('small');
+    if (small) small.textContent = message;
+  }
+}
+function initClientLeafletMap() {
+  const el = document.getElementById('client-live-leaflet-map');
+  if (!el) return;
+  if (!window.L) {
+    showClientMapFallback('Leaflet did not load yet. Showing fallback client map with clickable property markers.');
+    return;
+  }
+  if (el.dataset.ready === '1' && liveGps.leafletMap) {
+    try { liveGps.leafletMap.invalidateSize(); } catch {}
+    return;
+  }
+  try {
+    if (liveGps.leafletMap) {
+      try { liveGps.leafletMap.remove(); } catch {}
+      liveGps.leafletMap = null;
+      liveGps.leafletLayer = null;
+    }
+    const entries = clientMapPropertyEntries();
+    const activeReq = clientAcceptedMapRequest();
+    const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    const centerEntry = entries.find(entry => entry.isActive && entry.coords) || entries.find(entry => entry.coords) || null;
+    const center = hasGuard ? [liveGps.guardLat, liveGps.guardLng] : centerEntry?.coords ? [centerEntry.coords.lat, centerEntry.coords.lng] : [36.1699, -115.1398];
+    const map = L.map(el, { zoomControl:true, attributionControl:false, dragging:true, scrollWheelZoom:true, doubleClickZoom:true }).setView(center, centerEntry || hasGuard ? 14 : 11);
+    liveGps.leafletMap = map;
+    el.dataset.ready = '1';
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, crossOrigin:true });
+    tiles.on('load', hideClientMapFallback);
+    tiles.on('tileerror', () => showClientMapFallback('Map tiles blocked or slow. Showing fallback client map.'));
+    tiles.addTo(map);
+    const markerGroup = L.featureGroup().addTo(map);
+    entries.forEach(entry => {
+      const lat = entry.coords?.lat;
+      const lng = entry.coords?.lng;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const propertyMarker = L.marker([lat, lng], { icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      propertyMarker.on('click', () => openMapCard('property', entry.property.id));
+    });
+    if (hasGuard) {
+      const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], { icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      guardMarker.on('click', () => openMapCard('guard'));
+    }
+    if (hasGuard && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) {
+      const coords = (liveGps.routePoints && liveGps.routePoints.length >= 2) ? liveGps.routePoints.map(p => [p.lat, p.lng]) : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + liveGps.propertyLat) / 2 + 0.003, (liveGps.guardLng + liveGps.propertyLng) / 2 - 0.003], [liveGps.propertyLat, liveGps.propertyLng]];
+      L.polyline(coords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);
+    }
+    if (markerGroup.getLayers().length > 0) {
+      try { map.fitBounds(markerGroup.getBounds(), { padding:[36,36], maxZoom:15 }); } catch {}
+    }
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 150);
+    setTimeout(() => {
+      const tilePane = el.querySelector('.leaflet-tile-pane');
+      const hasTiles = tilePane && tilePane.querySelector('img');
+      if (hasTiles) hideClientMapFallback();
+    }, 1100);
+  } catch (err) {
+    showClientMapFallback('Map could not initialize. Showing fallback client map with clickable property markers.');
+  }
+}
+function scheduleClientLeafletMap() {
+  if (state.role === 'client' && state.view === 'dashboard') {
+    requestAnimationFrame(() => {
+      [75, 450, 1200, 2500].forEach(delay => setTimeout(initClientLeafletMap, delay));
+    });
+  }
+}
+function scheduleClientMapPrep() {
+  if (state.role !== 'client' || state.view !== 'dashboard') return;
+  restoreClientViewOfGuardGps();
+  const activeReq = clientAcceptedMapRequest();
+  if (!activeReq) {
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    liveGps.propertyLat = null;
+    liveGps.propertyLng = null;
+    liveGps.propertyAddress = '';
+    liveGps.mapNotice = 'Client view only. You can see only your properties. Guard marker and route appear after a guard accepts one of your patrol requests.';
+    return;
+  }
+  const existing = getPropertyCoords(activeReq);
+  if (existing) {
+    liveGps.propertyLat = existing.lat;
+    liveGps.propertyLng = existing.lng;
+    liveGps.propertyAddress = propertyAddress(activeReq);
+  }
+  if (!liveGps.clientSelectedPropertyId) liveGps.clientSelectedPropertyId = String(activeReq.property_id || '');
+  if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng) && !liveGps.routeBusy && !liveGps.routePoints.length) {
+    setTimeout(async () => {
+      await fetchRouteIfPossible();
+      if (state.role === 'client' && state.view === 'dashboard') render();
+    }, 180);
+  } else if (!existing && !liveGps.geocodeBusy) {
+    const key = `client_${String(activeReq.id || activeReq.property_id || 'active')}`;
+    if (liveGps.propertyPrepKey !== key) {
+      liveGps.propertyPrepKey = key;
+      setTimeout(async () => {
+        await geocodePropertyIfNeeded(activeReq);
+        if (liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && Number.isFinite(liveGps.propertyLat) && Number.isFinite(liveGps.propertyLng)) await fetchRouteIfPossible();
+        if (state.role === 'client' && state.view === 'dashboard') render();
+      }, 250);
+    }
+  }
+  liveGps.mapNotice = liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng)
+    ? 'Live client map active. You can see the accepted guard marker, your property marker, and the live route line.'
+    : 'Patrol accepted. Waiting for the guard device to update live GPS.';
+}
+
 function clientDashboardView() {
   const propertiesCount = state.properties.length;
   const activePatrolsCount = clientOpenRequests().filter(r => ['assigned','accepted','in_progress'].includes(String(r.status || ''))).length;
@@ -2542,10 +2823,7 @@ function clientDashboardView() {
     </section>
     <section class="client-dashboard-grid">
       <div class="client-dashboard-main">
-        <section class="panel client-map-card">
-          <div class="panel-head client-map-head"><div><h2>Live Client Patrol Map</h2><p>Real-time view of active patrols and property locations.</p></div><div class="client-map-head-actions"><div class="map-head-legend"><span><i style="--dot:#37dc72"></i>Active Patrol</span><span><i style="--dot:#2e7dff"></i>Guard</span><span><i style="--dot:#ff5973"></i>Alert</span></div><button class="primary-button" data-view="patrol-requests">Open Map</button></div></div>
-          ${mapArea()}
-        </section>
+        ${clientLivePatrolMapCard()}
         <section class="panel panel-pad client-activity-card">
           <div class="panel-head"><div><h2>Recent Activity</h2><p>Latest patrols and property updates across your portfolio.</p></div><button class="ghost-button" data-view="patrol-requests">View all activity</button></div>
           <div class="client-activity-table"><div class="client-activity-head"><span>Time</span><span>Event</span><span>Property</span><span>Guard / Unit</span><span>Status</span></div>${activityRows.length ? activityRows.map(clientActivityRow).join('') : '<div class="empty">No recent activity.</div>'}<div class="client-activity-footer">Showing ${activityRows.length ? `1 to ${activityRows.length}` : '0'} of ${state.patrolRequests.length || 0} results</div></div>
@@ -2936,6 +3214,8 @@ function render() {
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  scheduleClientMapPrep();
+  scheduleClientLeafletMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -2997,7 +3277,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'map-card') {
-      openMapCard(button.dataset.card || 'guard');
+      openMapCard(button.dataset.card || 'guard', button.dataset.propertyId || '');
       return;
     }
     if (button.dataset.action === 'close-map-card') {

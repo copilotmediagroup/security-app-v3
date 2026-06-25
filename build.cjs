@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.24 client dashboard redesign build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.25 client map live sync build complete. Copied ${count} files to dist/.`);

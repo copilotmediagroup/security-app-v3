@@ -1,17 +1,19 @@
 Co Pilot Security
-Version: 3.0.24
-Build Name: CLIENT DASHBOARD REDESIGN
+Version: 3.0.25
+Build Name: CLIENT MAP LIVE SYNC
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.23.
-- Rebuilt the Client Dashboard into a premium command-center layout.
-- Added KPI cards for Properties, Active Patrols, Open Requests, and Reports Ready.
-- Added large Live Client Patrol Map, Recent Activity table, and right-side cards for Messages, Notifications, and Recent Reports.
+- Built from v3.0.24.
+- Removed the Open Map button from the Client Dashboard map card.
+- Replaced the client placeholder map with the same live route/GPS map system used on the Guard side.
+- Client map now shows only the client's properties.
+- Guard marker and live route appear only when a guard has accepted a patrol for one of the client's properties.
+- Client map uses the same live map styling, route line, ETA, distance, and accuracy treatment as the guard map.
 - No new SQL required.
 
 Badge:
-v3.0.24 CLIENT DASHBOARD REDESIGN
+v3.0.25 CLIENT MAP LIVE SYNC
 
 SQL:
 No new SQL required.

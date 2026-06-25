@@ -1,13 +1,11 @@
-# Co Pilot Security v3.0.24 — Client Dashboard Redesign
+# Co Pilot Security v3.0.25 — Client Map Live Sync
 
 ## What changed
-- Rebuilt the `Client Dashboard` to match the new premium layout direction.
-- Added:
-  - KPI cards
-  - large live patrol map section
-  - recent activity table
-  - right rail for messages, notifications, and recent reports
-- Preserved the same dark command-center app style.
+- Removed `Open Map` from the Client Dashboard because the map is already open.
+- Upgraded the Client Dashboard map to use the same live map experience/style as the Guard map.
+- Client sees only their own property markers.
+- Guard marker and route line show only after a guard has accepted a patrol for one of the client's properties.
+- Map cards still open from marker clicks with the same premium map behavior.
 
 ## SQL
 No new SQL required.

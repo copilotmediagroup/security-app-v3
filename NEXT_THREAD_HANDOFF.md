@@ -1,8 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.24
+# Next Thread Handoff — Co Pilot Security v3.0.25
 
-Latest build: v3.0.24 CLIENT DASHBOARD REDESIGN
+Latest build: v3.0.25 CLIENT MAP LIVE SYNC
 
 ## What changed
-- Rebuilt the Client Dashboard into a premium command-center layout.
-- Added KPI cards, large map, recent activity, and right-side cards.
+- Removed Open Map button from Client Dashboard map card.
+- Client Dashboard map now mirrors the Guard live map system and styling.
+- Client sees only own properties.
+- Guard marker and route line appear only after an accepted patrol for a client property.
 - No new SQL required.
