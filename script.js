@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.19',
-  label: 'v3.0.19 MAP TEXT STAMPS'
+  version: '3.0.20',
+  label: 'v3.0.20 DISPATCH GUARD MESSAGING'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -31,7 +31,9 @@ const state = {
   selectedThreadId: '',
   thanks: null,
   completedFilter: 'today',
-  selectedCompletedRequestId: ''
+  selectedCompletedRequestId: '',
+  messageSearch: '',
+  messageFilter: 'all'
 };;
 const liveGps = {
   online: false,
@@ -387,10 +389,194 @@ async function loadData() {
   state.patrolActivity = data.patrolActivity || [];
   state.messageThreads = data.messageThreads || [];
   state.messages = data.messages || [];
+  syncDispatchGuardMessages();
   state.status = 'Connected';
   if (!state.view) state.view = 'dashboard';
 }
 
+
+function guardRankStorageKey() { return 'cp_security_guard_ranks_v1'; }
+function readGuardRankMap() {
+  try { const parsed = JSON.parse(localStorage.getItem(guardRankStorageKey()) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
+}
+function writeGuardRankMap(map = {}) {
+  try { localStorage.setItem(guardRankStorageKey(), JSON.stringify(map)); } catch {}
+}
+function guardRankKeys(item = {}) {
+  return [item.id, item.auth_user_id, item.user_id, item.profile_id, String(item.email || '').trim().toLowerCase(), item.signup_id].filter(Boolean).map(v => String(v));
+}
+function guardRankFor(item = {}) {
+  const map = readGuardRankMap();
+  for (const key of guardRankKeys(item)) if (map[key]) return map[key];
+  return item.rank || item.guard_rank || item.job_title || 'Guard';
+}
+function saveGuardRank(item = {}, rank = 'Guard') {
+  const map = readGuardRankMap();
+  for (const key of guardRankKeys(item)) map[key] = rank;
+  writeGuardRankMap(map);
+}
+function dispatchGuardMessageStoreKey() { return 'cp_security_dispatch_guard_messages_v1'; }
+function readDispatchGuardMessageStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(dispatchGuardMessageStoreKey()) || '{}');
+    return {
+      threads: Array.isArray(parsed.threads) ? parsed.threads : [],
+      messages: Array.isArray(parsed.messages) ? parsed.messages : []
+    };
+  } catch {
+    return { threads: [], messages: [] };
+  }
+}
+function writeDispatchGuardMessageStore(store = { threads: [], messages: [] }) {
+  try { localStorage.setItem(dispatchGuardMessageStoreKey(), JSON.stringify(store)); } catch {}
+}
+function messageGuardKey(guard = {}) {
+  return String(guard.id || guard.auth_user_id || guard.user_id || guard.profile_id || String(guard.email || '').trim().toLowerCase() || '').trim();
+}
+function dispatchThreadIdForGuard(guard = {}) {
+  return `dispatch-guard-${messageGuardKey(guard).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
+function activeDispatchLabel() { return 'Dispatch'; }
+function syncDispatchGuardMessages() {
+  if (!['admin','guard'].includes(state.role)) return;
+  const store = readDispatchGuardMessageStore();
+  const guards = (state.guards || []).filter(g => !['inactive','disabled','rejected','pending'].includes(String(g.status || 'active').toLowerCase()));
+  const now = new Date().toISOString();
+  for (const guard of guards) {
+    const id = dispatchThreadIdForGuard(guard);
+    let thread = store.threads.find(t => String(t.id) === String(id));
+    if (!thread) {
+      thread = {
+        id,
+        type: 'dispatch_guard',
+        title: guard.name || guard.display_name || guard.email || 'Guard',
+        guard_id: guard.id || '',
+        guard_email: String(guard.email || '').trim().toLowerCase(),
+        guard_name: guard.name || guard.display_name || guard.email || 'Guard',
+        created_at: now,
+        updated_at: now,
+        last_message_preview: 'No messages yet',
+        unread_admin: 0,
+        unread_guard: 0
+      };
+      store.threads.push(thread);
+    } else {
+      thread.guard_id = thread.guard_id || guard.id || '';
+      thread.guard_email = thread.guard_email || String(guard.email || '').trim().toLowerCase();
+      thread.guard_name = guard.name || guard.display_name || guard.email || thread.guard_name || 'Guard';
+      thread.title = thread.guard_name;
+    }
+  }
+  writeDispatchGuardMessageStore(store);
+  const relevant = store.threads.filter(thread => {
+    if (state.role === 'admin') return true;
+    const rec = activeGuardRecord();
+    const activeKeys = [messageGuardKey(rec || {}), String(activeGuardEmail() || '').trim().toLowerCase(), String(state.profile?.id || ''), String(state.profile?.auth_user_id || '')].filter(Boolean);
+    return activeKeys.some(k => k && [thread.guard_id, thread.guard_email].map(v => String(v || '')).includes(String(k)));
+  }).sort((a,b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  state.messageThreads = relevant.map(thread => ({
+    id: thread.id,
+    subject: thread.guard_name ? `${thread.guard_name}` : 'Dispatch',
+    title: thread.guard_name ? `${thread.guard_name}` : 'Dispatch',
+    updated_at: thread.updated_at,
+    created_at: thread.created_at,
+    last_message_preview: thread.last_message_preview || 'No messages yet',
+    unread_count: state.role === 'admin' ? Number(thread.unread_admin || 0) : Number(thread.unread_guard || 0),
+    guard_id: thread.guard_id,
+    guard_email: thread.guard_email,
+    guard_name: thread.guard_name
+  }));
+  state.messages = store.messages.filter(m => relevant.some(t => String(t.id) === String(m.thread_id)));
+  if ((!state.selectedThreadId || !state.messageThreads.some(t => String(t.id) === String(state.selectedThreadId))) && state.messageThreads[0]) {
+    state.selectedThreadId = state.messageThreads[0].id;
+  }
+}
+function currentMessageThread() {
+  syncDispatchGuardMessages();
+  return state.messageThreads.find(t => String(t.id) === String(state.selectedThreadId)) || state.messageThreads[0] || null;
+}
+function messagesForThread(threadId) {
+  const store = readDispatchGuardMessageStore();
+  return store.messages.filter(m => String(m.thread_id) === String(threadId)).sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+}
+function markCurrentThreadRead() {
+  const thread = currentMessageThread();
+  if (!thread) return;
+  const store = readDispatchGuardMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) return;
+  if (state.role === 'admin') raw.unread_admin = 0;
+  else raw.unread_guard = 0;
+  writeDispatchGuardMessageStore(store);
+  syncDispatchGuardMessages();
+}
+function sendDispatchGuardMessage(text) {
+  const body = String(text || '').trim();
+  if (!body) throw new Error('Type a message first.');
+  const thread = currentMessageThread();
+  if (!thread) throw new Error(state.role === 'admin' ? 'No guard threads yet.' : 'Dispatch thread not found.');
+  const store = readDispatchGuardMessageStore();
+  const raw = store.threads.find(t => String(t.id) === String(thread.id));
+  if (!raw) throw new Error('Conversation thread not found.');
+  const now = new Date().toISOString();
+  const msg = {
+    id: `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    thread_id: raw.id,
+    sender_role: state.role,
+    sender_name: state.role === 'admin' ? activeDispatchLabel() : activeGuardName(),
+    sender_email: String(state.profile?.email || activeGuardEmail() || '').trim().toLowerCase(),
+    body,
+    created_at: now
+  };
+  store.messages.push(msg);
+  raw.updated_at = now;
+  raw.last_message_preview = body;
+  if (state.role === 'admin') raw.unread_guard = Number(raw.unread_guard || 0) + 1;
+  else raw.unread_admin = Number(raw.unread_admin || 0) + 1;
+  if (state.role === 'admin') raw.unread_admin = 0; else raw.unread_guard = 0;
+  writeDispatchGuardMessageStore(store);
+  syncDispatchGuardMessages();
+}
+function relatedThreadGuard(thread = {}) {
+  return (state.guards || []).find(g => String(g.id || '') === String(thread.guard_id || '')) || (state.guards || []).find(g => String(g.email || '').trim().toLowerCase() === String(thread.guard_email || '').trim().toLowerCase()) || null;
+}
+function relatedThreadRequest(thread = {}) {
+  const guard = relatedThreadGuard(thread);
+  if (!guard) return null;
+  return activeRequests().find(r => String(r.guard_id || r.assigned_guard_id || '') === String(guard.id || '')) || completedRequests().find(r => String(r.guard_id || r.assigned_guard_id || '') === String(guard.id || '')) || null;
+}
+function filteredMessageThreads() {
+  syncDispatchGuardMessages();
+  let rows = [...state.messageThreads];
+  const q = String(state.messageSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(t => `${t.title || ''} ${t.subject || ''} ${t.last_message_preview || ''}`.toLowerCase().includes(q));
+  if (state.messageFilter === 'unread') rows = rows.filter(t => Number(t.unread_count || 0) > 0);
+  if (state.messageFilter === 'active-job') rows = rows.filter(t => Boolean(relatedThreadRequest(t)));
+  return rows;
+}
+function messageRolePill(thread = {}) {
+  const g = relatedThreadGuard(thread);
+  return guardRankFor(g || thread);
+}
+function guardApprovalsView() {
+  const rows = guardApprovals().map(x => ({ ...x, kind: 'guard' }));
+  const rankOptions = ['Guard', 'Sergeant', 'Field Supervisor', 'Supervisor', 'Lead Guard'];
+  return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Guard Approvals</h1><p>Approve guard applications and assign the guard rank for Dispatch workflows.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div class="cards-grid cards-grid-guard-approvals">${rows.length ? rows.map(item => `<article class="panel panel-pad guard-approval-card"><div class="guard-approval-head"><div class="avatar">${esc(initials(item.name || item.display_name || item.email || 'G'))}</div><div><h2>${esc(item.name || item.display_name || 'Guard Applicant')}</h2><p>${esc(item.email || '')}</p><small>${esc(item.phone || 'No phone listed')}</small></div><span class="rank-chip pending">Pending</span></div><div class="guard-approval-body"><div class="guard-approval-meta"><span>Requested Role</span><strong>Guard</strong><span>Notes</span><strong>${esc(item.notes || 'No notes added')}</strong></div><label class="form-field"><span>Guard Rank</span><select data-guard-rank="${esc(item.id)}">${rankOptions.map(rank => `<option value="${esc(rank)}" ${rank === guardRankFor(item) ? 'selected' : ''}>${esc(rank)}</option>`).join('')}</select></label><div class="button-row"><button class="btn success" data-approve="guard" data-id="${esc(item.id)}">Approve Guard</button><button class="btn secondary" data-reject="guard" data-id="${esc(item.id)}">Reject</button></div></div></article>`).join('') : '<div class="empty">No pending guard applications.</div>'}</div></section></div>`;
+}
+function messagesView() {
+  if (!['admin','guard'].includes(state.role)) return cardsView('Messages', 'Dispatch inbox and conversations.', state.messageThreads.map(t => ({ title: t.subject || t.title || 'Conversation', message: t.last_message_preview || 'No messages yet' })), 'message');
+  syncDispatchGuardMessages();
+  const threads = filteredMessageThreads();
+  const selected = threads.find(t => String(t.id) === String(state.selectedThreadId)) || threads[0] || null;
+  if (selected && String(state.selectedThreadId) !== String(selected.id)) state.selectedThreadId = selected.id;
+  const activeThread = selected || currentMessageThread();
+  const guard = activeThread ? relatedThreadGuard(activeThread) : null;
+  const req = activeThread ? relatedThreadRequest(activeThread) : null;
+  const msgs = activeThread ? messagesForThread(activeThread.id) : [];
+  const alerts = state.notifications.slice(0,3);
+  const proofs = req ? proofForRequest(req.id).slice(0,3) : [];
+  return `<div class="dashboard messages-shell"><header class="dashboard-header"><div class="title-block"><h1>Messages</h1><p>Real-time communication between Dispatch and guards.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="messages-layout page-panel"><aside class="messages-inbox panel"><div class="messages-inbox-head"><div><h2>Dispatch Inbox</h2></div><button class="icon-square">✎</button></div><div class="messages-search-row"><input type="search" placeholder="Search conversations..." value="${esc(state.messageSearch)}" data-message-search><button class="icon-square">⌕</button></div><div class="messages-filter-row"><button type="button" class="filter-pill ${state.messageFilter === 'all' ? 'active' : ''}" data-message-filter="all">All</button><button type="button" class="filter-pill ${state.messageFilter === 'unread' ? 'active' : ''}" data-message-filter="unread">Unread ${unreadMessagesCount() ? `<b>${esc(unreadMessagesCount())}</b>` : ''}</button><button type="button" class="filter-pill ${state.messageFilter === 'active-job' ? 'active' : ''}" data-message-filter="active-job">Active Job</button></div><div class="messages-thread-list">${threads.length ? threads.map(thread => `<button type="button" class="messages-thread-row ${activeThread && String(activeThread.id) === String(thread.id) ? 'active' : ''}" data-action="select-thread" data-thread-id="${esc(thread.id)}"><div class="thread-avatar">${esc(initials(thread.guard_name || thread.title || 'D'))}</div><div class="thread-copy"><div class="thread-top"><strong>${esc(thread.guard_name || thread.title || 'Dispatch')}</strong><em>${esc(fmtTime(thread.updated_at || thread.created_at))}</em></div><small>${esc(messageRolePill(thread))}</small><p>${esc(thread.last_message_preview || 'No messages yet')}</p></div>${Number(thread.unread_count || 0) ? `<span class="thread-unread">${esc(thread.unread_count)}</span>` : ''}</button>`).join('') : '<div class="empty">No Dispatch / guard conversations yet.</div>'}</div></aside><section class="messages-conversation panel">${activeThread ? `<div class="conversation-head"><div><h2>${esc(state.role === 'admin' ? `${activeThread.guard_name || 'Guard'} / Dispatch` : 'Guard / Dispatch')}</h2><p>${esc(state.role === 'admin' ? `${messageRolePill(activeThread)} · ${activeThread.guard_email || ''}` : 'Online communication with Dispatch')}</p></div><div class="conversation-actions"><button class="icon-square">☎</button><button class="icon-square">⌕</button><button class="icon-square">⋯</button></div></div><div class="conversation-stream">${msgs.length ? msgs.map(msg => `<div class="chat-row ${msg.sender_role === state.role ? 'me' : 'them'}"><div class="chat-bubble"><header><strong>${esc(msg.sender_name || (msg.sender_role === 'admin' ? activeDispatchLabel() : activeThread.guard_name || 'Guard'))}</strong><span>${esc(fmtTime(msg.created_at))}</span></header><p>${esc(msg.body || '')}</p></div></div>`).join('') : '<div class="empty">No messages yet. Start the conversation below.</div>'}</div><form class="conversation-compose" data-form="dispatch-guard-message"><input type="hidden" name="thread_id" value="${esc(activeThread.id)}"><div class="compose-toolbar"><button type="button" class="icon-square small">📎</button><button type="button" class="icon-square small">📷</button></div><div class="compose-input-wrap"><textarea name="message" rows="3" placeholder="Type your message..."></textarea><div class="quick-actions-inline"><button type="button" class="quick-pill" data-action="quick-message" data-text="All secure at this time.">All Secure</button><button type="button" class="quick-pill" data-action="quick-message" data-text="On my way.">On My Way</button><button type="button" class="quick-pill" data-action="quick-message" data-text="Need assistance at location.">Need Assistance</button><button type="button" class="quick-pill" data-action="quick-message" data-text="En route now.">En Route</button></div></div><button type="submit" class="send-button">Send</button></form>` : `<div class="empty" style="min-height:480px;display:grid;place-items:center;">No conversation selected.</div>`}</section><aside class="messages-detail panel panel-pad">${activeThread ? `<div class="panel-head"><div><h2>Conversation Details</h2><p>${esc(state.role === 'admin' ? 'Dispatch selected guard' : 'Linked to your Dispatch channel')}</p></div></div><div class="messages-detail-stack">${req ? `<section class="detail-card"><div class="detail-card-head"><strong>Active Job (Linked)</strong><span class="rank-chip active">${esc(statusText(req.status))}</span></div><h3>${esc(propertyLabel(req))}</h3><p>${esc(propertyAddress(req))}</p><div class="detail-grid"><span>Job ID</span><strong>${esc(req.id)}</strong><span>Priority</span><strong>${esc(statusText(req.priority || 'Normal'))}</strong><span>Started</span><strong>${esc(fmtDate(req.started_at || req.accepted_at || req.assigned_at || req.created_at))}</strong></div><button type="button" class="ghost-button wide" data-view="active-job">View Active Job</button></section>` : `<section class="detail-card"><div class="detail-card-head"><strong>Active Job</strong></div><p>No active job linked right now.</p></section>`}<section class="detail-card"><div class="detail-card-head"><strong>Guard Status</strong><span class="rank-chip">${esc(guard ? guardRankFor(guard) : 'Dispatch')}</span></div><div class="detail-grid"><span>Status</span><strong>${esc(guard ? statusText(guard.status || 'active') : 'Online')}</strong><span>${state.role === 'admin' ? 'Guard' : 'Channel'}</span><strong>${esc(state.role === 'admin' ? (guard?.name || activeThread.guard_name || 'Guard') : 'Dispatch')}</strong><span>Last Message</span><strong>${esc(fmtTime(activeThread.updated_at))}</strong></div></section><section class="detail-card"><div class="detail-card-head"><strong>Quick Responses</strong></div><div class="quick-response-list"><button type="button" data-action="quick-message" data-text="All secure at this time.">All secure at this time.</button><button type="button" data-action="quick-message" data-text="On my way.">On my way.</button><button type="button" data-action="quick-message" data-text="Need assistance at location.">Need assistance at location.</button></div></section><div class="detail-split"> <section class="detail-card"><div class="detail-card-head"><strong>Recent Alerts</strong></div>${alerts.length ? alerts.map(n => `<div class="detail-line"><span>${esc(n.title || n.event_type || 'Alert')}</span><em>${esc(fmtTime(n.created_at))}</em></div>`).join('') : '<div class="detail-line"><span>No alerts</span></div>'}</section><section class="detail-card"><div class="detail-card-head"><strong>Attachments (${proofs.length})</strong></div>${proofs.length ? proofs.map(p => `<div class="detail-line"><span>${esc(p.file_name || 'Proof file')}</span><em>${esc(fmtTime(p.uploaded_at || p.created_at))}</em></div>`).join('') : '<div class="detail-line"><span>No attachments</span></div>'}</section></div></div>` : `<div class="empty">No conversation selected.</div>`}</aside></section></div>`;
+}
 async function login(form) {
   const email = form.email.value.trim().toLowerCase();
   const password = form.password.value;
@@ -501,8 +687,19 @@ async function logout() {
 }
 
 async function approveSignup(kind, id) {
+  if (kind === 'guard') {
+    const pending = state.guardSignups.find(g => String(g.id) === String(id)) || {};
+    const select = document.querySelector(`select[data-guard-rank="${String(id).replace(/"/g,'&quot;')}"]`);
+    const chosenRank = select?.value || 'Guard';
+    saveGuardRank({ id, email: pending.email, signup_id: id }, chosenRank);
+  }
   await supabase.rpc(kind === 'guard' ? 'cp_approve_guard_signup' : 'cp_approve_client_signup', { p_signup_id: id });
   await loadData();
+  if (kind === 'guard') {
+    const pending = state.guardSignups.find(g => String(g.id) === String(id));
+    const approved = (state.guards || []).find(g => pending?.email && String(g.email || '').trim().toLowerCase() === String(pending.email || '').trim().toLowerCase());
+    if (approved) saveGuardRank(approved, guardRankFor({ id, email: pending?.email, signup_id: id }));
+  }
   render();
   toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved.`, 'success');
 }
@@ -2152,9 +2349,7 @@ function cardsView(title, subtitle, rows, type = 'person') {
   return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="page-panel"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;">${rows.length ? rows.map(item => `<article class="panel panel-pad"><div class="panel-head"><div><h2>${esc(item.name || item.display_name || item.email || item.title || 'Record')}</h2><p>${esc(item.email || item.phone || item.message || item.notes || '')}</p></div>${type === 'signup' ? `<div class="button-row"><button class="btn success" data-approve="${esc(item.kind)}" data-id="${esc(item.id)}">Approve</button><button class="btn secondary" data-reject="${esc(item.kind)}" data-id="${esc(item.id)}">Reject</button></div>` : ''}</div></article>`).join('') : '<div class="empty">No records found.</div>'}</div></section></div>`;
 }
 
-function messagesView() {
-  return cardsView('Messages', 'Dispatch inbox and conversations.', state.messageThreads.map(t => ({ title: t.subject || t.title || 'Conversation', message: t.last_message_preview || 'No messages yet' })), 'message');
-}
+
 function notificationsView() {
   return cardsView('Notifications', 'Alerts and updates.', state.notifications.map(n => ({ title: n.title || n.event_type || 'Notification', message: n.message || n.details || '' })), 'notification');
 }
@@ -2255,7 +2450,7 @@ function renderRoleView() {
     if (state.view === 'pending-dispatch') return tableView('Pending Dispatch', 'Requests waiting for assignment.', pendingRequests());
     if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
     if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
-    if (state.view === 'guard-approvals') return cardsView('Guard Approvals', 'Pending guard applications.', guardApprovals().map(x => ({ ...x, kind: 'guard' })), 'signup');
+    if (state.view === 'guard-approvals') return guardApprovalsView();
     if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
     if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
     if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
@@ -2483,6 +2678,11 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.messageFilter) {
+      state.messageFilter = button.dataset.messageFilter;
+      render();
+      return;
+    }
     if (button.dataset.action === 'guard-online') {
       setGuardOnline();
       return;
@@ -2523,6 +2723,18 @@ document.addEventListener('click', async event => {
       await updateGuardWorkflowStep(button.dataset.requestId, button.dataset.step);
       return;
     }
+    if (button.dataset.action === 'select-thread') {
+      state.selectedThreadId = button.dataset.threadId || '';
+      markCurrentThreadRead();
+      render();
+      return;
+    }
+    if (button.dataset.action === 'quick-message') {
+      sendDispatchGuardMessage(button.dataset.text || '');
+      render();
+      toast('Message sent.', 'success');
+      return;
+    }
     if (button.dataset.action === 'confirm-inline-proof') {
       await confirmInlineProofUpload();
       return;
@@ -2559,8 +2771,22 @@ document.addEventListener('submit', async event => {
     if (form.dataset.form === 'client-signup') await submitClientSignup(form);
     if (form.dataset.form === 'proof-upload') await uploadProof(form);
     if (form.dataset.form === 'client-patrol-request') await submitClientPatrolRequest(form);
+    if (form.dataset.form === 'dispatch-guard-message') {
+      sendDispatchGuardMessage(form.message.value);
+      form.reset();
+      render();
+      toast('Message sent.', 'success');
+    }
   } catch (err) {
     toast(friendly(err));
+  }
+});
+
+document.addEventListener('input', event => {
+  const input = event.target;
+  if (input && input.hasAttribute('data-message-search')) {
+    state.messageSearch = input.value || '';
+    render();
   }
 });
 

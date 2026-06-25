@@ -1,17 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.19",
-  "buildName": "MAP TEXT STAMPS",
-  "type": "route-gps-map-behavior-card-stamps",
+  "version": "3.0.20",
+  "buildName": "DISPATCH GUARD MESSAGING",
+  "type": "dispatch-guard-messaging-and-ranks",
   "sql_required": false,
   "features": [
-    "Removed separate timestamp block from Route/GPS Map Behavior panel",
-    "Added timestamps directly inside each Map Behavior text card",
-    "Online card shows Online Since",
-    "Active Job card shows current checked date/time",
-    "Offline card shows Last Offline",
-    "Marker Click card shows Last GPS Update",
-    "Persistent online/offline behavior preserved",
+    "Redesigned Messages page for Dispatch and guards with inbox, chat, and details rail",
+    "Functional local development messaging between Dispatch and guards",
+    "Quick reply buttons and searchable/filterable inbox",
+    "Guard Approvals page now includes a guard rank selector before approval",
+    "Saved guard ranks display in messaging details",
     "No new SQL required"
   ]
 }

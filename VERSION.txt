@@ -1,21 +1,18 @@
 Co Pilot Security
-Version: 3.0.19
-Build Name: MAP TEXT STAMPS
+Version: 3.0.20
+Build Name: DISPATCH GUARD MESSAGING
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.18.
-- Route / GPS Map Behavior no longer has a separate timestamp block.
-- Timestamps now live directly inside the actual text cards:
-  - Online: Online Since
-  - Active Job: Checked
-  - Offline: Last Offline
-  - Marker Click: Last GPS Update
-- Persistent Online status remains preserved across logout/login until Offline is clicked.
+- Built from v3.0.19.
+- Rebuilt the Messages page into a Dispatch / Guard messaging layout with inbox, conversation center, and details rail.
+- Added functional development messaging between Dispatch and guards using local browser storage.
+- Added quick replies, search, unread filter, and active-job filter.
+- Guard Approvals page now lets Dispatch choose the guard rank (Guard, Sergeant, Field Supervisor, Supervisor, Lead Guard) before approving.
 - No new SQL required.
 
 Badge:
-v3.0.19 MAP TEXT STAMPS
+v3.0.20 DISPATCH GUARD MESSAGING
 
 SQL:
 No new SQL required.

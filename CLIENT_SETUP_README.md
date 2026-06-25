@@ -1,14 +1,19 @@
-# Co Pilot Security v3.0.19 — Map Text Stamps
+# Co Pilot Security v3.0.20 — Dispatch Guard Messaging
 
 ## What changed
-- Removed the separate timestamp block from the Route / GPS Map Behavior panel.
-- Added timestamps directly onto each text card:
-  - Online card: `Online since`
-  - Active Job card: `Checked`
-  - Offline card: `Last offline`
-  - Marker Click card: `Last GPS update`
+- Redesigned the `Messages` page for Dispatch and Guard roles.
+- Added a three-column messaging layout:
+  - inbox / conversations
+  - conversation center
+  - conversation details rail
+- Added functional development messaging between Dispatch and guards using local browser storage.
+- Added quick reply buttons, search, and filters.
+- Updated `Guard Approvals` so Dispatch can choose the guard rank before approving.
 
-## Preserved
-- Guard stays Online across logout/login until Offline is clicked.
-- Route / GPS live map behavior remains the same.
-- No new SQL required.
+## Messaging behavior
+- Dispatch sees a conversation thread for each approved guard.
+- A guard sees their Dispatch conversation thread.
+- Messages persist in the same browser via local storage for development use.
+
+## SQL
+No new SQL required.

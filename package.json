@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-map-text-stamps",
-  "version": "3.0.19",
+  "name": "co-pilot-security-dispatch-guard-messaging",
+  "version": "3.0.20",
   "private": true,
-  "description": "Moves Route/GPS timestamps from a separate block into each Map Behavior text card.",
+  "description": "Adds a redesigned Dispatch/Guard messaging page and guard approval rank selector.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

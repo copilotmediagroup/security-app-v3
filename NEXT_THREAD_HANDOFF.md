@@ -1,10 +1,9 @@
-# Next Thread Handoff — Co Pilot Security v3.0.19
+# Next Thread Handoff — Co Pilot Security v3.0.20
 
-Latest build: v3.0.19 MAP TEXT STAMPS
+Latest build: v3.0.20 DISPATCH GUARD MESSAGING
 
 ## What changed
-- Built from v3.0.18.
-- Route/GPS Map Behavior panel no longer has a separate timestamp block.
-- Timestamps now appear directly inside each Map Behavior text card.
-- Persistent Online/Offline behavior remains preserved.
+- Rebuilt the Messages page for Dispatch/Guard messaging.
+- Added functional local development messaging between Dispatch and guards.
+- Added Guard rank selection on the Guard Approvals page.
 - No new SQL required.
