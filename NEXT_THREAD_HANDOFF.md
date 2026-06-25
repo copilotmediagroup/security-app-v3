@@ -1,10 +1,12 @@
-# Next Thread Handoff — Co Pilot Security v3.0.26
+# Next Thread Handoff — Co Pilot Security v3.0.27
 
-Latest build: v3.0.26 CLIENT PROPERTIES COMMAND CENTER
+Latest build: v3.0.27 CLIENT PROPERTIES POLISH
 
 ## What changed
-- Rebuilt the Client Properties page into a premium command-center layout.
-- Added search, filters, list/grid toggle, KPI cards, and property detail rail.
-- Added tabs for overview, details, activity, patrol history, and notes.
-- Request Patrol now opens the client request page with the selected property prefilled.
+- Built from v3.0.26.
+- Client property type labels now show under property name as Retail/Residential when applicable.
+- Removed Online/Offline property concept.
+- Fixed Property Details button text overflow.
+- Replaced property detail mini-map with guard-style map using same Leaflet/fallback styling, markers, route line, and cards.
+- Guard marker appears for client only after accepted/in-progress assignment for that property.
 - No new SQL required.

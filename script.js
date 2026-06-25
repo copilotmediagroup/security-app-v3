@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.26',
-  label: 'v3.0.26 CLIENT PROPERTIES COMMAND CENTER'
+  version: '3.0.27',
+  label: 'v3.0.27 CLIENT PROPERTIES POLISH'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1002,6 +1002,8 @@ function renderLoading() {
   scheduleGuardLeafletMap();
   scheduleClientMapPrep();
   scheduleClientLeafletMap();
+  scheduleClientPropertyMapPrep();
+  scheduleClientPropertyDetailMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -1706,7 +1708,7 @@ function setGuardOffline() {
 }
 
 function openMapCard(type, propertyId = '') {
-  if (state.role === 'client' && state.view === 'dashboard') {
+  if (state.role === 'client' && ['dashboard','properties'].includes(state.view)) {
     const activeReq = clientAcceptedMapRequest();
     const entries = clientMapPropertyEntries();
     const hasGuard = Boolean(activeReq) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
@@ -2991,8 +2993,8 @@ function propertyImageValue(property = {}) {
   return property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || property.logo_url || '';
 }
 function propertyStatusValue(property = {}) {
-  const raw = String(property.status || (property.is_online === false ? 'offline' : 'online')).toLowerCase();
-  return (raw.includes('offline') || raw.includes('inactive') || raw.includes('disabled')) ? 'offline' : 'online';
+  // Client properties are considered active/saved as long as they exist in the database.
+  return 'saved';
 }
 function propertyRequestsForProperty(property = {}) {
   return (state.patrolRequests || []).filter(req => String(req.property_id) === String(property.id));
@@ -3029,7 +3031,12 @@ function propertyLastActivityMeta(property = {}) {
   return candidates[0] || { title:'System Check', subtitle:'No recent events', at:null };
 }
 function propertyTypeLabel(property = {}) {
-  return property.property_type || property.type || property.category || 'Retail Location';
+  const raw = String(property.property_type || property.type || property.category || '').trim();
+  const value = raw.toLowerCase();
+  if (/residential|home|house|apartment|condo|townhome|duplex|triplex|fourplex/.test(value)) return 'Residential';
+  if (/retail|restaurant|store|shop|commercial|business|office|warehouse|mall/.test(value)) return 'Retail';
+  if (!raw) return 'Retail';
+  return raw.replace(/\s+location$/i, '').replace(/\b\w/g, c => c.toUpperCase());
 }
 function propertyContactName(property = {}) {
   return property.owner_name || property.contact_name || state.profile?.display_name || state.profile?.name || 'Client';
@@ -3057,12 +3064,14 @@ function filteredClientProperties() {
   return (state.properties || []).filter(property => {
     const hay = [propertyDisplayName(property), propertyDisplayAddress(property), propertyTypeLabel(property), propertyContactName(property)].join(' ').toLowerCase();
     const matchesTerm = !term || hay.includes(term);
-    const status = propertyStatusValue(property);
+    const type = propertyTypeLabel(property).toLowerCase();
     const hasActive = Boolean(propertyActiveRequest(property));
+    const hasOpen = propertyOpenRequestCount(property) > 0;
     const matchesFilter = state.clientPropertyFilter === 'all'
-      || (state.clientPropertyFilter === 'online' && status === 'online')
-      || (state.clientPropertyFilter === 'offline' && status === 'offline')
-      || (state.clientPropertyFilter === 'active' && hasActive);
+      || (state.clientPropertyFilter === 'active' && hasActive)
+      || (state.clientPropertyFilter === 'open' && hasOpen)
+      || (state.clientPropertyFilter === 'retail' && type.includes('retail'))
+      || (state.clientPropertyFilter === 'residential' && type.includes('residential'));
     return matchesTerm && matchesFilter;
   });
 }
@@ -3079,14 +3088,13 @@ function clientPropertiesCounts() {
   const total = properties.length;
   const activePatrols = properties.filter(property => Boolean(propertyActiveRequest(property))).length;
   const openRequests = properties.reduce((sum, property) => sum + propertyOpenRequestCount(property), 0);
-  const offline = properties.filter(property => propertyStatusValue(property) === 'offline').length;
-  return { total, activePatrols, openRequests, offline };
+  const saved = properties.length;
+  return { total, activePatrols, openRequests, saved };
 }
 function clientPropertyStatusChip(property = {}) {
-  const status = propertyStatusValue(property);
-  const label = status === 'online' ? 'Online' : 'Offline';
-  const color = status === 'online' ? '#37dc72' : '#b05cff';
-  return `<span class="client-property-online" style="--tone:${color}"><i></i>${esc(label)}</span>`;
+  const type = propertyTypeLabel(property);
+  const color = /residential/i.test(type) ? '#b05cff' : '#2e7dff';
+  return `<span class="client-property-online type-chip" style="--tone:${color}">${esc(type)}</span>`;
 }
 function clientPropertyPatrolSummary(property = {}) {
   const req = propertyActiveRequest(property);
@@ -3104,9 +3112,9 @@ function clientPropertyRow(property = {}) {
   const image = propertyImageValue(property);
   const selected = String(state.clientSelectedPropertyId || '') === String(property.id);
   return `<button type="button" class="client-property-row ${selected ? 'active' : ''}" data-action="select-client-property" data-property-id="${esc(property.id)}">
-    <div class="client-property-col property-main"><div class="client-property-thumb">${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div><strong>${esc(propertyDisplayName(property))}</strong>${propertyIsPrimary(property) ? '<b>Primary</b>' : ''}<small>${esc(propertyTypeLabel(property))}</small></div></div>
+    <div class="client-property-col property-main"><div class="client-property-thumb">${image ? `<img src="${esc(image)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="property-main-copy"><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyTypeLabel(property))}</small>${propertyIsPrimary(property) ? '<b>Primary</b>' : ''}</div></div>
     <div class="client-property-col address"><strong>${esc(property.address || property.address_line1 || property.street || '—')}</strong><small>${esc([property.city, property.state, property.zip || property.zip_code].filter(Boolean).join(', ') || 'Address unavailable')}</small></div>
-    <div class="client-property-col status">${clientPropertyStatusChip(property)}<small>${esc(propertyStatusValue(property) === 'online' ? 'All systems normal' : 'Offline')}</small></div>
+    <div class="client-property-col status">${clientPropertyStatusChip(property)}<small>Saved property</small></div>
     <div class="client-property-col patrol">${clientPropertyPatrolSummary(property)}</div>
     <div class="client-property-col last-activity">${clientPropertyLastActivity(property)}</div>
     <div class="client-property-chevron">›</div>
@@ -3120,26 +3128,180 @@ function clientPropertyGridCard(property = {}) {
     <div class="client-property-grid-copy"><div class="row"><strong>${esc(propertyDisplayName(property))}</strong>${clientPropertyStatusChip(property)}</div><small>${esc(propertyDisplayAddress(property))}</small><div class="row patrol-meta">${clientPropertyPatrolSummary(property)}</div></div>
   </button>`;
 }
+
 function clientPropertyMapCard(property = {}) {
   const req = propertyActiveRequest(property);
-  const propertyCoords = getPropertyCoords({ property_id: property.id }) || (Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude)) ? { lat:Number(property.latitude), lng:Number(property.longitude) } : null);
-  const hasGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
-  let bounds = { minLat:36.07, maxLat:36.20, minLng:-115.30, maxLng:-115.08 };
-  const points = [];
-  if (propertyCoords) points.push([propertyCoords.lat, propertyCoords.lng]);
-  if (hasGuard) points.push([liveGps.guardLat, liveGps.guardLng]);
-  if (hasGuard && liveGps.routePoints?.length) liveGps.routePoints.forEach(pt => points.push([pt.lat, pt.lng]));
-  if (points.length) {
-    let minLat = Math.min(...points.map(p => p[0])); let maxLat = Math.max(...points.map(p => p[0]));
-    let minLng = Math.min(...points.map(p => p[1])); let maxLng = Math.max(...points.map(p => p[1]));
-    const latPad = Math.max(.004, (maxLat - minLat) * .35); const lngPad = Math.max(.004, (maxLng - minLng) * .35);
-    bounds = { minLat:minLat-latPad, maxLat:maxLat+latPad, minLng:minLng-lngPad, maxLng:maxLng+lngPad };
-  }
-  const propertyPos = propertyCoords ? mapPercentForPoint(propertyCoords.lat, propertyCoords.lng, bounds) : { x:38, y:50 };
-  const guardPos = hasGuard ? mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds) : { x:74, y:54 };
-  const routePath = hasGuard ? (liveGps.routePoints?.length ? liveGps.routePoints.map((pt, idx) => { const pos = mapPercentForPoint(pt.lat, pt.lng, bounds); return `${idx === 0 ? 'M' : 'L'} ${pos.x.toFixed(2)} ${pos.y.toFixed(2)}`; }).join(' ') : `M ${guardPos.x.toFixed(2)} ${guardPos.y.toFixed(2)} C ${(guardPos.x - 14).toFixed(2)} ${(guardPos.y - 10).toFixed(2)}, ${(propertyPos.x + 10).toFixed(2)} ${(propertyPos.y + 8).toFixed(2)}, ${propertyPos.x.toFixed(2)} ${propertyPos.y.toFixed(2)}`) : '';
-  return `<section class="client-property-map-wrap"><h3>Property Location</h3><div class="client-property-mini-map"><div class="road r1"></div><div class="road r2"></div><div class="road r3"></div><div class="road r4"></div><div class="map-controls"><button>＋</button><button>−</button><button>⚙</button></div><div class="property-plot"></div>${routePath ? `<svg class="client-property-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}<button type="button" class="client-property-mini-marker property" aria-label="Property marker"><span>⌂</span></button>${hasGuard ? `<button type="button" class="client-property-mini-marker guard" aria-label="Guard marker" style="left:${guardPos.x.toFixed(2)}%;top:${guardPos.y.toFixed(2)}%"><span>⟡</span></button>` : ''}<div class="client-property-mini-marker property home" style="left:${propertyPos.x.toFixed(2)}%;top:${propertyPos.y.toFixed(2)}%"><span>⌂</span></div><div class="client-property-map-legend"><span><i class="blue"></i>Property Area</span><span><i class="green"></i>Guard Location</span><span><i class="route"></i>Route to Property</span></div></div></section>`;
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  const propertyCoords = getPropertyCoords({ property_id: property.id });
+  const bounds = clientPropertyDetailMapBounds(property);
+  const propertyPos = propertyCoords ? mapPercentForPoint(propertyCoords.lat, propertyCoords.lng, bounds) : { x: 50, y: 50 };
+  const guardPos = showGuard ? mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds) : null;
+  const routePath = showGuard ? clientPropertyDetailRoutePath(bounds, propertyCoords) : '';
+  return `<section class="client-property-guard-map">
+    <h3>Property Location</h3>
+    <div class="guard302-leaflet-wrap client-property-detail-map-wrap">
+      <div id="client-property-detail-leaflet-map" class="guard302-leaflet-map" data-property-id="${esc(property.id)}"></div>
+      <div class="guard302-map-fallback" id="client-property-detail-map-fallback">
+        <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
+        <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        <button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(property.id)}" style="left:${propertyPos.x.toFixed ? propertyPos.x.toFixed(2) : propertyPos.x}%;top:${propertyPos.y.toFixed ? propertyPos.y.toFixed(2) : propertyPos.y}%" aria-label="Open property card"><span></span></button>
+        ${showGuard && guardPos ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${guardPos.x.toFixed(2)}%;top:${guardPos.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
+        <small>${esc(liveGps.mapNotice || 'Property map ready.')}</small>
+      </div>
+      ${liveGps.selectedMapCard === 'property' ? clientMapPropertyCard(property) : ''}
+      ${liveGps.selectedMapCard === 'guard' && showGuard && req ? clientMapGuardCard(req) : ''}
+      <div class="guard302-map-status">${esc(liveGps.mapNotice || 'Client property map ready.')} ${liveGps.lastUpdate ? 'Last update ' + timeAgo(liveGps.lastUpdate) + '.' : ''}</div>
+    </div>
+    <div class="guard302-map-stats client-property-map-stats">
+      <div><small>Property</small><strong>${esc(propertyDisplayName(property))}</strong></div>
+      <div><small>Guard Visibility</small><strong>${esc(showGuard ? 'Live' : 'After Accepted')}</strong></div>
+      <div><small>ETA</small><strong>${esc(showGuard && liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</strong></div>
+      <div><small>Distance</small><strong>${esc(showGuard && liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+    </div>
+  </section>`;
 }
+function clientPropertyDetailMapBounds(property = {}) {
+  const points = [];
+  const coords = getPropertyCoords({ property_id: property.id });
+  const req = propertyActiveRequest(property);
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  if (coords) points.push([coords.lat, coords.lng]);
+  if (showGuard) points.push([liveGps.guardLat, liveGps.guardLng]);
+  if (showGuard && liveGps.routePoints?.length) liveGps.routePoints.forEach(pt => points.push([pt.lat, pt.lng]));
+  if (!points.length) return { minLat: 36.07, maxLat: 36.20, minLng: -115.30, maxLng: -115.08 };
+  let minLat = Math.min(...points.map(p => p[0])); let maxLat = Math.max(...points.map(p => p[0]));
+  let minLng = Math.min(...points.map(p => p[1])); let maxLng = Math.max(...points.map(p => p[1]));
+  const latPad = Math.max(.006, (maxLat - minLat) * .35);
+  const lngPad = Math.max(.006, (maxLng - minLng) * .35);
+  return { minLat:minLat-latPad, maxLat:maxLat+latPad, minLng:minLng-lngPad, maxLng:maxLng+lngPad };
+}
+function clientPropertyDetailRoutePath(bounds, coords) {
+  if (!coords || !Number.isFinite(liveGps.guardLat) || !Number.isFinite(liveGps.guardLng)) return '';
+  if (liveGps.routePoints && liveGps.routePoints.length >= 2) {
+    return liveGps.routePoints.map((pt, idx) => {
+      const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+      return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+    }).join(' ');
+  }
+  const g = mapPercentForPoint(liveGps.guardLat, liveGps.guardLng, bounds);
+  const p = mapPercentForPoint(coords.lat, coords.lng, bounds);
+  const midX = (g.x + p.x) / 2;
+  const midY = (g.y + p.y) / 2;
+  return `M ${g.x.toFixed(2)} ${g.y.toFixed(2)} C ${(midX - 10).toFixed(2)} ${(midY + 16).toFixed(2)}, ${(midX + 12).toFixed(2)} ${(midY - 14).toFixed(2)}, ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+}
+function hideClientPropertyDetailMapFallback() {
+  const fallback = document.getElementById('client-property-detail-map-fallback');
+  if (fallback) fallback.classList.add('loaded');
+}
+function showClientPropertyDetailMapFallback(message = 'Live street map layer unavailable. Showing fallback street grid.') {
+  const fallback = document.getElementById('client-property-detail-map-fallback');
+  if (fallback) {
+    fallback.classList.remove('loaded');
+    const small = fallback.querySelector('small');
+    if (small) small.textContent = message;
+  }
+}
+function initClientPropertyDetailLeafletMap() {
+  const el = document.getElementById('client-property-detail-leaflet-map');
+  if (!el) return;
+  const property = selectedClientProperty();
+  if (!property) return;
+  if (!window.L) {
+    showClientPropertyDetailMapFallback('Leaflet did not load yet. Showing the same fallback street grid used by Guard map.');
+    return;
+  }
+  if (el.dataset.ready === '1' && liveGps.leafletMap && el.dataset.propertyId === String(property.id)) {
+    try { liveGps.leafletMap.invalidateSize(); } catch {}
+    return;
+  }
+  try {
+    if (liveGps.leafletMap) {
+      try { liveGps.leafletMap.remove(); } catch {}
+      liveGps.leafletMap = null;
+      liveGps.leafletLayer = null;
+    }
+    el.dataset.propertyId = String(property.id);
+    const coords = getPropertyCoords({ property_id: property.id });
+    const req = propertyActiveRequest(property);
+    const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+    const center = showGuard ? [liveGps.guardLat, liveGps.guardLng] : coords ? [coords.lat, coords.lng] : [36.1699, -115.1398];
+    const map = L.map(el, { zoomControl:true, attributionControl:false, dragging:true, scrollWheelZoom:true, doubleClickZoom:true }).setView(center, coords || showGuard ? 14 : 11);
+    liveGps.leafletMap = map;
+    el.dataset.ready = '1';
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, crossOrigin:true });
+    tiles.on('load', hideClientPropertyDetailMapFallback);
+    tiles.on('tileerror', () => showClientPropertyDetailMapFallback('Map tiles blocked or slow. Showing fallback street grid.'));
+    tiles.addTo(map);
+    const markerGroup = L.featureGroup().addTo(map);
+    if (coords) {
+      const marker = L.marker([coords.lat, coords.lng], { icon: leafletDivIcon('leaflet-property-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      marker.on('click', () => openMapCard('property', property.id));
+    }
+    if (showGuard) {
+      const guardMarker = L.marker([liveGps.guardLat, liveGps.guardLng], { icon: leafletDivIcon('leaflet-guard-pulse-icon', '<span></span>') }).addTo(markerGroup);
+      guardMarker.on('click', () => openMapCard('guard'));
+    }
+    if (showGuard && coords) {
+      const routeCoords = (liveGps.routePoints && liveGps.routePoints.length >= 2)
+        ? liveGps.routePoints.map(p => [p.lat, p.lng])
+        : [[liveGps.guardLat, liveGps.guardLng], [(liveGps.guardLat + coords.lat) / 2 + 0.003, (liveGps.guardLng + coords.lng) / 2 - 0.003], [coords.lat, coords.lng]];
+      L.polyline(routeCoords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);
+    }
+    if (markerGroup.getLayers().length > 0) {
+      try { map.fitBounds(markerGroup.getBounds(), { padding:[36,36], maxZoom:15 }); } catch {}
+    }
+    setTimeout(() => { try { map.invalidateSize(); } catch {} }, 150);
+    setTimeout(() => {
+      const tilePane = el.querySelector('.leaflet-tile-pane');
+      const hasTiles = tilePane && tilePane.querySelector('img');
+      if (hasTiles) hideClientPropertyDetailMapFallback();
+    }, 1100);
+  } catch (err) {
+    showClientPropertyDetailMapFallback('Map could not initialize. Showing fallback street grid with clickable markers.');
+  }
+}
+function scheduleClientPropertyDetailMap() {
+  if (state.role === 'client' && state.view === 'properties') {
+    requestAnimationFrame(() => {
+      [75, 450, 1200, 2500].forEach(delay => setTimeout(initClientPropertyDetailLeafletMap, delay));
+    });
+  }
+}
+function scheduleClientPropertyMapPrep() {
+  if (state.role !== 'client' || state.view !== 'properties') return;
+  restoreClientViewOfGuardGps();
+  const property = selectedClientProperty();
+  if (!property) return;
+  const req = propertyActiveRequest(property);
+  const coords = getPropertyCoords({ property_id: property.id });
+  if (coords) {
+    liveGps.propertyLat = coords.lat;
+    liveGps.propertyLng = coords.lng;
+    liveGps.propertyAddress = propertyDisplayAddress(property);
+  }
+  const showGuard = req && ['accepted','in_progress'].includes(String(req.status || '')) && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng);
+  if (showGuard && coords && !liveGps.routeBusy && !liveGps.routePoints.length) {
+    setTimeout(async () => {
+      await fetchRouteIfPossible();
+      if (state.role === 'client' && state.view === 'properties') render();
+    }, 180);
+  } else if (!coords && !liveGps.geocodeBusy) {
+    const key = `property_detail_${String(property.id || '')}`;
+    if (liveGps.propertyPrepKey !== key) {
+      liveGps.propertyPrepKey = key;
+      setTimeout(async () => {
+        await geocodePropertyIfNeeded({ property_id: property.id });
+        if (showGuard) await fetchRouteIfPossible();
+        if (state.role === 'client' && state.view === 'properties') render();
+      }, 250);
+    }
+  }
+  liveGps.mapNotice = showGuard
+    ? 'Live map active. Client can see this accepted guard, route line, ETA, distance, and GPS updates.'
+    : 'Property map active. Guard marker appears only after a guard accepts an assignment for this property.';
+}
+
 function clientPropertyOverviewGrid(property = {}) {
   return `<section class="client-property-overview-grid"><h3>Property Overview</h3><div class="grid">
     <div><small>Property ID</small><strong>${esc(property.property_code || property.code || `PROP-${property.id || '—'}`)}</strong></div>
@@ -3163,7 +3325,7 @@ function clientPropertyActivePatrolCard(property = {}) {
 function clientPropertyDetailTabs(property = {}) {
   const tab = state.clientPropertyTab || 'overview';
   if (tab === 'details') {
-    return `<section class="client-property-tab-content"><div class="client-property-detail-list"><div><small>Property Name</small><strong>${esc(propertyDisplayName(property))}</strong></div><div><small>Full Address</small><strong>${esc(propertyDisplayAddress(property))}</strong></div><div><small>Status</small><strong>${esc(statusText(propertyStatusValue(property)))}</strong></div><div><small>Primary Property</small><strong>${esc(propertyIsPrimary(property) ? 'Yes' : 'No')}</strong></div><div><small>Patrol Notes</small><strong>${esc(property.notes || property.instructions || 'No special property notes saved yet.')}</strong></div></div></section>`;
+    return `<section class="client-property-tab-content"><div class="client-property-detail-list"><div><small>Property Name</small><strong>${esc(propertyDisplayName(property))}</strong></div><div><small>Full Address</small><strong>${esc(propertyDisplayAddress(property))}</strong></div><div><small>Database Status</small><strong>Saved</strong></div><div><small>Primary Property</small><strong>${esc(propertyIsPrimary(property) ? 'Yes' : 'No')}</strong></div><div><small>Patrol Notes</small><strong>${esc(property.notes || property.instructions || 'No special property notes saved yet.')}</strong></div></div></section>`;
   }
   if (tab === 'activity') {
     const reqs = propertyRequestsForProperty(property).sort((a,b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)).slice(0, 6);
@@ -3181,13 +3343,13 @@ function clientPropertyDetailTabs(property = {}) {
 function clientPropertyDetailPanel(property) {
   if (!property) return `<aside class="client-property-detail panel panel-pad"><div class="empty">No property selected.</div></aside>`;
   const img = propertyImageValue(property);
-  return `<aside class="client-property-detail panel panel-pad"><div class="client-property-detail-head"><div class="copy"><h2>Property Details</h2></div><button class="header-button" data-action="clear-client-property-filters">×</button></div><div class="client-property-hero"><div class="hero-image">${img ? `<img src="${esc(img)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="hero-copy"><div class="title-row"><strong>${esc(propertyDisplayName(property))}</strong>${clientPropertyStatusChip(property)}</div><small>${esc(propertyTypeLabel(property))}</small><span class="primary-tag">${propertyIsPrimary(property) ? 'Primary Property' : 'Property'}</span></div></div><div class="client-property-hero-actions"><button class="ghost-button" data-action="edit-client-property">✎ Edit Property</button><button class="ghost-button" data-action="open-client-patrol-request" data-property-id="${esc(property.id)}">🛡 Request Patrol</button><button class="ghost-button" data-action="open-client-reports">▣ View Reports</button></div><div class="client-property-tabs"><button class="${state.clientPropertyTab === 'overview' ? 'active' : ''}" data-property-tab="overview">Overview</button><button class="${state.clientPropertyTab === 'details' ? 'active' : ''}" data-property-tab="details">Details</button><button class="${state.clientPropertyTab === 'activity' ? 'active' : ''}" data-property-tab="activity">Activity</button><button class="${state.clientPropertyTab === 'patrol-history' ? 'active' : ''}" data-property-tab="patrol-history">Patrol History</button><button class="${state.clientPropertyTab === 'notes' ? 'active' : ''}" data-property-tab="notes">Notes</button></div>${clientPropertyDetailTabs(property)}</aside>`;
+  return `<aside class="client-property-detail panel panel-pad"><div class="client-property-detail-head"><div class="copy"><h2>Property Details</h2></div><button class="header-button" data-action="clear-client-property-filters">×</button></div><div class="client-property-hero"><div class="hero-image">${img ? `<img src="${esc(img)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="hero-copy"><div class="title-row"><strong>${esc(propertyDisplayName(property))}</strong></div><small>${esc(propertyTypeLabel(property))}</small><span class="primary-tag">${propertyIsPrimary(property) ? 'Primary Property' : 'Property'}</span></div></div><div class="client-property-hero-actions"><button class="ghost-button" data-action="edit-client-property"><span>✎</span> Edit Property</button><button class="ghost-button" data-action="open-client-patrol-request" data-property-id="${esc(property.id)}"><span>🛡</span> Request Patrol</button><button class="ghost-button" data-action="open-client-reports"><span>▣</span> View Reports</button></div><div class="client-property-tabs"><button class="${state.clientPropertyTab === 'overview' ? 'active' : ''}" data-property-tab="overview">Overview</button><button class="${state.clientPropertyTab === 'details' ? 'active' : ''}" data-property-tab="details">Details</button><button class="${state.clientPropertyTab === 'activity' ? 'active' : ''}" data-property-tab="activity">Activity</button><button class="${state.clientPropertyTab === 'patrol-history' ? 'active' : ''}" data-property-tab="patrol-history">Patrol History</button><button class="${state.clientPropertyTab === 'notes' ? 'active' : ''}" data-property-tab="notes">Notes</button></div>${clientPropertyDetailTabs(property)}</aside>`;
 }
 function clientPropertiesView() {
   const counts = clientPropertiesCounts();
   const rows = filteredClientProperties();
   const selected = selectedClientProperty();
-  return `<div class="dashboard client-properties-shell"><header class="dashboard-header"><div class="title-block"><h1>Properties</h1><p>Manage and monitor all properties under your account.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="client-properties-toolbar"><div class="client-properties-search"><span>⌕</span><input type="search" placeholder="Search properties..." value="${esc(state.clientPropertySearch)}" data-client-property-search></div><button class="ghost-button" data-action="cycle-client-property-filter">⎚ ${esc(state.clientPropertyFilter === 'all' ? 'Filters' : 'Filter: ' + statusText(state.clientPropertyFilter))}</button><button class="primary-button" data-action="add-client-property">＋ Add Property</button></section><section class="kpi-row client-properties-kpis">${kpiCard('⌂', 'Total Properties', counts.total, 'All properties', '#2f83ff')}${kpiCard('◉', 'Active Patrols', counts.activePatrols, 'Currently in progress', '#37dc72')}${kpiCard('▣', 'Open Requests', counts.openRequests, 'Needs attention', '#ffb53d')}${kpiCard('⌁', 'Offline Properties', counts.offline, counts.offline ? 'Needs review' : 'All online', '#b05cff')}</section><section class="client-properties-filter-pills"><button class="filter-pill ${state.clientPropertyFilter === 'all' ? 'active' : ''}" data-client-property-filter="all">All</button><button class="filter-pill ${state.clientPropertyFilter === 'online' ? 'active' : ''}" data-client-property-filter="online">Online</button><button class="filter-pill ${state.clientPropertyFilter === 'active' ? 'active' : ''}" data-client-property-filter="active">Active Patrol</button><button class="filter-pill ${state.clientPropertyFilter === 'offline' ? 'active' : ''}" data-client-property-filter="offline">Offline</button></section><section class="client-properties-layout"><div class="client-properties-main panel"><div class="client-properties-list-head"><div><h2>All Properties (${rows.length})</h2></div><div class="client-properties-view-toggle"><button class="${state.clientPropertyView === 'list' ? 'active' : ''}" data-property-view="list">☰</button><button class="${state.clientPropertyView === 'grid' ? 'active' : ''}" data-property-view="grid">☷</button></div></div>${state.clientPropertyView === 'grid' ? `<div class="client-property-grid">${rows.length ? rows.map(clientPropertyGridCard).join('') : '<div class="empty">No properties match your filters.</div>'}</div>` : `<div class="client-property-table-head"><span>Property</span><span>Address</span><span>Status</span><span>Active Patrol</span><span>Last Activity</span><span></span></div><div class="client-property-list">${rows.length ? rows.map(clientPropertyRow).join('') : '<div class="empty">No properties match your filters.</div>'}</div>`}<div class="client-property-list-footer">Showing ${rows.length ? `1 to ${rows.length}` : '0'} of ${state.properties.length} properties</div></div>${clientPropertyDetailPanel(selected)}</section></div>`;
+  return `<div class="dashboard client-properties-shell"><header class="dashboard-header"><div class="title-block"><h1>Properties</h1><p>Manage and monitor all properties under your account.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span></div></header><section class="client-properties-toolbar"><div class="client-properties-search"><span>⌕</span><input type="search" placeholder="Search properties..." value="${esc(state.clientPropertySearch)}" data-client-property-search></div><button class="ghost-button" data-action="cycle-client-property-filter">⎚ ${esc(state.clientPropertyFilter === 'all' ? 'Filters' : 'Filter: ' + (state.clientPropertyFilter === 'open' ? 'Open Requests' : statusText(state.clientPropertyFilter)))}</button><button class="primary-button" data-action="add-client-property">＋ Add Property</button></section><section class="kpi-row client-properties-kpis">${kpiCard('⌂', 'Total Properties', counts.total, 'All properties', '#2f83ff')}${kpiCard('◉', 'Active Patrols', counts.activePatrols, 'Currently in progress', '#37dc72')}${kpiCard('▣', 'Open Requests', counts.openRequests, 'Needs attention', '#ffb53d')}${kpiCard('⌁', 'Saved Properties', counts.saved, 'In database', '#b05cff')}</section><section class="client-properties-filter-pills"><button class="filter-pill ${state.clientPropertyFilter === 'all' ? 'active' : ''}" data-client-property-filter="all">All</button><button class="filter-pill ${state.clientPropertyFilter === 'active' ? 'active' : ''}" data-client-property-filter="active">Active Patrol</button><button class="filter-pill ${state.clientPropertyFilter === 'open' ? 'active' : ''}" data-client-property-filter="open">Open Requests</button><button class="filter-pill ${state.clientPropertyFilter === 'retail' ? 'active' : ''}" data-client-property-filter="retail">Retail</button><button class="filter-pill ${state.clientPropertyFilter === 'residential' ? 'active' : ''}" data-client-property-filter="residential">Residential</button></section><section class="client-properties-layout"><div class="client-properties-main panel"><div class="client-properties-list-head"><div><h2>All Properties (${rows.length})</h2></div><div class="client-properties-view-toggle"><button class="${state.clientPropertyView === 'list' ? 'active' : ''}" data-property-view="list">☰</button><button class="${state.clientPropertyView === 'grid' ? 'active' : ''}" data-property-view="grid">☷</button></div></div>${state.clientPropertyView === 'grid' ? `<div class="client-property-grid">${rows.length ? rows.map(clientPropertyGridCard).join('') : '<div class="empty">No properties match your filters.</div>'}</div>` : `<div class="client-property-table-head"><span>Property</span><span>Address</span><span>Type</span><span>Active Patrol</span><span>Last Activity</span><span></span></div><div class="client-property-list">${rows.length ? rows.map(clientPropertyRow).join('') : '<div class="empty">No properties match your filters.</div>'}</div>`}<div class="client-property-list-footer">Showing ${rows.length ? `1 to ${rows.length}` : '0'} of ${state.properties.length} properties</div></div>${clientPropertyDetailPanel(selected)}</section></div>`;
 }
 
 function clientPatrolRequestsView() {
@@ -3433,6 +3595,8 @@ function render() {
   scheduleGuardLeafletMap();
   scheduleClientMapPrep();
   scheduleClientLeafletMap();
+  scheduleClientPropertyMapPrep();
+  scheduleClientPropertyDetailMap();
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -3604,7 +3768,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'cycle-client-property-filter') {
-      const order = ['all', 'online', 'active', 'offline'];
+      const order = ['all', 'active', 'open', 'retail', 'residential'];
       const idx = order.indexOf(state.clientPropertyFilter || 'all');
       state.clientPropertyFilter = order[(idx + 1) % order.length];
       render();

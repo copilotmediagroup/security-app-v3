@@ -1,16 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.26",
-  "buildName": "CLIENT PROPERTIES COMMAND CENTER",
-  "type": "client-properties-command-center",
+  "version": "3.0.27",
+  "buildName": "CLIENT PROPERTIES POLISH",
+  "type": "client-properties-polish",
   "sql_required": false,
   "features": [
-    "Rebuilt Client Properties page to match the premium command-center design",
-    "Added property search, filter controls, list/grid toggle, and KPI summary cards",
-    "Added selectable property list with status, active patrol, and recent activity",
-    "Added detailed right-side property panel with action buttons and tabs",
-    "Added property location mini map, property overview grid, and active patrol section",
-    "Request Patrol button now opens Client Patrol Requests prefilled for the selected property",
+    "Property type now normalizes to Retail or Residential where applicable",
+    "Property type appears under the property name",
+    "Removed online/offline concept for client properties",
+    "Properties are treated as saved/active as long as they exist in the database",
+    "Fixed Property Details action button text/padding overflow",
+    "Replaced property mini-map with guard-style Leaflet/fallback map",
+    "Property detail map supports same marker cards, route line, ETA/distance behavior",
+    "Guard marker appears only after guard accepts/in-progress assignment for that property",
     "No new SQL required"
   ]
 }

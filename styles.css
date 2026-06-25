@@ -3320,3 +3320,94 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .client-property-overview-grid .grid { grid-template-columns:1fr; }
   .client-property-active-inner { grid-template-columns:1fr; text-align:left; }
 }
+
+/* v3.0.27 Client properties polish */
+.client-property-col.property-main .property-main-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.client-property-col.property-main .property-main-copy strong,
+.client-property-col.property-main .property-main-copy small,
+.client-property-col.property-main .property-main-copy b {
+  display: block;
+}
+.client-property-col.property-main .property-main-copy small {
+  margin-top: 0;
+}
+.client-property-col.property-main .property-main-copy b {
+  width: max-content;
+  margin-left: 0;
+  margin-top: 3px;
+}
+.client-property-online.type-chip {
+  gap: 0;
+  padding: 6px 11px;
+  background: rgba(46, 125, 255, .16);
+}
+.client-property-online.type-chip i { display: none; }
+.client-property-hero .title-row {
+  display: grid;
+  gap: 3px;
+}
+.client-property-hero .hero-copy > small {
+  color: #8ac7ff;
+  font-size: 13px;
+  font-weight: 900;
+}
+.client-property-hero-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.client-property-hero-actions .ghost-button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.15;
+  font-size: 12px;
+}
+.client-property-hero-actions .ghost-button span {
+  flex: 0 0 auto;
+}
+.client-property-guard-map {
+  display: grid;
+  gap: 12px;
+}
+.client-property-guard-map h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.client-property-detail-map-wrap {
+  min-height: 230px;
+}
+.client-property-detail-map-wrap .guard302-leaflet-map,
+.client-property-detail-map-wrap .guard302-map-fallback,
+.client-property-detail-map-wrap .guard302-marker-overlay {
+  min-height: 230px;
+}
+.client-property-detail-map-wrap .guard302-live-card {
+  left: 12px;
+  right: 12px;
+  width: auto;
+  max-width: none;
+}
+.client-property-map-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.client-property-map-stats strong {
+  font-size: 13px;
+  white-space: normal;
+}
+@media (max-width: 860px) {
+  .client-property-hero-actions {
+    grid-template-columns: 1fr;
+  }
+  .client-property-map-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-properties-command-center",
-  "version": "3.0.26",
+  "name": "co-pilot-security-client-properties-polish",
+  "version": "3.0.27",
   "private": true,
-  "description": "Rebuilds the client Properties page into a premium command-center layout with searchable property list, detail rail, map, activity, and patrol visibility.",
+  "description": "Polishes the Client Properties page: retail/residential labels, fixed detail buttons, removed online/offline property concept, and upgraded map to guard-style map.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

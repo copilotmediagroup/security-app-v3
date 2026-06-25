@@ -1,19 +1,20 @@
 Co Pilot Security
-Version: 3.0.26
-Build Name: CLIENT PROPERTIES COMMAND CENTER
+Version: 3.0.27
+Build Name: CLIENT PROPERTIES POLISH
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.25.
-- Rebuilt the Client Properties page into a premium command-center layout.
-- Added property search, filters, KPI cards, and list/grid property views.
-- Added a right-side property detail panel with action buttons and tabs.
-- Added property location map, overview grid, active patrol section, and property history panels.
-- Request Patrol now opens the client request page with the selected property prefilled.
+- Built from v3.0.26.
+- Property type now shows as Retail or Residential under the property name.
+- Removed property Online/Offline labels and filters. A property is considered saved/active while it exists in the database.
+- Fixed Property Details action buttons so text fits with proper padding.
+- Replaced the property mini-map with the same guard-style map system and styling.
+- Property detail map supports clickable property/guard marker cards, route line, ETA, distance, and GPS visibility.
+- Guard marker appears only after the guard accepts / is in progress on an assignment for that client property.
 - No new SQL required.
 
 Badge:
-v3.0.26 CLIENT PROPERTIES COMMAND CENTER
+v3.0.27 CLIENT PROPERTIES POLISH
 
 SQL:
 No new SQL required.
