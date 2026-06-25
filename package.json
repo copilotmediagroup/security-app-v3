@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-map-live-sync",
-  "version": "3.0.25",
+  "name": "co-pilot-security-client-properties-command-center",
+  "version": "3.0.26",
   "private": true,
-  "description": "Updates the client dashboard map to mirror the guard map behavior with client-only property visibility and live accepted-guard route tracking.",
+  "description": "Rebuilds the client Properties page into a premium command-center layout with searchable property list, detail rail, map, activity, and patrol visibility.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

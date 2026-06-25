@@ -1,11 +1,16 @@
-# Co Pilot Security v3.0.25 — Client Map Live Sync
+# Co Pilot Security v3.0.26 — Client Properties Command Center
 
 ## What changed
-- Removed `Open Map` from the Client Dashboard because the map is already open.
-- Upgraded the Client Dashboard map to use the same live map experience/style as the Guard map.
-- Client sees only their own property markers.
-- Guard marker and route line show only after a guard has accepted a patrol for one of the client's properties.
-- Map cards still open from marker clicks with the same premium map behavior.
+- Rebuilt the `Properties` page for the Client role.
+- Added:
+  - search bar
+  - filter controls
+  - list/grid toggle
+  - KPI summary cards
+  - property list with patrol and activity visibility
+  - right-side property detail rail
+  - property overview, map, active patrol, history, and notes tabs
+- `Request Patrol` from the detail rail now opens the patrol request page with the selected property prefilled.
 
 ## SQL
 No new SQL required.

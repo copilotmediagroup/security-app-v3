@@ -1,5 +1,5 @@
 window.COPILOT_SECURITY_CONFIG = {
   supabaseUrl: 'https://riysdcczjdsmxtyqceuj.supabase.co',
   supabaseAnonKey: 'sb_publishable_UewIFGu15bJTr6PPRCLDlg_hHDbu8xO',
-  appVersion: '3.0.25-client-map-live-sync'
+  appVersion: '3.0.26-client-properties-command-center'
 };

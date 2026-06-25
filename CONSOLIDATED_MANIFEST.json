@@ -1,15 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.25",
-  "buildName": "CLIENT MAP LIVE SYNC",
-  "type": "client-map-live-sync",
+  "version": "3.0.26",
+  "buildName": "CLIENT PROPERTIES COMMAND CENTER",
+  "type": "client-properties-command-center",
   "sql_required": false,
   "features": [
-    "Removed Open Map button from Client Dashboard map card",
-    "Replaced placeholder client map with same live map system/style used by Guard map",
-    "Client map now shows only the client's own property markers",
-    "Guard marker and route line appear only after a guard has accepted a patrol for a client property",
-    "Client map reads persisted guard GPS state for development visibility and uses same route/ETA/accuracy styling as the guard map",
+    "Rebuilt Client Properties page to match the premium command-center design",
+    "Added property search, filter controls, list/grid toggle, and KPI summary cards",
+    "Added selectable property list with status, active patrol, and recent activity",
+    "Added detailed right-side property panel with action buttons and tabs",
+    "Added property location mini map, property overview grid, and active patrol section",
+    "Request Patrol button now opens Client Patrol Requests prefilled for the selected property",
     "No new SQL required"
   ]
 }
