@@ -1,18 +1,19 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.31",
-  "buildName": "PATROL REQUESTS POLISH",
-  "type": "client-patrol-requests-polish",
+  "version": "3.0.32",
+  "buildName": "REQUEST PATROL COMMAND CENTER",
+  "type": "client-request-patrol-command-center",
   "sql_required": false,
   "features": [
-    "Polished Client Patrol Requests page layout from v3.0.30",
-    "Request type cards are more compact and less clipped",
-    "Requested Services checkboxes are aligned in clean cards",
-    "Reference Photo/Video upload control is cleaner and still device-only",
-    "Reference upload preview now shows selected photo/video name",
-    "Submit/Save action row is sticky and no longer gets lost at bottom",
-    "Right rail scrolls cleaner with bottom spacing for version badge",
-    "No URL entry for photo/video anywhere",
+    "Rebuilt Client Patrol Requests form into command-center layout matching the developer mockup",
+    "Added Request Type dropdown in the form synced with the request type cards",
+    "Converted Priority to a segmented Normal / High / Emergency control",
+    "Reorganized the form into clean rows: property/type/priority, schedule, instructions/services, upload/submit",
+    "Requested Services are now aligned service cards with icons",
+    "Reference Photo/Video remains device-upload only with no URL entry",
+    "Upload preview supports photo/video file name display",
+    "Request Summary rail includes service icons and clearer request context",
+    "Request History table remains below the form",
     "No new SQL required"
   ]
 }

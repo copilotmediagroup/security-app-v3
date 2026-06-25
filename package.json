@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-patrol-requests-polish",
-  "version": "3.0.31",
+  "name": "co-pilot-security-request-patrol-command-center",
+  "version": "3.0.32",
   "private": true,
-  "description": "Polishes the Client Patrol Requests page layout: compact request type cards, aligned services, cleaner device upload, sticky action bar, and right rail spacing.",
+  "description": "Builds the Client Request Patrol page into a premium command-center workflow with request type selector, priority segment, services cards, device-only upload, summary rail, and history table.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
