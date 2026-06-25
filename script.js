@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.17',
-  label: 'v3.0.17 ROUTE GPS LIVE MAP'
+  version: '3.0.18',
+  label: 'v3.0.18 PERSISTENT GPS STATUS'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -54,7 +54,11 @@ const liveGps = {
   leafletMap: null,
   leafletLayer: null,
   mapNotice: 'Click Online to show guard GPS. Property appears only during an active job.',
-  propertyPrepKey: ''
+  propertyPrepKey: '',
+  onlineSince: null,
+  offlineAt: null,
+  statusChangedAt: null,
+  restoredFromStorage: false
 }
 
 const NAV = {
@@ -146,6 +150,86 @@ function friendly(err) {
   const raw = String(err?.message || err || 'Unknown error');
   if (raw.includes('Failed to fetch')) return 'Connection failed. Check Supabase URL/key and network.';
   return raw;
+}
+
+function guardGpsPersistKey() {
+  return 'cp_security_guard_gps_persisted_status';
+}
+function readGuardGpsPersistedState() {
+  try {
+    const data = JSON.parse(localStorage.getItem(guardGpsPersistKey()) || '{}');
+    return data && typeof data === 'object' ? data : {};
+  } catch {
+    return {};
+  }
+}
+function writeGuardGpsPersistedState(extra = {}) {
+  try {
+    const data = {
+      online: Boolean(liveGps.online),
+      gpsMode: liveGps.gpsMode || (liveGps.online ? 'online' : 'offline'),
+      onlineSince: liveGps.onlineSince || null,
+      offlineAt: liveGps.offlineAt || null,
+      statusChangedAt: liveGps.statusChangedAt || null,
+      lastUpdate: liveGps.lastUpdate || null,
+      guardLat: Number.isFinite(liveGps.guardLat) ? liveGps.guardLat : null,
+      guardLng: Number.isFinite(liveGps.guardLng) ? liveGps.guardLng : null,
+      accuracy: Number.isFinite(liveGps.accuracy) ? liveGps.accuracy : null,
+      currentAddress: liveGps.currentAddress || '',
+      savedAt: new Date().toISOString(),
+      ...extra
+    };
+    localStorage.setItem(guardGpsPersistKey(), JSON.stringify(data));
+  } catch {}
+}
+function restoreGuardGpsPersistedState() {
+  const saved = readGuardGpsPersistedState();
+  if (!saved?.online) return false;
+  liveGps.online = true;
+  liveGps.gpsMode = 'online';
+  liveGps.onlineSince = saved.onlineSince || saved.statusChangedAt || saved.savedAt || new Date().toISOString();
+  liveGps.statusChangedAt = saved.statusChangedAt || liveGps.onlineSince;
+  liveGps.offlineAt = saved.offlineAt || null;
+  liveGps.lastUpdate = saved.lastUpdate || null;
+  liveGps.guardLat = Number.isFinite(Number(saved.guardLat)) ? Number(saved.guardLat) : null;
+  liveGps.guardLng = Number.isFinite(Number(saved.guardLng)) ? Number(saved.guardLng) : null;
+  liveGps.accuracy = Number.isFinite(Number(saved.accuracy)) ? Number(saved.accuracy) : null;
+  liveGps.currentAddress = saved.currentAddress || 'GPS online status restored. Waiting for live location update...';
+  liveGps.mapNotice = 'Online status restored from last session. GPS will resume unless you click Offline.';
+  liveGps.restoredFromStorage = true;
+  return true;
+}
+function resumePersistedGuardGpsIfNeeded() {
+  if (state.role !== 'guard') return;
+  if (!liveGps.online) return;
+  if (liveGps.watchId !== null) return;
+  if (!navigator.geolocation) return;
+  setTimeout(() => {
+    if (state.role === 'guard' && liveGps.online && liveGps.watchId === null) {
+      setGuardOnline({ restored: true });
+    }
+  }, 250);
+}
+function pauseGuardGpsWatchOnly() {
+  if (liveGps.watchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(liveGps.watchId);
+    liveGps.watchId = null;
+  }
+}
+function fmtDateTimeStamp(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString([], {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+function currentDateTimeStamp() {
+  return fmtDateTimeStamp(new Date().toISOString());
 }
 function ensureBadge() {
   let badge = document.querySelector('.cp-build-badge');
@@ -313,6 +397,7 @@ async function login(form) {
   const expected = form.role.value;
   await supabase.signIn(email, password);
   await loadData();
+  if (state.role === 'guard') restoreGuardGpsPersistedState();
   if (state.role !== expected) {
     await supabase.signOut();
     state.profile = null;
@@ -401,6 +486,12 @@ async function submitClientSignup(form) {
 }
 
 async function logout() {
+  const wasGuardOnline = state.role === 'guard' && liveGps.online;
+  if (wasGuardOnline) {
+    pauseGuardGpsWatchOnly();
+    liveGps.mapNotice = 'Guard logged out while Online. Online status will resume on next login until Offline is clicked.';
+    writeGuardGpsPersistedState({ online: true, loggedOutOnlineAt: new Date().toISOString() });
+  }
   await supabase.signOut();
   state.profile = null;
   state.role = null;
@@ -539,6 +630,7 @@ function renderLoading() {
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  resumePersistedGuardGpsIfNeeded();
 }
 
 function renderPublic() {
@@ -1167,17 +1259,25 @@ async function syncGpsForCurrentJob() {
   }
   render();
 }
-function setGuardOnline() {
+
+function setGuardOnline(options = {}) {
   if (!navigator.geolocation) {
     liveGps.mapNotice = 'This browser does not support location tracking.';
     render();
     return;
   }
   if (liveGps.watchId !== null) navigator.geolocation.clearWatch(liveGps.watchId);
+  const now = new Date().toISOString();
   liveGps.online = true;
   liveGps.gpsMode = 'online';
+  liveGps.onlineSince = options.restored && liveGps.onlineSince ? liveGps.onlineSince : (liveGps.onlineSince || now);
+  liveGps.statusChangedAt = options.restored && liveGps.statusChangedAt ? liveGps.statusChangedAt : now;
+  liveGps.offlineAt = null;
   liveGps.selectedMapCard = null;
-  liveGps.mapNotice = 'Online requested. Waiting for browser GPS permission/location...';
+  liveGps.mapNotice = options.restored
+    ? 'Online restored. Waiting for browser GPS location update...'
+    : 'Online requested. Waiting for browser GPS permission/location...';
+  writeGuardGpsPersistedState({ online: true });
   render();
   liveGps.watchId = navigator.geolocation.watchPosition(async position => {
     liveGps.guardLat = position.coords.latitude;
@@ -1186,13 +1286,18 @@ function setGuardOnline() {
     liveGps.lastUpdate = new Date().toISOString();
     liveGps.online = true;
     liveGps.gpsMode = 'online';
+    if (!liveGps.onlineSince) liveGps.onlineSince = liveGps.lastUpdate;
+    if (!liveGps.statusChangedAt) liveGps.statusChangedAt = liveGps.lastUpdate;
+    writeGuardGpsPersistedState({ online: true });
     await reverseGeocodeGuard(liveGps.guardLat, liveGps.guardLng);
+    writeGuardGpsPersistedState({ online: true });
     await syncGpsForCurrentJob();
   }, error => {
-    liveGps.online = false;
-    liveGps.gpsMode = 'idle';
+    liveGps.online = true;
+    liveGps.gpsMode = 'online';
     liveGps.selectedMapCard = null;
-    liveGps.mapNotice = error?.message || 'Location permission denied or unavailable.';
+    liveGps.mapNotice = `${error?.message || 'Location permission denied or unavailable.'} Online status remains active until you click Offline.`;
+    writeGuardGpsPersistedState({ online: true, gpsError: liveGps.mapNotice });
     render();
   }, {
     enableHighAccuracy: true,
@@ -1205,8 +1310,13 @@ function setGuardOffline() {
     navigator.geolocation.clearWatch(liveGps.watchId);
     liveGps.watchId = null;
   }
+  const now = new Date().toISOString();
   liveGps.online = false;
   liveGps.gpsMode = 'offline';
+  liveGps.statusChangedAt = now;
+  liveGps.offlineAt = now;
+  liveGps.onlineSince = null;
+  liveGps.restoredFromStorage = false;
   liveGps.selectedMapCard = null;
   liveGps.guardLat = null;
   liveGps.guardLng = null;
@@ -1219,6 +1329,7 @@ function setGuardOffline() {
   liveGps.routeDistanceMiles = null;
   liveGps.routeEtaMin = null;
   liveGps.mapNotice = 'Guard is offline. Guard and property markers are hidden.';
+  writeGuardGpsPersistedState({ online: false });
   render();
 }
 function openMapCard(type) {
@@ -1991,10 +2102,16 @@ function guardRouteGpsLiveView() {
         ${guard302CurrentAssignment(req)}
         <section class="panel panel-pad guard-route-gps-help">
           <div class="guard302-card-head"><div><h2>Map Behavior</h2></div></div>
+          <div class="guard-route-gps-stamp">
+            <div><strong>Current Date / Time</strong><span>${esc(currentDateTimeStamp())}</span></div>
+            <div><strong>Status Changed</strong><span>${esc(fmtDateTimeStamp(liveGps.statusChangedAt))}</span></div>
+            <div><strong>Online Since</strong><span>${esc(fmtDateTimeStamp(liveGps.onlineSince))}</span></div>
+            <div><strong>Last GPS Update</strong><span>${esc(fmtDateTimeStamp(liveGps.lastUpdate))}</span></div>
+          </div>
           <div class="guard-route-gps-help-list">
-            <div><strong>Online</strong><span>Shows your blue pulse marker.</span></div>
+            <div><strong>Online</strong><span>Shows your blue pulse marker and stays online after logout/login until Offline is clicked.</span></div>
             <div><strong>Active Job</strong><span>Shows the red property marker only while an active job exists.</span></div>
-            <div><strong>Offline</strong><span>Hides both guard and property markers.</span></div>
+            <div><strong>Offline</strong><span>Hides both guard and property markers and saves the offline timestamp.</span></div>
             <div><strong>Marker Click</strong><span>Click a marker to open its detail card, then close with X.</span></div>
           </div>
         </section>
@@ -2330,6 +2447,7 @@ function render() {
   ensureBadge();
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
+  resumePersistedGuardGpsIfNeeded();
 }
 
 async function initialize() {
@@ -2337,6 +2455,7 @@ async function initialize() {
   try {
     if (supabase.accessToken) {
       await loadData();
+      if (state.role === 'guard') restoreGuardGpsPersistedState();
       state.view = 'dashboard';
     }
   } catch (err) {

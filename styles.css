@@ -2650,3 +2650,33 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width: 1180px) {
   .guard-route-gps-layout { grid-template-columns: 1fr; }
 }
+
+/* Route / GPS timestamped behavior panel */
+.guard-route-gps-stamp {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+.guard-route-gps-stamp div {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(113, 169, 232, .12);
+  border-radius: 9px;
+  background: rgba(4, 15, 27, .72);
+  padding: 10px 11px;
+}
+.guard-route-gps-stamp strong {
+  display: block;
+  color: #8ac7ff;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .10em;
+}
+.guard-route-gps-stamp span {
+  color: #edf7ff;
+  font-size: 13px;
+  font-weight: 850;
+}

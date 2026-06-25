@@ -1,18 +1,20 @@
 Co Pilot Security
-Version: 3.0.17
-Build Name: ROUTE GPS LIVE MAP
+Version: 3.0.18
+Build Name: PERSISTENT GPS STATUS
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.16.
-- Guard Route / GPS page now uses the same active live map component as the Guard Dashboard.
-- Route / GPS now initializes the same Leaflet live street map and fallback street grid.
-- Same online/offline behavior, marker behavior, clickable guard/property cards, and X close buttons.
-- Property marker appears only when the guard is online and has an active job.
+- Built from v3.0.17.
+- Route / GPS Map Behavior panel now has date/time stamps.
+- Added Current Date/Time, Status Changed, Online Since, and Last GPS Update.
+- Guard Online state now persists across logout/login.
+- If the guard is Online and logs out, they remain Online when they log back in.
+- Guard remains Online until they click Offline.
+- Offline still clears guard/property markers, route, ETA, and saves the offline timestamp.
 - No new SQL required.
 
 Badge:
-v3.0.17 ROUTE GPS LIVE MAP
+v3.0.18 PERSISTENT GPS STATUS
 
 SQL:
 No new SQL required.

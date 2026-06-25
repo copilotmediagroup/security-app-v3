@@ -1,15 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.17",
-  "buildName": "ROUTE GPS LIVE MAP",
-  "type": "guard-route-gps-live-map",
+  "version": "3.0.18",
+  "buildName": "PERSISTENT GPS STATUS",
+  "type": "route-gps-timestamps-persistent-online",
   "sql_required": false,
   "features": [
-    "Guard Route / GPS page now uses the same live interactive map module as the Guard Dashboard",
-    "Leaflet live map and fallback street grid now initialize on Route / GPS view",
-    "Same online/offline behavior as dashboard map",
-    "Same blue guard marker, red property marker, marker-click cards, and X close controls",
-    "Property marker only appears for active jobs while guard is online",
+    "Route/GPS Map Behavior panel now shows date and time stamps",
+    "Shows Current Date/Time, Status Changed, Online Since, and Last GPS Update",
+    "Guard Online status persists across logout/login",
+    "Guard stays Online until Offline is clicked",
+    "Logout no longer marks guard Offline",
+    "Offline still clears markers/routes and saves offline timestamp",
     "No new SQL required"
   ]
 }

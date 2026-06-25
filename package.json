@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-route-gps-live-map",
-  "version": "3.0.17",
+  "name": "co-pilot-security-persistent-gps-status",
+  "version": "3.0.18",
   "private": true,
-  "description": "Makes the Guard Route / GPS page use the same live interactive map component and behavior as the Guard Dashboard.",
+  "description": "Adds timestamped Route/GPS map behavior and persists Guard Online status across logout/login until Offline is clicked.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
