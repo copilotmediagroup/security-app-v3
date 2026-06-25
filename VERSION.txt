@@ -1,20 +1,21 @@
 Co Pilot Security
-Version: 3.0.18
-Build Name: PERSISTENT GPS STATUS
+Version: 3.0.19
+Build Name: MAP TEXT STAMPS
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.17.
-- Route / GPS Map Behavior panel now has date/time stamps.
-- Added Current Date/Time, Status Changed, Online Since, and Last GPS Update.
-- Guard Online state now persists across logout/login.
-- If the guard is Online and logs out, they remain Online when they log back in.
-- Guard remains Online until they click Offline.
-- Offline still clears guard/property markers, route, ETA, and saves the offline timestamp.
+- Built from v3.0.18.
+- Route / GPS Map Behavior no longer has a separate timestamp block.
+- Timestamps now live directly inside the actual text cards:
+  - Online: Online Since
+  - Active Job: Checked
+  - Offline: Last Offline
+  - Marker Click: Last GPS Update
+- Persistent Online status remains preserved across logout/login until Offline is clicked.
 - No new SQL required.
 
 Badge:
-v3.0.18 PERSISTENT GPS STATUS
+v3.0.19 MAP TEXT STAMPS
 
 SQL:
 No new SQL required.

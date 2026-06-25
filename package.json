@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-persistent-gps-status",
-  "version": "3.0.18",
+  "name": "co-pilot-security-map-text-stamps",
+  "version": "3.0.19",
   "private": true,
-  "description": "Adds timestamped Route/GPS map behavior and persists Guard Online status across logout/login until Offline is clicked.",
+  "description": "Moves Route/GPS timestamps from a separate block into each Map Behavior text card.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

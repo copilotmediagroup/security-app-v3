@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.18',
-  label: 'v3.0.18 PERSISTENT GPS STATUS'
+  version: '3.0.19',
+  label: 'v3.0.19 MAP TEXT STAMPS'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -2102,17 +2102,11 @@ function guardRouteGpsLiveView() {
         ${guard302CurrentAssignment(req)}
         <section class="panel panel-pad guard-route-gps-help">
           <div class="guard302-card-head"><div><h2>Map Behavior</h2></div></div>
-          <div class="guard-route-gps-stamp">
-            <div><strong>Current Date / Time</strong><span>${esc(currentDateTimeStamp())}</span></div>
-            <div><strong>Status Changed</strong><span>${esc(fmtDateTimeStamp(liveGps.statusChangedAt))}</span></div>
-            <div><strong>Online Since</strong><span>${esc(fmtDateTimeStamp(liveGps.onlineSince))}</span></div>
-            <div><strong>Last GPS Update</strong><span>${esc(fmtDateTimeStamp(liveGps.lastUpdate))}</span></div>
-          </div>
           <div class="guard-route-gps-help-list">
-            <div><strong>Online</strong><span>Shows your blue pulse marker and stays online after logout/login until Offline is clicked.</span></div>
-            <div><strong>Active Job</strong><span>Shows the red property marker only while an active job exists.</span></div>
-            <div><strong>Offline</strong><span>Hides both guard and property markers and saves the offline timestamp.</span></div>
-            <div><strong>Marker Click</strong><span>Click a marker to open its detail card, then close with X.</span></div>
+            <div><strong>Online</strong><span>Shows your blue pulse marker and stays online after logout/login until Offline is clicked.</span><em>Online since: ${esc(fmtDateTimeStamp(liveGps.onlineSince))}</em></div>
+            <div><strong>Active Job</strong><span>Shows the red property marker only while an active job exists.</span><em>Checked: ${esc(currentDateTimeStamp())}</em></div>
+            <div><strong>Offline</strong><span>Hides both guard and property markers and saves the offline timestamp.</span><em>Last offline: ${esc(fmtDateTimeStamp(liveGps.offlineAt))}</em></div>
+            <div><strong>Marker Click</strong><span>Click a marker to open its detail card, then close with X.</span><em>Last GPS update: ${esc(fmtDateTimeStamp(liveGps.lastUpdate))}</em></div>
           </div>
         </section>
       </aside>

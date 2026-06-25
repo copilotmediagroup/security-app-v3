@@ -1,16 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.18",
-  "buildName": "PERSISTENT GPS STATUS",
-  "type": "route-gps-timestamps-persistent-online",
+  "version": "3.0.19",
+  "buildName": "MAP TEXT STAMPS",
+  "type": "route-gps-map-behavior-card-stamps",
   "sql_required": false,
   "features": [
-    "Route/GPS Map Behavior panel now shows date and time stamps",
-    "Shows Current Date/Time, Status Changed, Online Since, and Last GPS Update",
-    "Guard Online status persists across logout/login",
-    "Guard stays Online until Offline is clicked",
-    "Logout no longer marks guard Offline",
-    "Offline still clears markers/routes and saves offline timestamp",
+    "Removed separate timestamp block from Route/GPS Map Behavior panel",
+    "Added timestamps directly inside each Map Behavior text card",
+    "Online card shows Online Since",
+    "Active Job card shows current checked date/time",
+    "Offline card shows Last Offline",
+    "Marker Click card shows Last GPS Update",
+    "Persistent online/offline behavior preserved",
     "No new SQL required"
   ]
 }

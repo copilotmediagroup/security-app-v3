@@ -1,11 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.18
+# Next Thread Handoff — Co Pilot Security v3.0.19
 
-Latest build: v3.0.18 PERSISTENT GPS STATUS
+Latest build: v3.0.19 MAP TEXT STAMPS
 
 ## What changed
-- Built from v3.0.17.
-- Route / GPS Map Behavior panel now includes date/time stamps.
-- Guard Online state is persisted in local browser storage.
-- Logout does not force guard Offline anymore.
-- When guard logs back in, Online state restores until Offline is clicked.
+- Built from v3.0.18.
+- Route/GPS Map Behavior panel no longer has a separate timestamp block.
+- Timestamps now appear directly inside each Map Behavior text card.
+- Persistent Online/Offline behavior remains preserved.
 - No new SQL required.
