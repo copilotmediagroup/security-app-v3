@@ -1,20 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.12",
-  "buildName": "ACTIVE JOB STAGE BUTTONS",
-  "type": "active-job-stage-button-state-flow",
+  "version": "3.0.13",
+  "buildName": "INLINE PROOF UPLOAD FLOW",
+  "type": "guard-active-job-inline-proof-upload",
   "sql_required": false,
   "features": [
-    "Guard Active Job workflow stage/action buttons now follow single-active-button behavior",
-    "Only the current workflow stage turns green",
-    "All other workflow stage/action buttons remain default",
-    "Previous completed stages no longer stay green",
-    "Removed default blue primary action button behavior from Mark On The Way",
-    "Current stage uses green to match requested online/offline-style toggle behavior",
-    "Preserves Dispatch Dashboard Assign Now shortcut",
-    "Preserves Client Patrol Request flow",
-    "Preserves Guard Active Job workflow layout",
-    "Preserves map marker visibility rules",
-    "No new SQL required"
+    "Removed Upload Proof from guard sidebar",
+    "Removed separate guard proof upload page from navigation",
+    "Upload Proof opens device photo/video picker from Active Job workflow",
+    "Preview confirmation modal before upload",
+    "Confirm Upload registers proof without leaving Active Job",
+    "Proof/Notes card updates after reload",
+    "Complete Job remains inside Active Job workflow",
+    "Preserves current-stage green workflow buttons",
+    "Preserves Dispatch Assign Now and Client Patrol Request flow"
   ]
 }

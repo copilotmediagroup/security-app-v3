@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-active-job-stage-buttons",
-  "version": "3.0.12",
+  "name": "co-pilot-security-inline-proof-upload-flow",
+  "version": "3.0.13",
   "private": true,
-  "description": "Updates Guard Active Job workflow buttons so only the current selected stage turns green.",
+  "description": "Removes the separate guard proof page and adds inline proof selection, preview confirmation, and upload inside the Active Job workflow.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

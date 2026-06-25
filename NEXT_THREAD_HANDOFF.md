@@ -1,38 +1,33 @@
-# Next Thread Handoff — Co Pilot Security v3.0.12
+# Next Thread Handoff — Co Pilot Security v3.0.13
 
-Latest build: **v3.0.12 ACTIVE JOB STAGE BUTTONS**
+Latest build: **v3.0.13 INLINE PROOF UPLOAD FLOW**
 
-## Current app direction
-- Continue building from the latest uploaded ZIP only.
-- No Bolt AI prompts; no tokens available.
-- Create complete GitHub-ready ZIP replacement packages.
-- Keep the app modern, dark, squared, premium SaaS / command-center style.
-- Preserve same Supabase config unless user explicitly changes it.
-- No new SQL unless clearly required.
+## Current project rule
+User has no Bolt tokens. Do not suggest Bolt AI prompts. Continue by creating complete GitHub-ready ZIP replacement packages only.
 
-## What was built in v3.0.12
-- Guard Active Job workflow button state behavior was corrected.
-- Workflow buttons now act like a single-selected stage group:
-  - Default dark state when not current.
-  - Green when that stage/action is the current selected stage.
-  - All other stage/action buttons return to default when one is clicked.
-- Previous stages no longer stay green after moving forward.
-- The current stage uses green instead of blue.
-- Removed the default blue primary styling from **Mark On The Way**.
+## What was built in v3.0.13
+- Removed **Upload Proof** from the Guard sidebar.
+- Removed the standalone Guard Upload Proof page from the visible guard flow.
+- Proof upload now stays inside the **Active Job** workflow.
+- Active Job **Upload Proof** button opens device/browser file picker.
+- After selecting photo/video proof, a preview confirmation modal appears.
+- Guard confirms the upload, proof is uploaded through existing `patrol-proof` storage and `cp_guard_register_patrol_proof`.
+- Guard stays on Active Job and can hit **Complete Job** after proof.
+- No new SQL required.
 
-## Preserved from prior versions
-- v3.0.11 Dispatch Dashboard **Assign Now** shortcut.
+## Preserved from prior builds
+- v3.0.12 stage buttons: only current stage turns green; all others stay default.
+- v3.0.11 Dispatch Dashboard Assign Now shortcut.
 - v3.0.10 Client Patrol Request flow.
-- v3.0.9 Guard Active Job workflow layout.
-- v3.0.7/v3.0.8 marker visibility rules:
-  - Offline hides guard and property markers.
-  - Online shows guard marker only.
-  - Property marker shows only during active job.
-  - Completed job removes red property marker.
+- v3 Guard Active Job workflow design.
+- Marker visibility rules: offline hides markers, online shows guard, active job shows property, complete clears property.
 
-## Next likely test
-- Login as Client and request patrol.
-- Login as Dispatch and use **Assign Now**.
-- Login as Guard and open **Active Job**.
-- Confirm each workflow button turns green only when it is the current selected stage.
-- Confirm all other workflow buttons remain default.
+## Next suggested test
+1. Client submits patrol request.
+2. Dispatch uses Assign Now.
+3. Guard opens Active Job.
+4. Guard taps stages.
+5. Guard taps Upload Proof and selects a photo/video.
+6. Confirm preview upload.
+7. Proof count updates.
+8. Guard taps Complete Job.

@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.12',
-  label: 'v3.0.12 ACTIVE JOB STAGE BUTTONS'
+  version: '3.0.13',
+  label: 'v3.0.13 INLINE PROOF UPLOAD FLOW'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -79,7 +79,6 @@ const NAV = {
     ['dashboard', '⌂', 'Dashboard'],
     ['active-job', '▤', 'Active Job'],
     ['route-gps', '⌖', 'Route / GPS'],
-    ['upload-proof', '⬆', 'Upload Proof'],
     ['messages', '☵', 'Messages'],
     ['notifications', '♧', 'Notifications'],
     ['heading', '', 'Account'],
@@ -357,14 +356,12 @@ async function rejectSignup(kind, id) {
   toast(`${kind === 'guard' ? 'Guard' : 'Client'} rejected.`, 'success');
 }
 
-async function uploadProof(form) {
-  const requestId = form.request_id.value;
-  const files = [...(form.proof_files.files || [])];
-  const note = form.note.value.trim();
-  if (!requestId) throw new Error('Choose a patrol request.');
-  if (!files.length) throw new Error('Choose at least one photo or video.');
+async function uploadProofFiles(requestId, files = [], note = '') {
+  if (!requestId) throw new Error('Active job missing.');
+  const list = Array.from(files || []);
+  if (!list.length) throw new Error('Choose at least one photo or video.');
 
-  for (const file of files) {
+  for (const file of list) {
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : '';
     if (!kind) throw new Error('Only photo or video files are allowed.');
     const safe = String(file.name || 'proof').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90);
@@ -382,9 +379,15 @@ async function uploadProof(form) {
       p_note: note
     });
   }
+}
 
+async function uploadProof(form) {
+  const requestId = form.request_id.value;
+  const files = [...(form.proof_files.files || [])];
+  const note = form.note.value.trim();
+  await uploadProofFiles(requestId, files, note);
   await loadData();
-  state.view = state.role === 'guard' ? 'upload-proof' : 'proof-review';
+  state.view = state.role === 'guard' ? 'active-job' : 'proof-review';
   render();
   toast('Proof uploaded.', 'success');
 }
@@ -784,7 +787,6 @@ function guardCurrentAssignment(req) {
     <div class="guard-actions">
       <button class="primary-button" data-view="active-job">Open Active Job</button>
       <button class="ghost-button" data-view="route-gps">Open Route / GPS</button>
-      <button class="ghost-button" data-view="upload-proof">Upload Proof</button>
     </div>
   </section>`;
 }
@@ -1323,7 +1325,6 @@ function guard302QuickActions() {
     <div class="guard302-card-head"><div><h2>Quick Actions</h2></div></div>
     <div class="guard302-quick-grid">
       <button type="button" data-view="active-job"><i>▤</i><strong>Open Active Job</strong><span>›</span></button>
-      <button type="button" class="teal" data-view="upload-proof"><i>⇧</i><strong>Upload Proof</strong><span>›</span></button>
       <button type="button" class="purple" data-view="messages"><i>☵</i><strong>Message Dispatch</strong><span>›</span></button>
       <button type="button" class="ghost" data-view="route-gps"><i>⌖</i><strong>Share My Location</strong><span>›</span></button>
     </div>
@@ -1420,6 +1421,103 @@ function setGuardWorkflowLocalStage(req, stage) {
   if (!req) return;
   sessionStorage.setItem(guardWorkflowStorageKey(req), stage);
 }
+
+function syncGuardWorkflowDom(req, stage) {
+  document.querySelectorAll('[data-action="guard-workflow-step"][data-request-id]').forEach(btn => {
+    if (String(btn.dataset.requestId) !== String(req?.id || '')) return;
+    const isCurrent = btn.dataset.step === stage;
+    if (btn.classList.contains('active-step')) {
+      btn.classList.toggle('current-stage', isCurrent);
+      btn.classList.toggle('default-stage', !isCurrent);
+      const small = btn.querySelector('small');
+      if (small) small.textContent = isCurrent ? 'Current' : 'Default';
+    }
+    if (btn.classList.contains('active-job-action')) {
+      btn.classList.toggle('current-stage', isCurrent);
+    }
+  });
+  const status = document.querySelector('.active-workflow-status');
+  if (status) status.innerHTML = `<strong>Current Status: <b>${esc(guardWorkflowStageText(stage))}</b></strong><p>${esc(guardWorkflowInstruction(stage))}</p>`;
+}
+
+function clearInlineProofState() {
+  inlineProof.objectUrls.forEach(url => {
+    try { URL.revokeObjectURL(url); } catch {}
+  });
+  inlineProof.requestId = '';
+  inlineProof.files = [];
+  inlineProof.objectUrls = [];
+}
+
+function closeInlineProofModal() {
+  document.querySelectorAll('.inline-proof-modal').forEach(el => el.remove());
+  clearInlineProofState();
+}
+
+function launchInlineProofPicker(req) {
+  if (!req) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,video/*';
+  input.multiple = true;
+  input.style.position = 'fixed';
+  input.style.left = '-9999px';
+  input.style.top = '-9999px';
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files || []);
+    input.remove();
+    if (!files.length) return;
+    showInlineProofPreview(req, files);
+  }, { once: true });
+  document.body.appendChild(input);
+  input.click();
+}
+
+function showInlineProofPreview(req, files = []) {
+  closeInlineProofModal();
+  inlineProof.requestId = String(req.id);
+  inlineProof.files = Array.from(files || []);
+  inlineProof.objectUrls = inlineProof.files.map(file => URL.createObjectURL(file));
+  const previews = inlineProof.files.slice(0, 6).map((file, idx) => {
+    const url = inlineProof.objectUrls[idx];
+    const kind = file.type.startsWith('video/') ? 'video' : 'image';
+    const media = kind === 'video'
+      ? `<video src="${esc(url)}" controls muted playsinline></video>`
+      : `<img src="${esc(url)}" alt="Proof preview">`;
+    return `<div class="inline-proof-preview-item">${media}<span>${esc(file.name || 'Proof file')}</span></div>`;
+  }).join('');
+  const more = inlineProof.files.length > 6 ? `<p class="inline-proof-more">+${inlineProof.files.length - 6} more selected</p>` : '';
+  const modal = document.createElement('div');
+  modal.className = 'inline-proof-modal';
+  modal.innerHTML = `<div class="inline-proof-backdrop" data-action="cancel-inline-proof"></div>
+    <section class="inline-proof-dialog" role="dialog" aria-modal="true" aria-label="Confirm proof upload">
+      <div class="inline-proof-head"><div><p class="eyebrow">Proof Upload</p><h2>Confirm this upload</h2><span>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</span></div><button type="button" data-action="cancel-inline-proof">×</button></div>
+      <div class="inline-proof-grid">${previews}${more}</div>
+      <label class="inline-proof-note">Guard note<textarea name="inline_proof_note" placeholder="Optional note for Dispatch and final report"></textarea></label>
+      <div class="inline-proof-actions"><button type="button" class="ghost-button" data-action="cancel-inline-proof">Cancel</button><button type="button" class="primary-button" data-action="confirm-inline-proof">Confirm Upload</button></div>
+    </section>`;
+  document.body.appendChild(modal);
+  const note = modal.querySelector('textarea');
+  if (note) note.focus();
+}
+
+async function confirmInlineProofUpload() {
+  const req = state.patrolRequests.find(r => String(r.id) === String(inlineProof.requestId));
+  if (!req) throw new Error('Active job not found for proof upload.');
+  const modal = document.querySelector('.inline-proof-modal');
+  const note = modal?.querySelector('textarea[name="inline_proof_note"]')?.value?.trim() || '';
+  const files = inlineProof.files.slice();
+  const btn = modal?.querySelector('[data-action="confirm-inline-proof"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+  await uploadProofFiles(req.id, files, note);
+  setGuardWorkflowLocalStage(req, 'upload_proof');
+  addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${files.length} proof item${files.length === 1 ? '' : 's'} uploaded`);
+  closeInlineProofModal();
+  await loadData();
+  state.view = 'active-job';
+  render();
+  toast('Proof uploaded. You can now complete the job.', 'success');
+}
 function guardWorkflowProofProgress(req) {
   const count = req ? proofForRequest(req.id).length : 0;
   const target = 4;
@@ -1440,9 +1538,9 @@ async function updateGuardWorkflowStep(requestId, step) {
 
   if (step === 'upload_proof') {
     setGuardWorkflowLocalStage(req, 'upload_proof');
-    addGuardWorkflowLocalLog(req, 'Opened Upload Proof', `${propertyLabel(req)} proof workflow opened`);
-    state.view = 'upload-proof';
-    render();
+    addGuardWorkflowLocalLog(req, 'Opened Inline Proof Upload', `${propertyLabel(req)} proof upload opened inside Active Job`);
+    syncGuardWorkflowDom(req, 'upload_proof');
+    launchInlineProofPicker(req);
     return;
   }
 
@@ -1530,7 +1628,7 @@ function activeJobWorkflowPanel(req) {
       <button type="button" class="${actionClass('on_way')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="on_way"><i>▣</i>Mark On The Way</button>
       <button type="button" class="${actionClass('arrived')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="arrived"><i>⌖</i>Mark Arrived</button>
       <button type="button" class="${actionClass('checking')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="checking"><i>⌕</i>Start Checking</button>
-      <button type="button" class="${actionClass('upload_proof')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Open Upload Proof</button>
+      <button type="button" class="${actionClass('upload_proof')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof"><i>⇧</i>Upload Proof</button>
       <button type="button" class="${actionClass('complete')}" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="complete"><i>✓</i>Complete Job</button>
     </div>
   </section>`;
@@ -1667,8 +1765,8 @@ function notificationsView() {
 }
 
 function proofUploadView() {
-  const eligible = state.patrolRequests.filter(r => ['assigned', 'accepted', 'in_progress', 'completed'].includes(String(r.status)));
-  return `<div class="dashboard"><header class="dashboard-header"><div class="title-block"><h1>Upload Proof</h1><p>Upload photo or video proof for patrol work.</p></div></header><section class="page-panel">${eligible.length ? `<form class="form-grid" data-form="proof-upload"><label>Patrol Request<select name="request_id">${eligible.map(r => `<option value="${esc(r.id)}">${esc(requestTitle(r))} · ${esc(propertyLabel(r))} · ${esc(statusText(r.status))}</option>`).join('')}</select></label><label>Proof Files<input type="file" name="proof_files" accept="image/*,video/*" multiple required></label><label>Note<textarea name="note" placeholder="Optional note"></textarea></label><div class="button-row"><button class="btn success" type="submit">Upload Proof</button></div></form>` : '<div class="empty">No assignments available for proof upload.</div>'}</section></div>`;
+  state.view = 'active-job';
+  return guardActiveJobWorkflowView();
 }
 
 function clientOpenRequests() {
@@ -1977,7 +2075,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.view) {
-      state.view = button.dataset.view;
+      state.view = button.dataset.view === 'upload-proof' ? 'active-job' : button.dataset.view;
       render();
       return;
     }
@@ -2014,6 +2112,14 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'guard-workflow-step') {
       await updateGuardWorkflowStep(button.dataset.requestId, button.dataset.step);
+      return;
+    }
+    if (button.dataset.action === 'confirm-inline-proof') {
+      await confirmInlineProofUpload();
+      return;
+    }
+    if (button.dataset.action === 'cancel-inline-proof') {
+      closeInlineProofModal();
       return;
     }
     if (button.dataset.action === 'logout') {
