@@ -1,26 +1,23 @@
-# Co Pilot Security v3.0.7 — Marker Visibility Flow
+# Co Pilot Security v3.0.8 — Current Assignment Button Cleanup
 
 ## What changed
-- Fixed Guard Dashboard map marker rules.
-- Offline means no markers: blue guard marker and red property marker are both hidden.
-- Online shows the guard marker only after browser GPS provides the guard location.
-- Property marker appears only when the guard is online and has an active job.
-- Completed jobs no longer leave the red property marker on the map.
-- Removed fallback behavior that used the first patrol request when there was no active job.
-- Offline clears property coordinates, route line, ETA, distance, and any open map card.
+- Removed the duplicate Online button from the Current Assignment card.
+- Removed the duplicate Offline button from the Current Assignment card.
+- Current Assignment now keeps only one action: Open Active Job.
+- Online and Offline controls remain below the Route / GPS map, where the guard controls live GPS.
+- Preserved the v3.0.7 map marker flow: offline hides both markers; online shows the guard marker; property marker appears only during an active job.
 
 ## Badge
 Bottom-right badge should show:
 
-`v3.0.7 MARKER VISIBILITY FLOW`
+`v3.0.8 CURRENT ASSIGNMENT BUTTON CLEANUP`
 
 ## SQL
 No new SQL required.
 
 ## Test flow
-1. Load Guard Dashboard while offline: no blue marker and no red property marker should appear.
-2. Click Online: browser GPS starts; blue guard marker appears when location is received.
-3. If there is no active job: only the blue guard marker appears.
-4. If there is an active assigned/accepted/in-progress job: red property marker appears.
-5. Complete the job: red property marker disappears.
-6. Click Offline: both red and blue markers disappear.
+1. Open Guard Dashboard.
+2. Current Assignment card should show only Open Active Job.
+3. Route / GPS card should still show Online and Offline below the map.
+4. Online should turn green and start GPS.
+5. Offline should turn red and remove guard/property markers.

@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.7',
-  label: 'v3.0.7 MARKER VISIBILITY FLOW'
+  version: '3.0.8',
+  label: 'v3.0.8 CURRENT ASSIGNMENT BUTTON CLEANUP'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -1109,9 +1109,7 @@ function guard302CurrentAssignment(req) {
       <span>ETA: ${esc(liveGps.routeEtaMin ? liveGps.routeEtaMin + ' min' : '—')}</span>
       <span>Distance: ${esc(liveGps.routeDistanceMiles ? liveGps.routeDistanceMiles.toFixed(1) + ' mi' : '—')}</span>
     </div>
-    <div class="guard302-assignment-actions">
-      <button type="button" class="guard302-online ${liveGps.gpsMode === 'online' ? 'active' : ''}" data-action="guard-online">Online</button>
-      <button type="button" class="guard302-offline ${liveGps.gpsMode === 'offline' ? 'active' : ''}" data-action="guard-offline">Offline</button>
+    <div class="guard302-assignment-actions single">
       <button type="button" class="guard302-primary" data-view="active-job">Open Active Job <b>›</b></button>
     </div>
   </section>`;

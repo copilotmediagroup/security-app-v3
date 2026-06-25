@@ -1,17 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.7",
-  "buildName": "MARKER VISIBILITY FLOW",
-  "type": "guard-map-marker-visibility-flow",
+  "version": "3.0.8",
+  "buildName": "CURRENT ASSIGNMENT BUTTON CLEANUP",
+  "type": "guard-current-assignment-button-cleanup",
   "sql_required": false,
   "features": [
-    "Offline hides both guard and property markers",
-    "Online shows guard marker only after browser GPS provides guard location",
-    "Property marker appears only while guard is online and has an active job",
-    "Completed jobs no longer keep the red property marker visible",
-    "Removed fallback to first patrol request for Guard Dashboard map",
-    "Offline clears property coordinates, route, ETA, distance, and open cards",
-    "Property card remains marker-click only and closes with X",
+    "Removed duplicate Online button from the Current Assignment card",
+    "Removed duplicate Offline button from the Current Assignment card",
+    "Current Assignment now keeps only Open Active Job",
+    "Online/Offline GPS controls remain below the Route / GPS map",
+    "Marker visibility flow from v3.0.7 is preserved",
     "Bottom-right badge preserved"
   ]
 }

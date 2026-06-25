@@ -1,21 +1,18 @@
 Co Pilot Security
-Version: 3.0.7
-Build Name: MARKER VISIBILITY FLOW
+Version: 3.0.8
+Build Name: CURRENT ASSIGNMENT BUTTON CLEANUP
 Date: 2026-06-24
 
 Summary:
-- Built from v3.0.6.
-- Corrects Guard Dashboard marker visibility flow.
-- When guard is offline, both blue guard marker and red property marker are hidden.
-- When guard goes online, only the blue guard marker appears after GPS location is available.
-- Red property marker appears only when the guard is online and has an active assigned/accepted/in-progress job.
-- Completed jobs no longer keep the property marker visible.
-- Removed the old fallback that used the first patrol request as a fake/current job.
-- Offline clears property coordinates, route, ETA, distance, and open marker cards.
+- Built from v3.0.7.
+- Removes the duplicate Online and Offline buttons from the Current Assignment card.
+- Current Assignment now only shows Open Active Job.
+- Online and Offline GPS controls remain below the Route / GPS map only.
+- Preserves the v3.0.7 marker visibility flow: offline hides both markers, online shows guard marker, and property marker appears only during an active job.
 - Bottom-right badge remains active.
 
 Badge:
-v3.0.7 MARKER VISIBILITY FLOW
+v3.0.8 CURRENT ASSIGNMENT BUTTON CLEANUP
 
 SQL:
 No new SQL required.

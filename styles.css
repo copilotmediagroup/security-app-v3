@@ -1013,8 +1013,11 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .guard302-assignment-actions{
   display:grid;
-  grid-template-columns:1fr 1fr 1.25fr;
+  grid-template-columns:1fr;
   gap:12px;
+}
+.guard302-assignment-actions.single .guard302-primary{
+  width:100%;
 }
 .guard302-assignment-actions button,
 .guard302-primary{
