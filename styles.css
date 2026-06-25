@@ -3697,3 +3697,235 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width: 1380px) { .client-patrol-request-layout { grid-template-columns:1fr; } .client-patrol-request-rail { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width: 1040px) { .client-request-type-grid, .client-request-services { grid-template-columns:repeat(2,minmax(0,1fr)); } .client-request-schedule-grid, .client-request-schedule-grid.recurring { grid-template-columns:1fr; } .client-patrol-request-rail { grid-template-columns:1fr; } }
 @media (max-width: 760px) { .client-request-type-grid, .client-request-priority-line, .client-request-services, .client-request-reference-upload { grid-template-columns:1fr; } .client-request-submit-row { flex-direction:column; } .client-request-submit-row button { width:100%; } }
+
+/* v3.0.31 Patrol Requests polish */
+.client-patrol-request-command {
+  padding-bottom: 96px;
+}
+.client-patrol-request-command .dashboard-header {
+  margin-bottom: 0;
+}
+.client-patrol-request-layout {
+  grid-template-columns: minmax(0, 1fr) 320px !important;
+  gap: 14px !important;
+}
+.client-patrol-request-main,
+.client-patrol-request-rail {
+  gap: 14px !important;
+}
+.client-request-kpis .kpi-card {
+  min-height: 104px;
+}
+.client-request-type-section {
+  padding: 14px !important;
+}
+.client-request-type-section .panel-head {
+  margin-bottom: 10px;
+}
+.client-request-type-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+.client-request-type-card {
+  min-height: 76px !important;
+  padding: 11px 12px !important;
+  grid-template-columns: 42px 1fr !important;
+  gap: 10px !important;
+}
+.client-request-type-card i {
+  width: 40px !important;
+  height: 40px !important;
+  font-size: 19px !important;
+}
+.client-request-type-card strong {
+  font-size: 13px;
+  line-height: 1.15;
+}
+.client-request-type-card small {
+  margin-top: 3px !important;
+  font-size: 11px;
+  line-height: 1.25 !important;
+}
+.client-request-details-card {
+  padding: 14px !important;
+}
+.client-request-details-card .panel-head {
+  margin-bottom: 10px;
+}
+.client-request-details-card .panel-head h2 {
+  font-size: 18px;
+}
+.client-patrol-request-form {
+  gap: 10px !important;
+}
+.client-patrol-request-form label {
+  font-size: 12px;
+}
+.client-patrol-request-form input,
+.client-patrol-request-form select,
+.client-patrol-request-form textarea {
+  min-height: 42px;
+  border-radius: 10px;
+}
+.client-patrol-request-form textarea[name="instructions"] {
+  min-height: 86px !important;
+}
+.client-patrol-request-form textarea[name="schedule_notes"] {
+  min-height: 70px !important;
+}
+.client-request-priority-line,
+.client-request-schedule-grid {
+  gap: 10px !important;
+}
+.client-request-services {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  padding: 12px !important;
+}
+.client-request-services > span {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+.client-request-services label {
+  min-height: 44px !important;
+  display: grid !important;
+  grid-template-columns: 18px 1fr;
+  align-items: center !important;
+  gap: 8px !important;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(4, 15, 27, .64);
+  border-radius: 10px;
+  padding: 8px 10px;
+  line-height: 1.15;
+}
+.client-request-services label b {
+  font-size: 12px;
+  font-weight: 850;
+  color: #dcecff;
+  line-height: 1.15;
+}
+.client-request-services input {
+  width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  margin: 0 !important;
+  justify-self: center;
+}
+.client-request-reference-upload {
+  grid-template-columns: minmax(0, 1fr) 150px !important;
+  gap: 10px !important;
+}
+.client-request-upload-drop {
+  min-height: 70px !important;
+  display: grid !important;
+  grid-template-columns: 34px 1fr;
+  grid-template-areas: "icon title" "icon sub";
+  align-content: center;
+  place-content: unset !important;
+  text-align: left !important;
+  padding: 12px 14px !important;
+}
+.client-request-upload-drop i {
+  grid-area: icon;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(46,125,255,.16);
+  color: #8fcaff;
+  font-style: normal;
+}
+.client-request-upload-drop strong {
+  grid-area: title;
+  align-self: end;
+}
+.client-request-upload-drop small {
+  grid-area: sub;
+  align-self: start;
+}
+.client-request-reference-preview {
+  min-height: 70px !important;
+  max-height: 90px;
+  position: relative;
+}
+.client-request-reference-preview img,
+.client-request-reference-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 70px;
+  max-height: 90px;
+  object-fit: cover;
+}
+.client-request-reference-preview small {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  display: block;
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: rgba(0,0,0,.58);
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-request-reference-preview span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.client-request-submit-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(4,13,24,.75), rgba(4,13,24,.98));
+  border-top: 1px solid rgba(113,169,232,.10);
+  margin: 0 -14px -14px;
+  padding: 12px 14px !important;
+}
+.client-request-submit-row button {
+  min-height: 42px;
+  min-width: 132px;
+}
+.client-patrol-request-rail {
+  max-height: calc(100vh - 170px);
+  overflow: auto;
+  padding-bottom: 96px;
+}
+.client-request-summary-card .client-request-summary-list {
+  gap: 7px 12px;
+}
+.client-request-recent-list > div {
+  min-height: 68px;
+}
+.client-request-property-map-card {
+  margin-bottom: 86px;
+}
+@media (max-width: 1380px) {
+  .client-request-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .client-request-services {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 1120px) {
+  .client-patrol-request-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .client-patrol-request-rail {
+    max-height: none;
+    overflow: visible;
+  }
+}
+@media (max-width: 820px) {
+  .client-request-services,
+  .client-request-type-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .client-request-reference-upload {
+    grid-template-columns: 1fr !important;
+  }
+}

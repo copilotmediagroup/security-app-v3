@@ -1,17 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.30",
-  "buildName": "CLIENT PATROL REQUESTS REDESIGN",
-  "type": "client-patrol-requests-redesign",
+  "version": "3.0.31",
+  "buildName": "PATROL REQUESTS POLISH",
+  "type": "client-patrol-requests-polish",
   "sql_required": false,
   "features": [
-    "Redesigned Client Patrol Requests page into premium command-center layout",
-    "Added request types: Immediate Patrol, Vacation Watch, Recurring Patrol, Scheduled Patrol",
-    "Added dynamic schedule fields for each patrol request type",
-    "Added requested services checkboxes, proof preference, instructions, and schedule notes",
-    "Added device-only reference photo/video picker with local preview and no URL input",
-    "Added selected property rail, request summary, recent requests, property map, and request history table",
-    "Submits advanced schedule fields to existing cp_submit_patrol_request RPC with fallback compatibility",
+    "Polished Client Patrol Requests page layout from v3.0.30",
+    "Request type cards are more compact and less clipped",
+    "Requested Services checkboxes are aligned in clean cards",
+    "Reference Photo/Video upload control is cleaner and still device-only",
+    "Reference upload preview now shows selected photo/video name",
+    "Submit/Save action row is sticky and no longer gets lost at bottom",
+    "Right rail scrolls cleaner with bottom spacing for version badge",
+    "No URL entry for photo/video anywhere",
     "No new SQL required"
   ]
 }

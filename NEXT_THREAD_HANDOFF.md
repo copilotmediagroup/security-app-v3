@@ -1,11 +1,12 @@
-# Next Thread Handoff — Co Pilot Security v3.0.30
+# Next Thread Handoff — Co Pilot Security v3.0.31
 
-Latest build: v3.0.30 CLIENT PATROL REQUESTS REDESIGN
+Latest build: v3.0.31 PATROL REQUESTS POLISH
 
 ## What changed
-- Built from v3.0.29.
-- Redesigned Client Patrol Requests page.
-- Supports Immediate Patrol, Vacation Watch, Recurring Patrol, and Scheduled Patrol UI flows.
-- Uses existing cp_submit_patrol_request RPC with advanced schedule args when available and fallback support.
-- No URL inputs for photos/videos; reference upload picker is device-only.
+- Built from v3.0.30.
+- Polished the Client Patrol Requests page.
+- Fixed requested services alignment.
+- Cleaned up device-only reference photo/video upload and preview.
+- Added sticky bottom action row.
+- Improved right rail spacing and badge clearance.
 - No new SQL required.

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-patrol-requests-redesign",
-  "version": "3.0.30",
+  "name": "co-pilot-security-patrol-requests-polish",
+  "version": "3.0.31",
   "private": true,
-  "description": "Redesigns the Client Patrol Requests page with immediate, vacation, recurring, and scheduled patrol request flows.",
+  "description": "Polishes the Client Patrol Requests page layout: compact request type cards, aligned services, cleaner device upload, sticky action bar, and right rail spacing.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

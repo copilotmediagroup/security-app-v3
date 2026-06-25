@@ -1,20 +1,21 @@
 Co Pilot Security
-Version: 3.0.30
-Build Name: CLIENT PATROL REQUESTS REDESIGN
+Version: 3.0.31
+Build Name: PATROL REQUESTS POLISH
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.29.
-- Redesigned the Client Patrol Requests page into a premium command-center request screen.
-- Client can select Immediate Patrol, Vacation Watch, Recurring Patrol, or Scheduled Patrol.
-- Added dynamic schedule fields, proof preference, services checklist, instructions, and schedule notes.
-- Added device-only reference photo/video picker with preview and no URL input.
-- Added selected property rail, request summary, recent requests, property map, and request history table.
-- Submits advanced schedule fields to the existing cp_submit_patrol_request RPC when available, with fallback compatibility.
+- Built from v3.0.30.
+- Polished the Client Patrol Requests page layout.
+- Request type cards are more compact and no longer feel clipped.
+- Requested Services checkboxes are aligned inside clean service cards.
+- Reference Photo/Video upload remains device-only and now has a cleaner preview area.
+- Submit Request / Save Draft row is sticky at the bottom of the form.
+- Right rail has better spacing and scrolling so the badge does not cover content.
+- No URL entry for photo/video anywhere.
 - No new SQL required.
 
 Badge:
-v3.0.30 CLIENT PATROL REQUESTS REDESIGN
+v3.0.31 PATROL REQUESTS POLISH
 
 SQL:
 No new SQL required.

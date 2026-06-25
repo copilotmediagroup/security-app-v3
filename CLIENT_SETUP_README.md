@@ -1,17 +1,18 @@
-# Co Pilot Security v3.0.30 — Client Patrol Requests Redesign
+# Co Pilot Security v3.0.31 — Patrol Requests Polish
 
 ## What changed
-- Rebuilt the Client `Patrol Requests` page.
-- Added request types:
-  - Immediate Patrol
-  - Vacation Watch
-  - Recurring Patrol
-  - Scheduled Patrol
-- Added dynamic fields for vacation, recurring, scheduled, and immediate requests.
-- Added requested service checkboxes, proof preference, instructions, and schedule notes.
-- Added device-only reference photo/video picker with preview. No URL input is shown.
-- Added right rail with selected property, request summary, recent requests, and property location.
-- Added request history table with filters.
+- Polished the Client Patrol Requests page from v3.0.30.
+- Improved:
+  - request type card sizing
+  - requested services checkbox alignment
+  - device-only reference photo/video upload area
+  - upload preview
+  - sticky submit/save action row
+  - right rail spacing and scrolling
+
+## Media rules
+- No photo/video URL input anywhere.
+- Reference photo/video must be uploaded from device.
 
 ## SQL
 No new SQL required.
