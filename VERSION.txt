@@ -1,20 +1,22 @@
 Co Pilot Security
-Version: 3.0.38
-Build Name: DISPATCH MAP CARD + GPS FIX
+Version: 3.0.41
+Build Name: DISPATCH MAP BLUEPRINT FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.37.
-- Rebuilt the Settings page to match the selected image 2 design direction.
-- Added top settings tabs: Profile, Company, Notifications, Security, Billing, and Integrations.
-- Added Profile Information, profile photo device upload, Change Password, and Communication Preferences sections.
-- Added right rail with Account Summary, Company Information, Preferences, and Quick Actions.
-- Profile photo is device-upload only. No URL field is shown.
-- Preserved v3.0.37 Client Messages redesign.
+- Built from v3.0.40.
+- Dispatch map now follows the same card blueprint as Guard and Client maps.
+- Map marker cards open in-place without re-rendering the whole page, preventing the scroll-to-top glitch.
+- Dispatch cards are compact and sized for the small amount of map info.
+- Dispatch guard markers no longer use far-away city seed positions.
+- Dispatch only shows guards considered online and with usable GPS/position data.
+- Offline guards are hidden from Dispatch, Client, and Guard visibility.
+- Property cards show property photo, owner/client, and address.
+- Guard cards show guard photo, name, rank/status, and current GPS address/coordinates.
 - No new SQL required.
 
 Badge:
-v3.0.40 DISPATCH MAP CARD + GPS FIX
+v3.0.41 DISPATCH MAP BLUEPRINT FIX
 
 SQL:
 No new SQL required.

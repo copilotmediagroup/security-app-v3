@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.40 Settings Page Redesign */
+/* v3.0.41 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5052,3 +5052,78 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1500px){ .settings-layout{ grid-template-columns:1fr; } .settings-rail{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
+
+/* v3.0.41 Dispatch map blueprint fix */
+.dispatch-leaflet-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.dispatch-leaflet-wrap .guard302-live-card.dispatch-compact-map-card,
+.dispatch-leaflet-wrap .guard302-live-card {
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  width: min(360px, calc(100% - 20px)) !important;
+  max-width: 360px !important;
+  min-height: 0 !important;
+  grid-template-columns: 46px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 10px 38px 10px 10px !important;
+  border-radius: 10px !important;
+  z-index: 900 !important;
+}
+.dispatch-leaflet-wrap .guard302-live-card .avatar,
+.dispatch-leaflet-wrap .guard302-live-card .avatar img {
+  width: 46px !important;
+  height: 46px !important;
+}
+.dispatch-leaflet-wrap .guard302-live-card strong {
+  font-size: 13px !important;
+  line-height: 1.15 !important;
+}
+.dispatch-leaflet-wrap .guard302-live-card small,
+.dispatch-leaflet-wrap .guard302-live-card span {
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+.dispatch-leaflet-wrap .guard302-live-card p {
+  margin: 4px 0 !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  max-height: 34px !important;
+  overflow: hidden !important;
+}
+.dispatch-leaflet-wrap .guard302-card-close {
+  top: 7px !important;
+  right: 7px !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 15px !important;
+}
+.dispatch-leaflet-wrap .guard302-fallback-guard,
+.dispatch-leaflet-wrap .guard302-fallback-property {
+  position: absolute;
+  z-index: 15;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.dispatch-leaflet-wrap .guard302-fallback-guard span,
+.dispatch-leaflet-wrap .guard302-fallback-property span {
+  width: 24px;
+  height: 24px;
+  display: block;
+  border-radius: 50%;
+  border: 4px solid #071321;
+}
+.dispatch-leaflet-wrap .guard302-fallback-guard span {
+  background: #2e88ff;
+  box-shadow: 0 0 0 10px rgba(46,136,255,.16),0 0 28px rgba(46,136,255,.72);
+}
+.dispatch-leaflet-wrap .guard302-fallback-property span {
+  background: #ff4565;
+  box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
+}

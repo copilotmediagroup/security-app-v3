@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-settings-page-redesign",
-  "version": "3.0.38",
+  "name": "co-pilot-security-dispatch-map-blueprint-fix",
+  "version": "3.0.41",
   "private": true,
-  "description": "Redesigns the Settings page into a premium command-center profile, account, notification, security, billing, and integrations layout.",
+  "description": "Fixes Dispatch live map marker positioning, compact in-place cards, and online-only guard visibility.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,16 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.38",
-  "buildName": "DISPATCH MAP CARD + GPS FIX",
-  "type": "settings-page-redesign",
+  "version": "3.0.41",
+  "buildName": "DISPATCH MAP BLUEPRINT FIX",
+  "type": "dispatch-map-blueprint-fix",
   "sql_required": false,
   "features": [
-    "Rebuilt Settings page to match selected image 2 design direction",
-    "Added top settings tabs: Profile, Company, Notifications, Security, Billing, Integrations",
-    "Added Profile Information form, profile photo device upload, Change Password panel, and Communication Preferences",
-    "Added right rail: Account Summary, Company Information, Preferences, and Quick Actions",
-    "Profile photo is device-upload only with no URL field",
-    "Preserved v3.0.37 Client Messages redesign",
+    "Dispatch map cards now open in-place without page re-render/scroll jump",
+    "Dispatch map cards are compact like Guard/Client map cards",
+    "Removed far-away invented city seed positioning for guards",
+    "Dispatch shows only online guards with usable position data",
+    "Offline guards are hidden from map visibility",
+    "Property card shows property photo, owner/client, and address",
+    "Guard card shows guard photo, name, rank/status, and current GPS address/coordinates",
     "No new SQL required"
   ]
 }

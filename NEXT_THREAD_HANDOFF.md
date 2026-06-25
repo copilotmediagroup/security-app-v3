@@ -1,6 +1,6 @@
-# Next Thread Handoff — Co Pilot Security v3.0.40
+# Next Thread Handoff — Co Pilot Security v3.0.41
 
-Latest build: v3.0.40 DISPATCH MAP CARD + GPS FIX
+Latest build: v3.0.41 DISPATCH MAP BLUEPRINT FIX
 
 ## What changed
 - Built from v3.0.37.
