@@ -1,6 +1,6 @@
 Co Pilot Security
 Version: 3.0.38
-Build Name: SETTINGS PAGE REDESIGN
+Build Name: DISPATCH LIVE MAP SYNC
 Date: 2026-06-25
 
 Summary:
@@ -14,7 +14,7 @@ Summary:
 - No new SQL required.
 
 Badge:
-v3.0.38 SETTINGS PAGE REDESIGN
+v3.0.39 DISPATCH LIVE MAP SYNC
 
 SQL:
 No new SQL required.

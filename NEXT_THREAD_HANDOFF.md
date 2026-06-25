@@ -1,6 +1,6 @@
-# Next Thread Handoff — Co Pilot Security v3.0.38
+# Next Thread Handoff — Co Pilot Security v3.0.39
 
-Latest build: v3.0.38 SETTINGS PAGE REDESIGN
+Latest build: v3.0.39 DISPATCH LIVE MAP SYNC
 
 ## What changed
 - Built from v3.0.37.

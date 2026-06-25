@@ -1,7 +1,7 @@
 {
   "project": "Co Pilot Security",
   "version": "3.0.38",
-  "buildName": "SETTINGS PAGE REDESIGN",
+  "buildName": "DISPATCH LIVE MAP SYNC",
   "type": "settings-page-redesign",
   "sql_required": false,
   "features": [
