@@ -3411,3 +3411,123 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* v3.0.28 Client edit property modal */
+.client-property-edit-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+.client-property-edit-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 8, 16, .74);
+  backdrop-filter: blur(10px);
+}
+.client-property-edit-dialog {
+  position: relative;
+  z-index: 2;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 52px);
+  overflow: auto;
+  border-radius: 20px;
+  border: 1px solid rgba(113, 169, 232, .18);
+  background: linear-gradient(180deg, rgba(8, 22, 38, .98), rgba(4, 13, 24, .995));
+  box-shadow: 0 30px 110px rgba(0, 0, 0, .55);
+}
+.client-property-edit-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid rgba(113, 169, 232, .12);
+}
+.client-property-edit-head h2 {
+  margin: 2px 0 4px;
+  font-size: 30px;
+  letter-spacing: -.04em;
+}
+.client-property-edit-head span {
+  color: var(--muted);
+}
+.client-property-edit-head button {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(113, 169, 232, .14);
+  background: rgba(7, 18, 32, .86);
+  color: #edf7ff;
+  font-size: 24px;
+}
+.client-property-edit-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px 24px 24px;
+}
+.client-property-edit-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 14px;
+}
+.client-property-edit-form .form-row.three {
+  grid-template-columns: 1fr 110px 150px;
+}
+.client-property-edit-form label {
+  display: grid;
+  gap: 8px;
+  color: #dcecff;
+  font-size: 13px;
+  font-weight: 900;
+}
+.client-property-edit-form input,
+.client-property-edit-form select,
+.client-property-edit-form textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(113, 169, 232, .16);
+  background: rgba(7, 18, 32, .86);
+  color: #fff;
+  min-height: 46px;
+  padding: 0 14px;
+  font: inherit;
+  outline: none;
+}
+.client-property-edit-form textarea {
+  min-height: 104px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+.client-property-edit-form input:focus,
+.client-property-edit-form select:focus,
+.client-property-edit-form textarea:focus {
+  border-color: rgba(127, 196, 255, .42);
+  box-shadow: 0 0 0 3px rgba(46, 125, 255, .12);
+}
+.client-property-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+.client-property-edit-actions button {
+  min-width: 140px;
+}
+@media (max-width: 760px) {
+  .client-property-edit-modal {
+    padding: 14px;
+  }
+  .client-property-edit-form .form-row,
+  .client-property-edit-form .form-row.three {
+    grid-template-columns: 1fr;
+  }
+  .client-property-edit-actions {
+    flex-direction: column-reverse;
+  }
+  .client-property-edit-actions button {
+    width: 100%;
+  }
+}

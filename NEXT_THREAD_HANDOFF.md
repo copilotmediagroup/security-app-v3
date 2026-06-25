@@ -1,12 +1,11 @@
-# Next Thread Handoff — Co Pilot Security v3.0.27
+# Next Thread Handoff — Co Pilot Security v3.0.28
 
-Latest build: v3.0.27 CLIENT PROPERTIES POLISH
+Latest build: v3.0.28 CLIENT EDIT PROPERTY
 
 ## What changed
-- Built from v3.0.26.
-- Client property type labels now show under property name as Retail/Residential when applicable.
-- Removed Online/Offline property concept.
-- Fixed Property Details button text overflow.
-- Replaced property detail mini-map with guard-style map using same Leaflet/fallback styling, markers, route line, and cards.
-- Guard marker appears for client only after accepted/in-progress assignment for that property.
+- Built from v3.0.27.
+- Added functional Client Edit Property modal.
+- Added Add Property modal using the same form.
+- Saves property fields through existing RPC `cp_save_property_for_client`.
+- Retail/Residential type display persists locally due to no existing database `property_type` column.
 - No new SQL required.

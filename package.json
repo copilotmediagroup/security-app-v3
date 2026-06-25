@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-properties-polish",
-  "version": "3.0.27",
+  "name": "co-pilot-security-client-edit-property",
+  "version": "3.0.28",
   "private": true,
-  "description": "Polishes the Client Properties page: retail/residential labels, fixed detail buttons, removed online/offline property concept, and upgraded map to guard-style map.",
+  "description": "Adds functional Client property edit/add modal using existing Supabase property save RPC.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

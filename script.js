@@ -1,7 +1,7 @@
 
 const BUILD = {
-  version: '3.0.27',
-  label: 'v3.0.27 CLIENT PROPERTIES POLISH'
+  version: '3.0.28',
+  label: 'v3.0.28 CLIENT EDIT PROPERTY'
 };
 
 const config = window.COPILOT_SECURITY_CONFIG || {};
@@ -3030,8 +3030,32 @@ function propertyLastActivityMeta(property = {}) {
   ].filter(Boolean).sort((a,b) => new Date(b.at || 0) - new Date(a.at || 0));
   return candidates[0] || { title:'System Check', subtitle:'No recent events', at:null };
 }
+
+function propertyTypeStorageKey() { return 'cp_security_client_property_types_v1'; }
+function readPropertyTypeMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(propertyTypeStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writePropertyTypeMap(map = {}) {
+  try { localStorage.setItem(propertyTypeStorageKey(), JSON.stringify(map)); } catch {}
+}
+function savePropertyTypeOverride(propertyId, type) {
+  if (!propertyId) return;
+  const map = readPropertyTypeMap();
+  map[String(propertyId)] = type || 'Retail';
+  writePropertyTypeMap(map);
+}
+function propertyTypeOverride(property = {}) {
+  const map = readPropertyTypeMap();
+  return map[String(property.id || '')] || '';
+}
 function propertyTypeLabel(property = {}) {
-  const raw = String(property.property_type || property.type || property.category || '').trim();
+  const override = propertyTypeOverride(property);
+  const raw = String(override || property.property_type || property.type || property.category || '').trim();
   const value = raw.toLowerCase();
   if (/residential|home|house|apartment|condo|townhome|duplex|triplex|fourplex/.test(value)) return 'Residential';
   if (/retail|restaurant|store|shop|commercial|business|office|warehouse|mall/.test(value)) return 'Retail';
@@ -3345,6 +3369,101 @@ function clientPropertyDetailPanel(property) {
   const img = propertyImageValue(property);
   return `<aside class="client-property-detail panel panel-pad"><div class="client-property-detail-head"><div class="copy"><h2>Property Details</h2></div><button class="header-button" data-action="clear-client-property-filters">×</button></div><div class="client-property-hero"><div class="hero-image">${img ? `<img src="${esc(img)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div><div class="hero-copy"><div class="title-row"><strong>${esc(propertyDisplayName(property))}</strong></div><small>${esc(propertyTypeLabel(property))}</small><span class="primary-tag">${propertyIsPrimary(property) ? 'Primary Property' : 'Property'}</span></div></div><div class="client-property-hero-actions"><button class="ghost-button" data-action="edit-client-property"><span>✎</span> Edit Property</button><button class="ghost-button" data-action="open-client-patrol-request" data-property-id="${esc(property.id)}"><span>🛡</span> Request Patrol</button><button class="ghost-button" data-action="open-client-reports"><span>▣</span> View Reports</button></div><div class="client-property-tabs"><button class="${state.clientPropertyTab === 'overview' ? 'active' : ''}" data-property-tab="overview">Overview</button><button class="${state.clientPropertyTab === 'details' ? 'active' : ''}" data-property-tab="details">Details</button><button class="${state.clientPropertyTab === 'activity' ? 'active' : ''}" data-property-tab="activity">Activity</button><button class="${state.clientPropertyTab === 'patrol-history' ? 'active' : ''}" data-property-tab="patrol-history">Patrol History</button><button class="${state.clientPropertyTab === 'notes' ? 'active' : ''}" data-property-tab="notes">Notes</button></div>${clientPropertyDetailTabs(property)}</aside>`;
 }
+
+function propertyFormValue(property = {}, field = '') {
+  if (!property) return '';
+  if (field === 'label') return property.label || property.name || property.property_name || '';
+  if (field === 'address') return property.address || property.address_line1 || property.street || '';
+  if (field === 'zip') return property.zip_code || property.zip || '';
+  if (field === 'photo_url') return property.photo_url || property.image_url || property.property_photo_url || property.reference_photo_url || '';
+  if (field === 'latitude') return Number.isFinite(Number(property.latitude ?? property.lat ?? property.property_latitude ?? property.geo_lat)) ? String(Number(property.latitude ?? property.lat ?? property.property_latitude ?? property.geo_lat)) : '';
+  if (field === 'longitude') return Number.isFinite(Number(property.longitude ?? property.lng ?? property.lon ?? property.property_longitude ?? property.geo_lng)) ? String(Number(property.longitude ?? property.lng ?? property.lon ?? property.property_longitude ?? property.geo_lng)) : '';
+  return property[field] || '';
+}
+function closeClientPropertyEditModal() {
+  document.querySelectorAll('.client-property-edit-modal').forEach(el => el.remove());
+}
+function showClientPropertyEditModal(property = null) {
+  closeClientPropertyEditModal();
+  const isEdit = Boolean(property?.id);
+  const type = property ? propertyTypeLabel(property) : 'Retail';
+  const modal = document.createElement('div');
+  modal.className = 'client-property-edit-modal';
+  modal.innerHTML = `<div class="client-property-edit-backdrop" data-action="close-client-property-edit"></div>
+    <section class="client-property-edit-dialog" role="dialog" aria-modal="true" aria-label="${isEdit ? 'Edit property' : 'Add property'}">
+      <div class="client-property-edit-head">
+        <div><p class="eyebrow">Client Property</p><h2>${isEdit ? 'Edit Property' : 'Add Property'}</h2><span>${isEdit ? esc(propertyDisplayName(property)) : 'Create a new client property record'}</span></div>
+        <button type="button" data-action="close-client-property-edit">×</button>
+      </div>
+      <form class="client-property-edit-form" data-form="client-property-edit">
+        <input type="hidden" name="property_id" value="${esc(property?.id || '')}">
+        <input type="hidden" name="client_id" value="${esc(property?.client_id || '')}">
+        <div class="form-row">
+          <label>Property Name<input name="label" value="${esc(propertyFormValue(property, 'label'))}" placeholder="McDonald's" required></label>
+          <label>Property Type<select name="property_type"><option value="Retail" ${type === 'Retail' ? 'selected' : ''}>Retail</option><option value="Residential" ${type === 'Residential' ? 'selected' : ''}>Residential</option></select></label>
+        </div>
+        <label>Street Address<input name="address" value="${esc(propertyFormValue(property, 'address'))}" placeholder="10020 Eastern Ave" required></label>
+        <div class="form-row three">
+          <label>City<input name="city" value="${esc(propertyFormValue(property, 'city'))}" placeholder="Las Vegas"></label>
+          <label>State<input name="state" value="${esc(propertyFormValue(property, 'state'))}" placeholder="NV" maxlength="2"></label>
+          <label>ZIP<input name="zip_code" value="${esc(propertyFormValue(property, 'zip'))}" placeholder="89052" required></label>
+        </div>
+        <label>Property Photo URL<input name="photo_url" value="${esc(propertyFormValue(property, 'photo_url'))}" placeholder="https://..."></label>
+        <div class="form-row">
+          <label>Latitude<input name="latitude" value="${esc(propertyFormValue(property, 'latitude'))}" placeholder="Optional"></label>
+          <label>Longitude<input name="longitude" value="${esc(propertyFormValue(property, 'longitude'))}" placeholder="Optional"></label>
+        </div>
+        <label>Property Notes<textarea name="notes" placeholder="Gate codes, alarm details, special patrol instructions...">${esc(propertyFormValue(property, 'notes'))}</textarea></label>
+        <div class="client-property-edit-actions">
+          <button type="button" class="ghost-button" data-action="close-client-property-edit">Cancel</button>
+          <button type="submit" class="primary-button">${isEdit ? 'Save Property' : 'Add Property'}</button>
+        </div>
+      </form>
+    </section>`;
+  document.body.appendChild(modal);
+  const first = modal.querySelector('input[name="label"]');
+  if (first) first.focus();
+}
+async function saveClientPropertyEdit(form) {
+  const propertyId = form.property_id.value.trim() || null;
+  const clientId = form.client_id.value.trim() || null;
+  const type = form.property_type.value || 'Retail';
+  const latRaw = form.latitude.value.trim();
+  const lngRaw = form.longitude.value.trim();
+  const latitude = latRaw === '' ? null : Number(latRaw);
+  const longitude = lngRaw === '' ? null : Number(lngRaw);
+  if (latRaw && !Number.isFinite(latitude)) throw new Error('Latitude must be a number.');
+  if (lngRaw && !Number.isFinite(longitude)) throw new Error('Longitude must be a number.');
+  const payload = {
+    p_property_id: propertyId,
+    p_client_id: clientId,
+    p_label: form.label.value.trim() || 'Property',
+    p_address: form.address.value.trim(),
+    p_city: form.city.value.trim(),
+    p_state: form.state.value.trim(),
+    p_zip_code: form.zip_code.value.trim(),
+    p_photo_url: form.photo_url.value.trim(),
+    p_notes: form.notes.value.trim(),
+    p_latitude: latitude,
+    p_longitude: longitude
+  };
+  if (!payload.p_address) throw new Error('Property address is required.');
+  if (!payload.p_zip_code) throw new Error('ZIP code is required.');
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const result = await supabase.rpc('cp_save_property_for_client', payload);
+  if (!result?.ok) throw new Error(result?.message || 'Property could not be saved.');
+  const saved = result.property || {};
+  savePropertyTypeOverride(saved.id || propertyId, type);
+  closeClientPropertyEditModal();
+  await loadData();
+  state.view = 'properties';
+  state.clientSelectedPropertyId = String(saved.id || propertyId || state.clientSelectedPropertyId || '');
+  state.clientPropertyTab = 'overview';
+  render();
+  toast('Property saved.', 'success');
+}
+
 function clientPropertiesView() {
   const counts = clientPropertiesCounts();
   const rows = filteredClientProperties();
@@ -3781,11 +3900,15 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'add-client-property') {
-      toast('Add Property workflow is the next client screen to build.', 'success');
+      showClientPropertyEditModal(null);
       return;
     }
     if (button.dataset.action === 'edit-client-property') {
-      toast('Edit Property workflow coming next.', 'success');
+      showClientPropertyEditModal(selectedClientProperty());
+      return;
+    }
+    if (button.dataset.action === 'close-client-property-edit') {
+      closeClientPropertyEditModal();
       return;
     }
     if (button.dataset.action === 'open-client-patrol-request') {
@@ -3831,6 +3954,7 @@ document.addEventListener('submit', async event => {
     if (form.dataset.form === 'client-signup') await submitClientSignup(form);
     if (form.dataset.form === 'proof-upload') await uploadProof(form);
     if (form.dataset.form === 'client-patrol-request') await submitClientPatrolRequest(form);
+    if (form.dataset.form === 'client-property-edit') await saveClientPropertyEdit(form);
     if (form.dataset.form === 'dispatch-guard-message') {
       sendDispatchGuardMessage(form.message.value);
       form.reset();

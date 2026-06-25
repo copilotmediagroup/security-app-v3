@@ -1,18 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.27",
-  "buildName": "CLIENT PROPERTIES POLISH",
-  "type": "client-properties-polish",
+  "version": "3.0.28",
+  "buildName": "CLIENT EDIT PROPERTY",
+  "type": "client-property-edit-flow",
   "sql_required": false,
   "features": [
-    "Property type now normalizes to Retail or Residential where applicable",
-    "Property type appears under the property name",
-    "Removed online/offline concept for client properties",
-    "Properties are treated as saved/active as long as they exist in the database",
-    "Fixed Property Details action button text/padding overflow",
-    "Replaced property mini-map with guard-style Leaflet/fallback map",
-    "Property detail map supports same marker cards, route line, ETA/distance behavior",
-    "Guard marker appears only after guard accepts/in-progress assignment for that property",
+    "Client can edit selected property from Property Details",
+    "Client can add a property from the Add Property button",
+    "Edit modal supports property name, Retail/Residential type, address, city, state, ZIP, photo URL, notes, latitude, and longitude",
+    "Property save uses existing cp_save_property_for_client RPC",
+    "Retail/Residential display preference persists locally for the current browser because the existing database schema has no property_type column",
     "No new SQL required"
   ]
 }
