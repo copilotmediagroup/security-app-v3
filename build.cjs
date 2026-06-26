@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.55 dispatch sidebar overlap fix build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.56 dispatch sidebar hard separation build complete. Copied ${count} files to dist/.`);

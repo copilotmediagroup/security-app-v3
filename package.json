@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-sidebar-overlap-fix",
-  "version": "3.0.55",
+  "name": "co-pilot-security-dispatch-sidebar-hard-separation",
+  "version": "3.0.56",
   "private": true,
-  "description": "Hard-fixes Dispatch/Admin sidebar profile overlap by separating the profile card from the nav list.",
+  "description": "Hard separates Dispatch/Admin sidebar profile from nav so the Dashboard button cannot sit underneath the profile card.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

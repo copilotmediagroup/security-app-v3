@@ -1,15 +1,15 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.55",
-  "buildName": "DISPATCH SIDEBAR OVERLAP FIX",
-  "type": "dispatch-sidebar-overlap-fix",
+  "version": "3.0.56",
+  "buildName": "DISPATCH SIDEBAR HARD SEPARATION",
+  "type": "dispatch-sidebar-hard-separation",
   "sql_required": false,
   "features": [
-    "Hard-fixed Dispatch/Admin sidebar profile overlap with Dashboard nav item",
-    "Increased Dispatch profile card height to fit avatar, name, portal label, and online status",
-    "Added explicit nav top spacing so Dashboard starts below profile card",
-    "Kept Dispatch sidebar compact but no longer compressed into the Dashboard button",
-    "Preserved Guard and Client sidebar styling",
+    "Hard-separated Dispatch/Admin profile card from the Dashboard nav button",
+    "Added large fixed margin below Dispatch profile card",
+    "Added a divider and padding above Dispatch nav list",
+    "Removed profile role pill/chevron in Dispatch only to prevent crowding",
+    "Preserved Guard and Client sidebars",
     "Preserved Client login fix",
     "No new SQL required"
   ]
