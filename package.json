@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-scheduled-queue-command-center",
-  "version": "3.0.47",
+  "name": "co-pilot-security-scheduled-queue-data-layout-fix",
+  "version": "3.0.48",
   "private": true,
-  "description": "Redesigns Scheduled Queue into a command-center schedule management page with KPIs, filters, schedule table, selected details rail, upcoming runs, route preview, and queue actions.",
+  "description": "Fixes Scheduled Queue data sync from scheduled/recurring/vacation client requests and removes bad horizontal scrollbars while preserving command-center design.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,21 +1,13 @@
-# Next Thread Handoff — Co Pilot Security v3.0.47
+# Next Thread Handoff — Co Pilot Security v3.0.48
 
-Latest build: v3.0.47 SCHEDULED QUEUE COMMAND CENTER
+Latest build: v3.0.48 SCHEDULED QUEUE DATA + LAYOUT FIX
 
 ## What changed
-- Built from v3.0.46.
-- Rebuilt Admin Scheduled Queue from a basic table into the command-center design.
-- Added KPI row, tabs, filters, schedule table, selected schedule rail, upcoming runs, route preview, and controls.
-- Working controls:
-  - Refresh
-  - Auto Assign
-  - Bulk Reschedule
-  - Clear Filters
-  - pagination
-  - rows per page
-  - row selection
-  - Pause/Resume Schedule
-  - Reassign Guard
-  - View Full Details placeholder
-- Local browser overrides are used for schedule pause/resume, reschedule, and quick reassignment without requiring new SQL.
+- Built from v3.0.47.
+- Fixed Scheduled Queue data source so scheduled patrols, recurring patrols, vacation watches, future-dated requests, and local schedule metadata appear.
+- Client scheduled/recurring/vacation submissions now save schedule metadata locally after submit.
+- Removed horizontal scrollbar layout issues.
+- Restored All Scheduled tab visibility.
+- Filter row wraps and table columns are tightened.
+- Right rail auto-selects first schedule when records exist.
 - No new SQL required.

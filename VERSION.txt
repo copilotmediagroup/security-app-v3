@@ -1,22 +1,21 @@
 Co Pilot Security
-Version: 3.0.47
-Build Name: SCHEDULED QUEUE COMMAND CENTER
+Version: 3.0.48
+Build Name: SCHEDULED QUEUE DATA + LAYOUT FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.46 Dispatch Route Distance ETA Fix.
-- Redesigned Scheduled Queue from a basic table into a full command-center schedule management page.
-- Added KPI row: Total Scheduled, Today, This Week, Recurring Routes, Unassigned, SLA Risk.
-- Added tabs: All Scheduled, Today, This Week, Recurring, Unassigned, Completed.
-- Added filters for Priority, Property Type, Client, Assigned Guard, Schedule Type, and Search.
-- Added schedule table with selectable rows, priority, schedule ID, property/client, patrol type, next run, recurrence, assigned guard, status, and actions.
-- Added selected schedule right rail with property photo, client/property details, assigned guard, schedule details, upcoming runs, and route preview.
-- Added working controls: Refresh, Auto Assign, Bulk Reschedule, Clear Filters, pagination, rows per page, Pause/Resume Schedule, Reassign Guard, and row selection.
-- Uses local browser overrides for pause/resume, quick reschedule, and quick reassignment.
+- Built from v3.0.47.
+- Fixed Scheduled Queue data detection so scheduled patrols, recurring patrols, vacation watches, future-dated requests, and stored schedule metadata appear on the Scheduled Queue page.
+- Client scheduled/recurring/vacation request submissions now save local schedule metadata so they can show in Scheduled Queue even when the backend falls back to older request arguments.
+- Fixed the Scheduled Queue layout by removing ugly native horizontal scrollbars.
+- Restored the All Scheduled tab and made tabs wrap instead of scrolling.
+- Tightened the filter row so dropdown text fits better and the search field has room.
+- Tightened the schedule table grid so it fits the command-center page.
+- Right rail auto-selects the first schedule when records exist.
 - No new SQL required.
 
 Badge:
-v3.0.47 SCHEDULED QUEUE COMMAND CENTER
+v3.0.48 SCHEDULED QUEUE DATA + LAYOUT FIX
 
 SQL:
 No new SQL required.

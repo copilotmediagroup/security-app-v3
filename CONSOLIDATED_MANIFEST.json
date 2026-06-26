@@ -1,19 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.47",
-  "buildName": "SCHEDULED QUEUE COMMAND CENTER",
-  "type": "scheduled-queue-command-center",
+  "version": "3.0.48",
+  "buildName": "SCHEDULED QUEUE DATA + LAYOUT FIX",
+  "type": "scheduled-queue-data-layout-fix",
   "sql_required": false,
   "features": [
-    "Rebuilt Scheduled Queue page from a basic table into a command-center schedule management screen",
-    "Added KPI row: Total Scheduled, Today, This Week, Recurring Routes, Unassigned, SLA Risk",
-    "Added tabs: All Scheduled, Today, This Week, Recurring, Unassigned, Completed",
-    "Added filter row for priority, property type, client, assigned guard, schedule type, and search",
-    "Added schedule table with selectable rows, priority, schedule ID, property/client, patrol type, next run, recurrence, assigned guard, status, and actions",
-    "Added selected schedule right rail with property photo, client/property details, assigned guard, run schedule, services, instructions, upcoming runs, and route preview",
-    "Added working controls: Refresh, Auto Assign, Bulk Reschedule, Clear Filters, pagination, rows per page, Pause/Resume Schedule, Reassign Guard, and row selection",
-    "Uses local browser overrides for schedule pause/resume, reschedule, and quick reassignment without new SQL",
-    "Preserved v3.0.46 dispatch route distance/ETA fix",
+    "Scheduled Queue now recognizes scheduled patrol, recurring patrol, vacation watch, future-dated, and locally submitted schedule metadata",
+    "Client scheduled/recurring/vacation requests are remembered locally after submit so they appear in Scheduled Queue even if the backend RPC falls back to older arguments",
+    "Scheduled Queue date logic now uses next_run, scheduled_for, schedule_start_date, start_date, requested_for, scheduled_at, or created_at in order",
+    "All Scheduled tab is restored and remains visible by wrapping tabs instead of horizontal scrolling",
+    "Removed ugly white native horizontal scrollbars from tab/table areas",
+    "Filter row now wraps cleanly and prevents clipped dropdown text",
+    "Table grid was tightened to fit the command-center page without a horizontal scrollbar",
+    "Right rail auto-selects the first schedule when schedule data exists",
     "No new SQL required"
   ]
 }

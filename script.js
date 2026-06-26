@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.47',
-  label: 'v3.0.47 SCHEDULED QUEUE COMMAND CENTER'
+  version: '3.0.48',
+  label: 'v3.0.48 SCHEDULED QUEUE DATA + LAYOUT FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -575,7 +575,29 @@ function requestElapsed(req = {}) {
 function pendingRequests() { return state.patrolRequests.filter(r => String(r.status) === 'pending_dispatch'); }
 function activeRequests() { return state.patrolRequests.filter(r => ['assigned', 'accepted', 'in_progress'].includes(String(r.status))); }
 function completedRequests() { return state.patrolRequests.filter(r => String(r.status) === 'completed'); }
-function scheduledRequests() { return state.patrolRequests.filter(r => r.scheduled_for || r.requested_for || r.scheduled_at); }
+function scheduledRequestSearchText(req = {}) {
+  return [
+    req.schedule_type, req.request_type, req.patrol_type, req.type, req.recurrence, req.recurring_pattern,
+    req.repeat_rule, req.schedule_rule, req.recurrence_pattern, req.recurrence_days,
+    req.schedule_start_date, req.start_date, req.schedule_end_date, req.end_date,
+    req.preferred_time_window, req.schedule_notes, req.instructions, req.special_instructions, req.notes,
+    req.description, req.request_details
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+function isScheduledQueueRequest(req = {}) {
+  const override = readScheduledQueueOverrides()[String(req.id || '')] || {};
+  if (Object.keys(override).length && (override.schedule_type || override.scheduled_for || override.next_run || override.next_run_at || override.recurrence || override.status)) return true;
+  const text = scheduledRequestSearchText(req);
+  const status = String(req.status || '').toLowerCase();
+  if (/immediate|on_demand|asap|urgent/.test(text) && !/scheduled|recurring|vacation|repeat|future|daily|weekly|monthly|watch/.test(text)) return false;
+  if (/scheduled|recurring|vacation|vacation_watch|watch|repeat|future|daily|weekly|monthly|weekdays|weekend/.test(text)) return true;
+  if (req.scheduled_for || req.scheduled_at || req.next_run || req.next_run_at || req.schedule_start_date || req.start_date || req.schedule_end_date || req.end_date) return true;
+  if (status === 'scheduled' || status === 'recurring' || status === 'vacation_watch') return true;
+  return false;
+}
+function scheduledRequests() {
+  return (state.patrolRequests || []).filter(isScheduledQueueRequest);
+}
 function proofWaiting() { return state.proofItems.filter(p => !p.report_selected); }
 function reportsReady() { return completedRequests().filter(r => !reportByRequestId(r.id)?.released_at); }
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
@@ -1254,6 +1276,7 @@ async function submitClientPatrolRequest(form) {
   const preferredTimeWindow = form.preferred_time_window?.value || '';
   const recurrencePattern = form.recurrence_pattern?.value || '';
   const referenceNote = referenceFile ? `Reference upload selected from device: ${referenceFile.name}` : '';
+  const scheduleMetadata = scheduledQueueMetadataFromClientForm(form);
   const details = [
     instructions,
     duration ? `Estimated duration: ${duration}` : '',
@@ -1302,7 +1325,11 @@ async function submitClientPatrolRequest(form) {
   }
 
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be submitted.');
+  const returnedRequest = result.request || result.patrol_request || result.data || {};
+  let submittedRequestId = returnedRequest.id || returnedRequest.request_id || result.request_id || result.id || '';
   await loadData();
+  if (!submittedRequestId) submittedRequestId = findRecentlySubmittedRequestId(propertyId);
+  rememberSubmittedScheduleMetadata(submittedRequestId, scheduleMetadata);
   state.view = 'patrol-requests';
   render();
   toast('Patrol request submitted to Dispatch.', 'success');
@@ -5564,23 +5591,60 @@ function saveScheduledOverride(requestId, patch = {}) {
   writeScheduledQueueOverrides(map);
   state.scheduledLocalOverrides = map;
 }
+
+function scheduledQueueMetadataFromClientForm(form = {}) {
+  const scheduleType = form.schedule_type?.value || 'on_demand';
+  const patrolType = form.patrol_type?.value || (scheduleType === 'vacation_watch' ? 'vacation_watch' : scheduleType === 'on_demand' ? 'urgent' : 'standard');
+  const date = form.scheduled_date?.value || '';
+  const time = form.scheduled_time?.value || '';
+  const scheduledFor = (scheduleType === 'scheduled' && date && time) ? `${date}T${time}` : '';
+  const startDate = form.schedule_start_date?.value || '';
+  const endDate = form.schedule_end_date?.value || '';
+  const recurrenceDays = Array.from(form.querySelectorAll?.('input[name="recurrence_days"]:checked') || []).map(input => input.value);
+  const recurrencePattern = form.recurrence_pattern?.value || '';
+  return {
+    schedule_type: scheduleType,
+    request_type: scheduleType === 'vacation_watch' ? 'vacation' : scheduleType,
+    patrol_type: patrolType,
+    scheduled_for: scheduledFor || startDate || '',
+    next_run: scheduledFor || startDate || new Date().toISOString(),
+    schedule_start_date: startDate || '',
+    schedule_end_date: endDate || '',
+    end_date: endDate || '',
+    recurrence_pattern: recurrencePattern || '',
+    recurrence_days: recurrenceDays.join(','),
+    recurrence: recurrencePattern || recurrenceDays.join(',') || (scheduleType === 'recurring' ? 'Recurring' : ''),
+    schedule_notes: form.schedule_notes?.value?.trim?.() || ''
+  };
+}
+function rememberSubmittedScheduleMetadata(requestId, metadata = {}) {
+  if (!requestId) return;
+  const type = String(metadata.schedule_type || metadata.request_type || '').toLowerCase();
+  if (!/scheduled|recurring|vacation|watch/.test(type) && !metadata.scheduled_for && !metadata.schedule_start_date && !metadata.recurrence) return;
+  saveScheduledOverride(requestId, { ...metadata, status: metadata.status || 'scheduled' });
+}
+function findRecentlySubmittedRequestId(propertyId = '') {
+  const rows = (state.patrolRequests || []).filter(req => String(req.property_id || '') === String(propertyId || ''));
+  return rows.sort((a,b) => new Date(b.created_at || b.updated_at || 0) - new Date(a.created_at || a.updated_at || 0))[0]?.id || '';
+}
 function scheduledQueueRows() {
   return scheduledRequests().map(req => ({ ...req, ...(scheduledOverride(req) || {}) }));
 }
 function scheduleDateValue(req = {}) {
-  return req.next_run_at || req.next_run || req.scheduled_for || req.requested_for || req.scheduled_at || req.created_at || new Date().toISOString();
+  const override = scheduledOverride(req);
+  return override.next_run_at || override.next_run || override.scheduled_for || override.schedule_start_date || override.start_date || req.next_run_at || req.next_run || req.scheduled_for || req.schedule_start_date || req.start_date || req.requested_for || req.scheduled_at || req.created_at || new Date().toISOString();
 }
 function scheduleDateObj(req = {}) {
   const d = new Date(scheduleDateValue(req));
   return Number.isFinite(d.getTime()) ? d : new Date();
 }
 function scheduleTypeValue(req = {}) {
-  const raw = String(req.request_type || req.schedule_type || req.patrol_type || req.type || '').toLowerCase();
-  if (/vacation/.test(raw)) return 'vacation';
-  if (/recurring|repeat|weekly|daily/.test(raw)) return 'recurring';
-  if (/scheduled|future/.test(raw)) return 'scheduled';
+  const raw = String(req.request_type || req.schedule_type || req.patrol_type || req.type || scheduledRequestSearchText(req) || '').toLowerCase();
+  if (/vacation|vacation_watch|watch/.test(raw)) return 'vacation';
+  if (/recurring|repeat|weekly|daily|monthly|weekdays/.test(raw)) return 'recurring';
+  if (/scheduled|future|one-time|one time/.test(raw)) return 'scheduled';
   if (/interior/.test(raw)) return 'interior';
-  if (/exterior/.test(raw)) return 'exterior';
+  if (/exterior|perimeter/.test(raw)) return 'exterior';
   if (/lock|close/.test(raw)) return 'lockup';
   return 'scheduled';
 }
@@ -5596,7 +5660,7 @@ function scheduleTypeLabel(req = {}) {
   })[type] || statusText(type || 'Scheduled Patrol');
 }
 function scheduleRecurrenceLabel(req = {}) {
-  const raw = req.recurrence || req.recurring_pattern || req.repeat_rule || req.schedule_rule || '';
+  const raw = req.recurrence || req.recurrence_pattern || req.recurrence_days || req.recurring_pattern || req.repeat_rule || req.schedule_rule || '';
   if (raw) return String(raw).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const type = scheduleTypeValue(req);
   if (type === 'recurring') return 'Daily';
@@ -5621,7 +5685,7 @@ function scheduleStatusValue(req = {}) {
   const raw = String(override.status || req.schedule_status || req.status || 'scheduled').toLowerCase();
   if (/pause|hold/.test(raw)) return 'paused';
   if (/complete|done/.test(raw)) return 'completed';
-  if (/unassigned|pending_dispatch|pending|new|requested/.test(raw)) return 'unassigned';
+  if (/unassigned|pending_dispatch|pending|new|requested/.test(raw)) return scheduleAssignedGuard(req).id ? 'scheduled' : 'unassigned';
   return 'scheduled';
 }
 function scheduleStatusBadge(req = {}) {
@@ -5837,6 +5901,8 @@ function scheduledQueueHeader() {
   return `<header class="dashboard-header scheduled-header"><div class="title-block"><h1>Scheduled Queue</h1><p>Manage upcoming patrols, recurring coverage, and future assignments.</p></div><div class="scheduled-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="scheduled-search"><input type="search" placeholder="Search schedules..." value="${esc(state.scheduledQueueSearch || '')}" data-scheduled-search><b>⌕</b></label><button type="button" data-view="notifications">🔔${unreadNotificationsCount()?`<em>${esc(unreadNotificationsCount())}</em>`:''}</button><button type="button" data-action="scheduled-refresh">⟳ Refresh</button></div></header>`;
 }
 function scheduledQueueView() {
+  const autoSelected = selectedScheduledRequest();
+  if (autoSelected && !state.selectedScheduledRequestId) state.selectedScheduledRequestId = autoSelected.id;
   return `<div class="dashboard scheduled-queue-shell">
     ${scheduledQueueHeader()}
     ${scheduledKpiRow()}

@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.47 Settings Page Redesign */
+/* v3.0.48 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.47 Dispatch map blueprint fix */
+/* v3.0.48 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.47 Dispatch online guard filter + default map button */
+/* v3.0.48 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.47 Dispatch Board Command Center */
+/* v3.0.48 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.47 Dispatch Live GPS Command Center */
+/* v3.0.48 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.47 Pending Dispatch Command Center */
+/* v3.0.48 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.47 Dispatch route + distance/ETA fix */
+/* v3.0.48 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.47 Scheduled Queue Command Center */
+/* v3.0.48 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7580,5 +7580,206 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
   .scheduled-side-actions {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* v3.0.48 Scheduled Queue data + layout polish */
+.scheduled-queue-shell {
+  overflow-x: hidden;
+}
+.scheduled-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.scheduled-search {
+  min-width: 260px;
+  max-width: 360px;
+}
+.scheduled-toolbar {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  min-height: auto;
+  padding: 12px 14px;
+  gap: 12px;
+}
+.scheduled-tabs {
+  flex: 1 1 560px;
+  display: flex;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  gap: 8px;
+}
+.scheduled-tabs button {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(113,169,232,.10);
+  border-bottom-color: rgba(113,169,232,.10);
+  border-radius: 10px;
+  background: rgba(7,18,32,.54);
+}
+.scheduled-tabs button.active {
+  border: 1px solid rgba(46,125,255,.35);
+  border-bottom-color: rgba(46,125,255,.35);
+  border-radius: 10px;
+}
+.scheduled-toolbar-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+.scheduled-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  overflow: visible;
+}
+.scheduled-filter-bar select {
+  flex: 1 1 165px;
+  min-width: 165px;
+  max-width: 220px;
+  text-overflow: ellipsis;
+}
+.scheduled-inline-search {
+  flex: 2 1 260px;
+  min-width: 240px;
+}
+.scheduled-filter-bar button {
+  flex: 0 0 auto;
+}
+.scheduled-table {
+  overflow-x: hidden;
+}
+.scheduled-table::-webkit-scrollbar,
+.scheduled-tabs::-webkit-scrollbar {
+  display: none;
+}
+.scheduled-head,
+.scheduled-row {
+  min-width: 0;
+  width: 100%;
+  grid-template-columns: 28px 82px 88px minmax(140px, 1.3fr) 104px 112px 0 minmax(120px,.85fr) 90px 64px;
+  gap: 8px;
+}
+.scheduled-head span:nth-child(7),
+.schedule-recur-cell {
+  display: none;
+}
+.scheduled-head {
+  font-size: 10px;
+  letter-spacing: .10em;
+}
+.scheduled-row {
+  min-height: 74px;
+}
+.schedule-priority {
+  min-width: 68px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+.schedule-type-cell {
+  gap: 6px;
+  font-size: 12px;
+}
+.schedule-type-cell i {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.schedule-id-cell strong,
+.schedule-property-cell strong,
+.schedule-next-cell strong,
+.schedule-guard-cell strong {
+  font-size: 12.5px;
+}
+.schedule-id-cell small,
+.schedule-property-cell small,
+.schedule-next-cell small,
+.schedule-guard-cell small {
+  font-size: 11px;
+}
+.schedule-guard-cell {
+  grid-template-columns: 34px minmax(0,1fr);
+  gap: 8px;
+}
+.schedule-guard-cell .avatar,
+.schedule-guard-cell .avatar img,
+.schedule-unassigned-avatar {
+  width: 32px;
+  height: 32px;
+}
+.schedule-status {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.scheduled-actions {
+  gap: 5px;
+}
+.scheduled-actions button {
+  height: 32px;
+  padding: 0 7px;
+  font-size: 12px;
+}
+.scheduled-empty {
+  width: 100%;
+  min-height: 210px;
+}
+.scheduled-footer {
+  flex-wrap: wrap;
+}
+.scheduled-detail-rail .empty {
+  min-height: 78px;
+}
+@media (max-width: 1500px) {
+  .scheduled-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .scheduled-kpi-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1260px) {
+  .scheduled-layout {
+    grid-template-columns: 1fr;
+  }
+  .scheduled-detail-rail {
+    position: static;
+  }
+  .scheduled-head,
+  .scheduled-row {
+    grid-template-columns: 28px 78px 82px minmax(140px, 1.4fr) 104px 110px minmax(120px,.85fr) 90px 64px;
+  }
+  .scheduled-head span:nth-child(7),
+  .schedule-recur-cell { display:none; }
+}
+@media (max-width: 900px) {
+  .scheduled-head { display:none; }
+  .scheduled-row {
+    grid-template-columns: 28px 1fr auto;
+    gap: 10px;
+    padding: 12px 14px;
+    align-items: start;
+  }
+  .scheduled-row > div:nth-child(2),
+  .schedule-id-cell,
+  .schedule-property-cell,
+  .schedule-type-cell,
+  .schedule-next-cell,
+  .schedule-guard-cell,
+  .scheduled-row > div:nth-child(9),
+  .scheduled-actions {
+    grid-column: auto;
+  }
+  .scheduled-row .schedule-id-cell,
+  .scheduled-row .schedule-property-cell,
+  .scheduled-row .schedule-type-cell,
+  .scheduled-row .schedule-next-cell,
+  .scheduled-row .schedule-guard-cell {
+    grid-column: 2 / 4;
+  }
+  .scheduled-actions {
+    grid-column: 2 / 4;
+    justify-content: flex-start;
   }
 }
