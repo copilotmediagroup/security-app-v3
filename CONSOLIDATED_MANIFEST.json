@@ -1,18 +1,19 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.46",
-  "buildName": "DISPATCH ROUTE DISTANCE ETA FIX",
-  "type": "dispatch-route-distance-eta-fix",
+  "version": "3.0.47",
+  "buildName": "SCHEDULED QUEUE COMMAND CENTER",
+  "type": "scheduled-queue-command-center",
   "sql_required": false,
   "features": [
-    "Dispatch maps now use road-route geometry instead of straight guard-to-property lines when route data is available",
-    "Dispatch assigned patrol routes fetch OSRM road geometry and cache it in browser session storage",
-    "Dispatch route fallback uses a bent route-style path instead of a straight line if the routing service is unavailable",
-    "Dispatch map metrics now show Route Distance and ETA",
-    "Pending Dispatch mini map now shows selected/nearest online guard to destination route preview",
-    "Pending Dispatch distance now reflects road-route distance/ETA when available",
-    "Guard selector options display distance and ETA from each online guard to the request property",
-    "Changing the selected guard recalculates and refreshes the mini route map and distance",
+    "Rebuilt Scheduled Queue page from a basic table into a command-center schedule management screen",
+    "Added KPI row: Total Scheduled, Today, This Week, Recurring Routes, Unassigned, SLA Risk",
+    "Added tabs: All Scheduled, Today, This Week, Recurring, Unassigned, Completed",
+    "Added filter row for priority, property type, client, assigned guard, schedule type, and search",
+    "Added schedule table with selectable rows, priority, schedule ID, property/client, patrol type, next run, recurrence, assigned guard, status, and actions",
+    "Added selected schedule right rail with property photo, client/property details, assigned guard, run schedule, services, instructions, upcoming runs, and route preview",
+    "Added working controls: Refresh, Auto Assign, Bulk Reschedule, Clear Filters, pagination, rows per page, Pause/Resume Schedule, Reassign Guard, and row selection",
+    "Uses local browser overrides for schedule pause/resume, reschedule, and quick reassignment without new SQL",
+    "Preserved v3.0.46 dispatch route distance/ETA fix",
     "No new SQL required"
   ]
 }

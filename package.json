@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-route-distance-eta-fix",
-  "version": "3.0.46",
+  "name": "co-pilot-security-scheduled-queue-command-center",
+  "version": "3.0.47",
   "private": true,
-  "description": "Fixes Dispatch route lines and distance/ETA calculations for assigned patrols and pending dispatch requests.",
+  "description": "Redesigns Scheduled Queue into a command-center schedule management page with KPIs, filters, schedule table, selected details rail, upcoming runs, route preview, and queue actions.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

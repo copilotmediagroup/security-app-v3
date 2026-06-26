@@ -1,21 +1,22 @@
 Co Pilot Security
-Version: 3.0.46
-Build Name: DISPATCH ROUTE DISTANCE ETA FIX
+Version: 3.0.47
+Build Name: SCHEDULED QUEUE COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.45.
-- Fixed Dispatch map route behavior so assigned patrols use road-route geometry instead of straight-line guard-to-property connectors.
-- Added browser-cached route fetching for Dispatch assigned patrols and Pending Dispatch route previews.
-- Added route-aware distance and ETA calculations.
-- Dispatch Command Map now shows Route Distance and ETA metrics.
-- Pending Dispatch right-rail mini map now shows selected/nearest online guard to property distance and ETA.
-- Guard selector options now show each online guard's estimated distance and ETA to the property.
-- Changing the selected guard refreshes the distance/ETA and mini map.
+- Built from v3.0.46 Dispatch Route Distance ETA Fix.
+- Redesigned Scheduled Queue from a basic table into a full command-center schedule management page.
+- Added KPI row: Total Scheduled, Today, This Week, Recurring Routes, Unassigned, SLA Risk.
+- Added tabs: All Scheduled, Today, This Week, Recurring, Unassigned, Completed.
+- Added filters for Priority, Property Type, Client, Assigned Guard, Schedule Type, and Search.
+- Added schedule table with selectable rows, priority, schedule ID, property/client, patrol type, next run, recurrence, assigned guard, status, and actions.
+- Added selected schedule right rail with property photo, client/property details, assigned guard, schedule details, upcoming runs, and route preview.
+- Added working controls: Refresh, Auto Assign, Bulk Reschedule, Clear Filters, pagination, rows per page, Pause/Resume Schedule, Reassign Guard, and row selection.
+- Uses local browser overrides for pause/resume, quick reschedule, and quick reassignment.
 - No new SQL required.
 
 Badge:
-v3.0.46 DISPATCH ROUTE DISTANCE ETA FIX
+v3.0.47 SCHEDULED QUEUE COMMAND CENTER
 
 SQL:
 No new SQL required.

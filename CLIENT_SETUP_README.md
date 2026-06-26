@@ -1,19 +1,44 @@
-# Co Pilot Security v3.0.46 — Dispatch Route Distance ETA Fix
+# Co Pilot Security v3.0.47 — Scheduled Queue Command Center
 
 ## What changed
-- Dispatch assigned patrol routes no longer use a simple straight line.
-- Dispatch maps now request road-route geometry and cache it in browser session storage.
-- If the route service is unavailable, the app uses a bent route-style fallback path instead of a straight connector.
-- Dispatch Command Map now shows:
-  - Route Distance
-  - ETA
-- Pending Dispatch now shows route-aware distance from the selected/nearest online guard to the destination.
-- Pending Dispatch mini map now draws a route preview between the selected/nearest guard and the property.
-- Guard dropdown options show estimated distance and ETA.
-- Changing the selected guard refreshes the mini map and distance/ETA.
+The Admin `Scheduled Queue` page has been rebuilt from a basic table into a full schedule management command-center page.
 
-## Preserved
-- v3.0.45 Pending Dispatch page design.
-- Existing assignment flow.
-- Online-only guard visibility.
+## New Scheduled Queue sections
+- Header:
+  - System Operational
+  - Search schedules
+  - Notifications
+  - Refresh
+- KPI row:
+  - Total Scheduled
+  - Today
+  - This Week
+  - Recurring Routes
+  - Unassigned
+  - SLA Risk
+- Main queue:
+  - All Scheduled / Today / This Week / Recurring / Unassigned / Completed tabs
+  - Filter dropdowns
+  - Schedule table
+  - Pagination
+  - Rows per page
+- Right rail:
+  - Selected Schedule
+  - Property photo and property/client details
+  - Assigned Guard
+  - Next Run / Recurrence / Duration / Services / Instructions
+  - Upcoming Runs
+  - Route Preview
+
+## Functional behavior
+- Search filters the schedule table.
+- Tabs filter by schedule group.
+- Filters update the table.
+- Clear resets tabs/search/filters.
+- Refresh reloads data.
+- Clicking a row selects it and updates the right rail.
+- Auto Assign assigns unassigned schedules to online guards using local browser overrides.
+- Bulk Reschedule moves selected schedules to the next run window using local browser overrides.
+- Pause/Resume Schedule toggles local status.
+- Reassign Guard selects the first available online guard.
 - No new SQL required.

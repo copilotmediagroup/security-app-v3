@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.46',
-  label: 'v3.0.46 DISPATCH ROUTE DISTANCE ETA FIX'
+  version: '3.0.47',
+  label: 'v3.0.47 SCHEDULED QUEUE COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -65,7 +65,16 @@ const state = {
   pendingDispatchSelectedIds: [],
   pendingDispatchPage: 1,
   pendingDispatchPerPage: 6,
-  pendingDispatchGuardSelections: {}
+  pendingDispatchGuardSelections: {},
+  scheduledQueueSearch: '',
+  scheduledQueueTab: 'all',
+  scheduledQueueFiltersOpen: true,
+  scheduledQueueFilters: { priority: 'all', propertyType: 'all', clientId: 'all', guardId: 'all', scheduleType: 'all' },
+  selectedScheduledRequestId: '',
+  scheduledQueueSelectedIds: [],
+  scheduledQueuePage: 1,
+  scheduledQueuePerPage: 10,
+  scheduledLocalOverrides: {}
 };;
 const liveGps = {
   online: false,
@@ -5534,13 +5543,337 @@ async function assignSelectedPendingDispatch() {
   if (!guards.length) throw new Error('No online guards available for assignment.');
   for (let i = 0; i < rows.length; i++) await assignPendingDispatchRequest(rows[i].id, guards[i % guards.length].id);
 }
+
+function scheduledQueueOverridesKey() {
+  const who = state.profile?.id || state.profile?.email || 'admin';
+  return `cp_security_scheduled_queue_overrides_${who}`;
+}
+function readScheduledQueueOverrides() {
+  try { return JSON.parse(localStorage.getItem(scheduledQueueOverridesKey()) || '{}') || {}; } catch { return {}; }
+}
+function writeScheduledQueueOverrides(map = {}) {
+  try { localStorage.setItem(scheduledQueueOverridesKey(), JSON.stringify(map)); } catch {}
+}
+function scheduledOverride(req = {}) {
+  const map = { ...readScheduledQueueOverrides(), ...(state.scheduledLocalOverrides || {}) };
+  return map[String(req.id || '')] || {};
+}
+function saveScheduledOverride(requestId, patch = {}) {
+  const map = readScheduledQueueOverrides();
+  map[String(requestId)] = { ...(map[String(requestId)] || {}), ...patch, updated_at: new Date().toISOString() };
+  writeScheduledQueueOverrides(map);
+  state.scheduledLocalOverrides = map;
+}
+function scheduledQueueRows() {
+  return scheduledRequests().map(req => ({ ...req, ...(scheduledOverride(req) || {}) }));
+}
+function scheduleDateValue(req = {}) {
+  return req.next_run_at || req.next_run || req.scheduled_for || req.requested_for || req.scheduled_at || req.created_at || new Date().toISOString();
+}
+function scheduleDateObj(req = {}) {
+  const d = new Date(scheduleDateValue(req));
+  return Number.isFinite(d.getTime()) ? d : new Date();
+}
+function scheduleTypeValue(req = {}) {
+  const raw = String(req.request_type || req.schedule_type || req.patrol_type || req.type || '').toLowerCase();
+  if (/vacation/.test(raw)) return 'vacation';
+  if (/recurring|repeat|weekly|daily/.test(raw)) return 'recurring';
+  if (/scheduled|future/.test(raw)) return 'scheduled';
+  if (/interior/.test(raw)) return 'interior';
+  if (/exterior/.test(raw)) return 'exterior';
+  if (/lock|close/.test(raw)) return 'lockup';
+  return 'scheduled';
+}
+function scheduleTypeLabel(req = {}) {
+  const type = scheduleTypeValue(req);
+  return ({
+    scheduled: 'Scheduled Patrol',
+    recurring: 'Recurring Patrol',
+    vacation: 'Vacation Watch',
+    interior: 'Interior Patrol',
+    exterior: 'Exterior Patrol',
+    lockup: 'Lockup / Close'
+  })[type] || statusText(type || 'Scheduled Patrol');
+}
+function scheduleRecurrenceLabel(req = {}) {
+  const raw = req.recurrence || req.recurring_pattern || req.repeat_rule || req.schedule_rule || '';
+  if (raw) return String(raw).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const type = scheduleTypeValue(req);
+  if (type === 'recurring') return 'Daily';
+  if (type === 'vacation') return req.end_date ? `Until ${fmtDate(req.end_date)}` : 'Vacation window';
+  const d = scheduleDateObj(req);
+  return new Date(d).toDateString() === new Date().toDateString() ? 'One-time today' : 'One-time';
+}
+function schedulePriorityValue(req = {}) {
+  const raw = String(req.priority || req.priority_level || 'normal').toLowerCase();
+  if (/critical|emergency/.test(raw)) return 'critical';
+  if (/high|urgent/.test(raw)) return 'high';
+  if (/low/.test(raw)) return 'low';
+  return 'medium';
+}
+function schedulePriorityBadge(req = {}) {
+  const key = schedulePriorityValue(req);
+  const label = ({critical:'Critical', high:'High', medium:'Medium', low:'Low'})[key] || 'Medium';
+  return `<span class="schedule-priority ${esc(key)}">▲ ${esc(label)}</span>`;
+}
+function scheduleStatusValue(req = {}) {
+  const override = scheduledOverride(req);
+  const raw = String(override.status || req.schedule_status || req.status || 'scheduled').toLowerCase();
+  if (/pause|hold/.test(raw)) return 'paused';
+  if (/complete|done/.test(raw)) return 'completed';
+  if (/unassigned|pending_dispatch|pending|new|requested/.test(raw)) return 'unassigned';
+  return 'scheduled';
+}
+function scheduleStatusBadge(req = {}) {
+  const key = scheduleStatusValue(req);
+  const label = ({scheduled:'Scheduled', unassigned:'Unassigned', paused:'Paused', completed:'Completed'})[key] || statusText(key);
+  return `<span class="schedule-status ${esc(key)}"><i></i>${esc(label)}</span>`;
+}
+function scheduleId(req = {}) {
+  return req.schedule_id || req.request_number || `SCH-${String(req.id || '').replace(/[^a-z0-9]/ig,'').slice(0, 6).toUpperCase() || '0000'}`;
+}
+function scheduleNextRunLabel(req = {}) {
+  const d = scheduleDateObj(req);
+  const today = new Date();
+  const tomorrow = new Date(Date.now() + 86400000);
+  const day = d.toDateString() === today.toDateString() ? 'Today' : d.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : fmtDate(d);
+  return `${day}, ${fmtTime(d)}`;
+}
+function scheduleAssignedGuard(req = {}) {
+  const override = scheduledOverride(req);
+  const id = override.guard_id || req.guard_id || req.assigned_guard_id || '';
+  return guardById(id) || {};
+}
+function scheduleGuardName(req = {}) {
+  const g = scheduleAssignedGuard(req);
+  return g.name || g.display_name || req.guard_name || (scheduleStatusValue(req) === 'unassigned' ? 'Unassigned' : 'Unassigned');
+}
+function scheduledQueueCounts() {
+  const rows = scheduledQueueRows();
+  const now = Date.now();
+  const today = new Date().toDateString();
+  const weekEnd = now + 7 * 86400000;
+  return {
+    total: rows.length,
+    today: rows.filter(r => scheduleDateObj(r).toDateString() === today).length,
+    week: rows.filter(r => scheduleDateObj(r).getTime() <= weekEnd).length,
+    recurring: rows.filter(r => scheduleTypeValue(r) === 'recurring').length,
+    unassigned: rows.filter(r => scheduleStatusValue(r) === 'unassigned' || !scheduleAssignedGuard(r).id).length,
+    risk: rows.filter(r => (scheduleStatusValue(r) === 'unassigned' && scheduleDateObj(r).getTime() - now < 2 * 3600000) || schedulePriorityValue(r) === 'critical').length,
+    completed: rows.filter(r => scheduleStatusValue(r) === 'completed').length
+  };
+}
+function scheduledKpi(icon, label, value, subtext, tone='blue') {
+  return `<article class="scheduled-kpi ${esc(tone)}"><div class="scheduled-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function scheduledKpiRow() {
+  const c = scheduledQueueCounts();
+  return `<section class="scheduled-kpi-row">
+    ${scheduledKpi('▣','Total Scheduled',c.total,'All upcoming assignments','blue')}
+    ${scheduledKpi('◷','Today',c.today,'Scheduled for today','red')}
+    ${scheduledKpi('▤','This Week',c.week,'Scheduled this week','blue')}
+    ${scheduledKpi('↻','Recurring Routes',c.recurring,'Active recurring schedules','green')}
+    ${scheduledKpi('♙','Unassigned',c.unassigned,'Need guard assignment','orange')}
+    ${scheduledKpi('⚠','SLA Risk',c.risk,'At risk of breach','red')}
+  </section>`;
+}
+function scheduledTab(key, label, count) {
+  const active = (state.scheduledQueueTab || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-scheduled-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function scheduledTabs() {
+  const c = scheduledQueueCounts();
+  return `<div class="scheduled-tabs">
+    ${scheduledTab('all','All Scheduled',c.total)}
+    ${scheduledTab('today','Today',c.today)}
+    ${scheduledTab('week','This Week',c.week)}
+    ${scheduledTab('recurring','Recurring',c.recurring)}
+    ${scheduledTab('unassigned','Unassigned',c.unassigned)}
+    ${scheduledTab('completed','Completed',c.completed)}
+  </div>`;
+}
+function scheduleClientOptions() {
+  const ids = new Set(scheduledQueueRows().map(req => String(req.client_id || '')).filter(Boolean));
+  const rows = (state.clients || []).filter(c => ids.has(String(c.id)));
+  return `<option value="all">All Clients</option>${rows.map(c => `<option value="${esc(c.id)}" ${String(state.scheduledQueueFilters.clientId) === String(c.id) ? 'selected' : ''}>${esc(c.name || c.display_name || c.email || 'Client')}</option>`).join('')}`;
+}
+function scheduleGuardOptions(selectedId = '') {
+  const guards = adminAssignableGuards();
+  return `<option value="all">All Assigned Guards</option>${guards.map(g => `<option value="${esc(g.id)}" ${String(selectedId) === String(g.id) ? 'selected' : ''}>${esc(adminGuardOptionLabel(g))}</option>`).join('')}`;
+}
+function filteredScheduledQueueRows() {
+  let rows = scheduledQueueRows();
+  const q = String(state.scheduledQueueSearch || '').trim().toLowerCase();
+  const filters = state.scheduledQueueFilters || {};
+  const tab = state.scheduledQueueTab || 'all';
+  const now = Date.now();
+  const today = new Date().toDateString();
+  if (tab === 'today') rows = rows.filter(r => scheduleDateObj(r).toDateString() === today);
+  if (tab === 'week') rows = rows.filter(r => scheduleDateObj(r).getTime() <= now + 7 * 86400000);
+  if (tab === 'recurring') rows = rows.filter(r => scheduleTypeValue(r) === 'recurring');
+  if (tab === 'unassigned') rows = rows.filter(r => scheduleStatusValue(r) === 'unassigned' || !scheduleAssignedGuard(r).id);
+  if (tab === 'completed') rows = rows.filter(r => scheduleStatusValue(r) === 'completed');
+  if (q) rows = rows.filter(r => [scheduleId(r), requestTitle(r), propertyLabel(r), propertyAddress(r), requestClientName(r), scheduleGuardName(r)].join(' ').toLowerCase().includes(q));
+  if (filters.priority && filters.priority !== 'all') rows = rows.filter(r => schedulePriorityValue(r) === filters.priority);
+  if (filters.propertyType && filters.propertyType !== 'all') rows = rows.filter(r => propertyTypeLabel(propertyById(r.property_id)) === filters.propertyType);
+  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(r => String(r.client_id) === String(filters.clientId));
+  if (filters.guardId && filters.guardId !== 'all') rows = rows.filter(r => String((scheduledOverride(r).guard_id || r.guard_id || r.assigned_guard_id || '')) === String(filters.guardId));
+  if (filters.scheduleType && filters.scheduleType !== 'all') rows = rows.filter(r => scheduleTypeValue(r) === filters.scheduleType);
+  return rows.sort((a,b) => scheduleDateObj(a) - scheduleDateObj(b));
+}
+function selectedScheduledRequest() {
+  const rows = filteredScheduledQueueRows();
+  return rows.find(r => String(r.id) === String(state.selectedScheduledRequestId)) || rows[0] || null;
+}
+function scheduledFilterBar() {
+  if (!state.scheduledQueueFiltersOpen) return '';
+  const types = [...new Set(scheduledQueueRows().map(req => propertyTypeLabel(propertyById(req.property_id))).filter(Boolean))];
+  return `<div class="scheduled-filter-bar">
+    <select data-scheduled-filter="priority"><option value="all">All Priorities</option><option value="critical" ${state.scheduledQueueFilters.priority === 'critical' ? 'selected' : ''}>Critical</option><option value="high" ${state.scheduledQueueFilters.priority === 'high' ? 'selected' : ''}>High</option><option value="medium" ${state.scheduledQueueFilters.priority === 'medium' ? 'selected' : ''}>Medium</option><option value="low" ${state.scheduledQueueFilters.priority === 'low' ? 'selected' : ''}>Low</option></select>
+    <select data-scheduled-filter="propertyType"><option value="all">All Property Types</option>${types.map(t => `<option value="${esc(t)}" ${state.scheduledQueueFilters.propertyType === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+    <select data-scheduled-filter="clientId">${scheduleClientOptions()}</select>
+    <select data-scheduled-filter="guardId">${scheduleGuardOptions(state.scheduledQueueFilters.guardId)}</select>
+    <select data-scheduled-filter="scheduleType"><option value="all">All Schedule Types</option><option value="scheduled" ${state.scheduledQueueFilters.scheduleType === 'scheduled' ? 'selected' : ''}>Scheduled Patrol</option><option value="recurring" ${state.scheduledQueueFilters.scheduleType === 'recurring' ? 'selected' : ''}>Recurring Patrol</option><option value="vacation" ${state.scheduledQueueFilters.scheduleType === 'vacation' ? 'selected' : ''}>Vacation Watch</option><option value="exterior" ${state.scheduledQueueFilters.scheduleType === 'exterior' ? 'selected' : ''}>Exterior Patrol</option><option value="interior" ${state.scheduledQueueFilters.scheduleType === 'interior' ? 'selected' : ''}>Interior Patrol</option><option value="lockup" ${state.scheduledQueueFilters.scheduleType === 'lockup' ? 'selected' : ''}>Lockup / Close</option></select>
+    <label class="scheduled-inline-search"><input type="search" placeholder="Search by property, client, ID..." value="${esc(state.scheduledQueueSearch || '')}" data-scheduled-search><b>⌕</b></label>
+    <button type="button" data-action="scheduled-clear-filters">⌁ Clear</button>
+  </div>`;
+}
+function scheduledQueueToolbar() {
+  return `<div class="scheduled-toolbar">
+    ${scheduledTabs()}
+    <div class="scheduled-toolbar-actions"><button type="button" class="ghost-button" data-action="scheduled-auto-assign">Auto Assign</button><button type="button" class="primary-button" data-action="scheduled-bulk-reschedule">▣ Bulk Reschedule</button></div>
+  </div>
+  ${scheduledFilterBar()}`;
+}
+function scheduledRow(req = {}) {
+  const selected = String(state.selectedScheduledRequestId || '') === String(req.id);
+  const checked = (state.scheduledQueueSelectedIds || []).map(String).includes(String(req.id));
+  const g = scheduleAssignedGuard(req);
+  const guardName = scheduleGuardName(req);
+  const guardPhoto = g.photo_url || g.avatar_url || g.image_url || '';
+  const status = scheduleStatusValue(req);
+  return `<div class="scheduled-row ${selected ? 'selected' : ''}" data-request-id="${esc(req.id)}">
+    <label class="schedule-check"><input type="checkbox" ${checked ? 'checked' : ''} data-scheduled-check="${esc(req.id)}"></label>
+    <div>${schedulePriorityBadge(req)}</div>
+    <button type="button" class="schedule-id-cell" data-action="select-scheduled" data-request-id="${esc(req.id)}"><strong>${esc(scheduleId(req))}</strong><small>#${esc(shortRequestId(req.id))}</small></button>
+    <button type="button" class="schedule-property-cell" data-action="select-scheduled" data-request-id="${esc(req.id)}"><strong>${esc(propertyLabel(req))}</strong><small>${esc(requestClientName(req))}</small></button>
+    <div class="schedule-type-cell"><i>${scheduleTypeValue(req) === 'vacation' ? '▣' : scheduleTypeValue(req) === 'recurring' ? '↻' : '🛡'}</i><span>${esc(scheduleTypeLabel(req))}</span></div>
+    <div class="schedule-next-cell"><strong>${esc(scheduleNextRunLabel(req))}</strong><small>${esc(fmtDate(scheduleDateObj(req)))}</small></div>
+    <div class="schedule-recur-cell"><strong>${esc(scheduleRecurrenceLabel(req))}</strong><small>${esc(fmtTime(scheduleDateObj(req)))}</small></div>
+    <div class="schedule-guard-cell">${g.id ? `${avatar(guardName, guardPhoto)}<span><strong>${esc(guardName)}</strong><small>${esc(typeof liveGpsGuardBadge === 'function' ? liveGpsGuardBadge(g) : (g.id || 'Guard'))}</small></span>` : `<div class="schedule-unassigned-avatar"></div><span><strong>Unassigned</strong><small>Needs guard</small></span>`}</div>
+    <div>${scheduleStatusBadge(req)}</div>
+    <div class="scheduled-actions"><button type="button" data-action="select-scheduled" data-request-id="${esc(req.id)}">View</button><button type="button" data-action="scheduled-row-menu" data-request-id="${esc(req.id)}">⋮</button></div>
+  </div>`;
+}
+function scheduledQueueTable() {
+  const rows = filteredScheduledQueueRows();
+  const per = Number(state.scheduledQueuePerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.scheduledQueuePage = Math.min(Math.max(1, state.scheduledQueuePage || 1), maxPage);
+  const start = (state.scheduledQueuePage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<div class="scheduled-table">
+    <div class="scheduled-head"><span></span><span>Priority</span><span>Schedule ID</span><span>Property / Client</span><span>Patrol Type</span><span>Next Run</span><span>Recurrence</span><span>Assigned Guard</span><span>Status</span><span>Actions</span></div>
+    ${pageRows.length ? pageRows.map(scheduledRow).join('') : '<div class="scheduled-empty">No scheduled patrols match your filters.</div>'}
+  </div>`;
+}
+function scheduledPagination() {
+  const rows = filteredScheduledQueueRows();
+  const per = Number(state.scheduledQueuePerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  const start = rows.length ? (state.scheduledQueuePage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.scheduledQueuePage || 1) * per);
+  return `<footer class="scheduled-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} schedules</span><div class="scheduled-pages"><button type="button" data-action="scheduled-page-prev">‹</button><strong>${esc(state.scheduledQueuePage || 1)}</strong><button type="button" data-action="scheduled-page-next">›</button></div><select data-scheduled-per-page><option value="8" ${per === 8 ? 'selected' : ''}>8 per page</option><option value="10" ${per === 10 ? 'selected' : ''}>10 per page</option><option value="20" ${per === 20 ? 'selected' : ''}>20 per page</option></select></footer>`;
+}
+function scheduleUpcomingRuns(req = {}) {
+  const base = scheduleDateObj(req);
+  const type = scheduleTypeValue(req);
+  const rows = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(base.getTime());
+    if (type === 'recurring') d.setDate(base.getDate() + i);
+    else if (type === 'vacation') d.setDate(base.getDate() + i);
+    else d.setDate(base.getDate() + i * 7);
+    rows.push(d);
+  }
+  return `<section class="scheduled-side-section"><div class="side-head"><h3>Upcoming Runs</h3><button type="button" data-action="scheduled-view-runs">View All</button></div><div class="scheduled-runs">${rows.map((d,i) => `<div><i class="${i===0?'active':''}"></i><span>${esc(fmtDate(d))}</span><small>${esc(i===0 ? 'Next' : d.toLocaleDateString(undefined,{weekday:'short'}))}</small><strong>${esc(fmtTime(d))}</strong></div>`).join('')}</div></section>`;
+}
+function scheduledRoutePreview(req = {}) {
+  const entry = dispatchNearestOnlineGuardEntry(req);
+  const end = getPropertyCoords(req);
+  const start = entry?.coords || null;
+  if (!start || !end) return `<section class="scheduled-side-section route"><h3>Route Preview</h3><div class="scheduled-route-preview"><div class="pending-mini-empty">Waiting for guard GPS and property coordinates.</div></div></section>`;
+  const route = dispatchRouteForPoints(start, end);
+  const points = route?.points?.length >= 2 ? route.points : dispatchRouteFallbackPoints(start, end);
+  const all = [start,end,...points];
+  let minLat = Math.min(...all.map(p=>p.lat)), maxLat = Math.max(...all.map(p=>p.lat)), minLng = Math.min(...all.map(p=>p.lng)), maxLng = Math.max(...all.map(p=>p.lng));
+  const latPad = Math.max(.002,(maxLat-minLat)*.35), lngPad = Math.max(.002,(maxLng-minLng)*.35);
+  const bounds = { minLat:minLat-latPad, maxLat:maxLat+latPad, minLng:minLng-lngPad, maxLng:maxLng+lngPad };
+  const gPct = mapPercentForPoint(start.lat,start.lng,bounds), pPct = mapPercentForPoint(end.lat,end.lng,bounds);
+  const path = dispatchRouteSvgPath(points,bounds);
+  return `<section class="scheduled-side-section route"><h3>Route Preview</h3><div class="scheduled-route-preview"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(path)}"></path></svg><span class="rp guard" style="left:${gPct.x.toFixed(2)}%;top:${gPct.y.toFixed(2)}%">1</span><span class="rp property" style="left:${pPct.x.toFixed(2)}%;top:${pPct.y.toFixed(2)}%">2</span><em>Start / End</em><small>${esc(route?.distanceMiles ? `${route.distanceMiles.toFixed(1)} mi · ETA ${route.etaMin || '—'} min` : 'Route pending')}</small></div></section>`;
+}
+function scheduledDetailRail() {
+  const req = selectedScheduledRequest();
+  if (!req) return `<aside class="scheduled-detail-rail"><section class="panel panel-pad scheduled-selected"><div class="empty">Select a schedule.</div></section></aside>`;
+  const property = propertyById(req.property_id);
+  const photo = propertyImageValue(property);
+  const guard = scheduleAssignedGuard(req);
+  const guardName = scheduleGuardName(req);
+  const guardPhoto = guard.photo_url || guard.avatar_url || guard.image_url || '';
+  return `<aside class="scheduled-detail-rail"><section class="panel panel-pad scheduled-selected">
+    <button type="button" class="scheduled-close" data-action="scheduled-clear-selected">×</button>
+    <h2>Selected Schedule</h2>
+    <div class="scheduled-property-card"><div>${photo ? `<img src="${esc(photo)}" alt="${esc(propertyLabel(req))}">` : `<span>${esc(initials(propertyLabel(req)))}</span>`}</div><aside><h3>${esc(propertyLabel(req))}</h3><p>${esc(propertyAddress(req))}</p><small>Client</small><strong>${esc(requestClientName(req))}</strong></aside></div>
+    <div class="scheduled-side-grid"><div><span>Property Type</span><strong>${esc(propertyTypeLabel(property))}</strong></div><div><span>Patrol Type</span><strong>${esc(scheduleTypeLabel(req))}</strong></div></div>
+    <div class="scheduled-assigned-card"><span>Assigned Guard</span>${guard.id ? `<div>${avatar(guardName, guardPhoto)}<strong>${esc(guardName)}</strong><small>${esc(typeof liveGpsGuardBadge === 'function' ? liveGpsGuardBadge(guard) : guard.id)}</small></div>` : `<div><span class="schedule-unassigned-avatar"></span><strong>Unassigned</strong><small>Needs guard</small></div>`}<button type="button" data-view="messages">☎</button></div>
+    <dl class="scheduled-detail-list"><dt>Next Run</dt><dd>${esc(scheduleNextRunLabel(req))}</dd><dt>Recurrence</dt><dd>${esc(scheduleRecurrenceLabel(req))}</dd><dt>Estimated Duration</dt><dd>${esc(req.estimated_duration || req.duration || '45 min')}</dd><dt>Requested Services</dt><dd>${esc(req.services || req.requested_services || req.instructions || 'Patrol, perimeter check, photo proof')}</dd><dt>Special Instructions</dt><dd>${esc(req.special_instructions || req.notes || 'No special instructions.')}</dd></dl>
+    <div class="scheduled-side-actions"><button type="button" class="primary-button" data-action="scheduled-edit" data-request-id="${esc(req.id)}">✎ Edit Schedule</button><button type="button" class="ghost-button" data-action="scheduled-reassign" data-request-id="${esc(req.id)}">♙ Reassign Guard</button><button type="button" class="ghost-button" data-action="scheduled-pause" data-request-id="${esc(req.id)}">${scheduleStatusValue(req)==='paused'?'▶ Resume Schedule':'⏸ Pause Schedule'}</button><button type="button" class="ghost-button" data-action="scheduled-view-full" data-request-id="${esc(req.id)}">⊙ View Full Details</button></div>
+    ${scheduleUpcomingRuns(req)}
+    ${scheduledRoutePreview(req)}
+  </section></aside>`;
+}
+function scheduledQueueHeader() {
+  return `<header class="dashboard-header scheduled-header"><div class="title-block"><h1>Scheduled Queue</h1><p>Manage upcoming patrols, recurring coverage, and future assignments.</p></div><div class="scheduled-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="scheduled-search"><input type="search" placeholder="Search schedules..." value="${esc(state.scheduledQueueSearch || '')}" data-scheduled-search><b>⌕</b></label><button type="button" data-view="notifications">🔔${unreadNotificationsCount()?`<em>${esc(unreadNotificationsCount())}</em>`:''}</button><button type="button" data-action="scheduled-refresh">⟳ Refresh</button></div></header>`;
+}
+function scheduledQueueView() {
+  return `<div class="dashboard scheduled-queue-shell">
+    ${scheduledQueueHeader()}
+    ${scheduledKpiRow()}
+    <section class="scheduled-layout">
+      <main class="scheduled-main panel">
+        ${scheduledQueueToolbar()}
+        ${scheduledQueueTable()}
+        ${scheduledPagination()}
+      </main>
+      ${scheduledDetailRail()}
+    </section>
+  </div>`;
+}
+async function autoAssignScheduledQueue() {
+  const rows = filteredScheduledQueueRows().filter(r => scheduleStatusValue(r) === 'unassigned' || !scheduleAssignedGuard(r).id);
+  const guards = dispatchMapOnlineGuards().map(e => e.guard);
+  if (!rows.length) throw new Error('No unassigned schedules to auto assign.');
+  if (!guards.length) throw new Error('No online guards available.');
+  rows.slice(0, 3).forEach((req, idx) => saveScheduledOverride(req.id, { guard_id: guards[idx % guards.length].id, status: 'scheduled' }));
+  await loadData().catch(() => {});
+}
+function bulkRescheduleScheduledQueue() {
+  const ids = (state.scheduledQueueSelectedIds || []).length ? state.scheduledQueueSelectedIds : filteredScheduledQueueRows().slice(0, 3).map(r => r.id);
+  ids.forEach(id => {
+    const req = state.patrolRequests.find(r => String(r.id) === String(id));
+    const d = req ? scheduleDateObj(req) : new Date();
+    d.setDate(d.getDate() + 1);
+    saveScheduledOverride(id, { next_run: d.toISOString(), scheduled_for: d.toISOString() });
+  });
+}
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
     if (state.view === 'dispatch-board') return dispatchBoardView();
     if (state.view === 'live-gps') return dispatchLiveGpsView();
     if (state.view === 'pending-dispatch') return pendingDispatchView();
-    if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
+    if (state.view === 'scheduled-queue') return scheduledQueueView();
     if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
     if (state.view === 'guard-approvals') return guardApprovalsView();
     if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
@@ -5824,6 +6157,101 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.scheduledTab) {
+      state.scheduledQueueTab = button.dataset.scheduledTab || 'all';
+      state.scheduledQueuePage = 1;
+      state.selectedScheduledRequestId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-scheduled') {
+      state.selectedScheduledRequestId = button.dataset.requestId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-refresh') {
+      await loadData();
+      render();
+      toast('Scheduled queue refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-clear-filters') {
+      state.scheduledQueueTab = 'all';
+      state.scheduledQueueSearch = '';
+      state.scheduledQueueFilters = { priority: 'all', propertyType: 'all', clientId: 'all', guardId: 'all', scheduleType: 'all' };
+      state.scheduledQueuePage = 1;
+      state.selectedScheduledRequestId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-auto-assign') {
+      await autoAssignScheduledQueue();
+      render();
+      toast('Scheduled auto assignment complete.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-bulk-reschedule') {
+      bulkRescheduleScheduledQueue();
+      render();
+      toast('Selected schedules moved to the next run window.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-page-prev') {
+      state.scheduledQueuePage = Math.max(1, (state.scheduledQueuePage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredScheduledQueueRows().length / Number(state.scheduledQueuePerPage || 10)));
+      state.scheduledQueuePage = Math.min(maxPage, (state.scheduledQueuePage || 1) + 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-clear-selected') {
+      state.selectedScheduledRequestId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-edit') {
+      state.selectedScheduledRequestId = button.dataset.requestId || state.selectedScheduledRequestId;
+      toast('Edit mode selected. Full edit modal is ready for the next form build.', 'success');
+      render();
+      return;
+    }
+    if (button.dataset.action === 'scheduled-reassign') {
+      const reqId = button.dataset.requestId || state.selectedScheduledRequestId;
+      const guard = dispatchMapOnlineGuards()[0]?.guard || adminAssignableGuards()[0];
+      if (!guard) throw new Error('No active guards available for reassignment.');
+      saveScheduledOverride(reqId, { guard_id: guard.id, status: 'scheduled' });
+      render();
+      toast('Schedule reassigned to the first available online guard.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-pause') {
+      const reqId = button.dataset.requestId || state.selectedScheduledRequestId;
+      const req = state.patrolRequests.find(r => String(r.id) === String(reqId)) || {};
+      const paused = scheduleStatusValue(req) === 'paused';
+      saveScheduledOverride(reqId, { status: paused ? 'scheduled' : 'paused' });
+      render();
+      toast(paused ? 'Schedule resumed.' : 'Schedule paused.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-view-full') {
+      state.selectedScheduledRequestId = button.dataset.requestId || state.selectedScheduledRequestId;
+      toast('Full schedule details selected for the next detail build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-view-runs') {
+      toast('Upcoming runs are shown in the selected schedule panel.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'scheduled-row-menu') {
+      state.selectedScheduledRequestId = button.dataset.requestId || state.selectedScheduledRequestId;
+      render();
+      toast('Schedule action menu selected.', 'success');
+      return;
+    }
+
     if (button.dataset.action === 'select-pending-request') {
       state.selectedPendingRequestId = button.dataset.requestId || '';
       render();
@@ -6185,6 +6613,12 @@ document.addEventListener('input', event => {
     render();
     return;
   }
+  if (input && input.hasAttribute('data-scheduled-search')) {
+    state.scheduledQueueSearch = input.value || '';
+    state.scheduledQueuePage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-pending-filter')) {
     const key = input.dataset.pendingFilter;
     state.pendingDispatchFilters = { ...(state.pendingDispatchFilters || {}), [key]: input.value || 'all' };
@@ -6204,6 +6638,27 @@ document.addEventListener('input', event => {
     const set = new Set((state.pendingDispatchSelectedIds || []).map(String));
     if (input.checked) set.add(String(id)); else set.delete(String(id));
     state.pendingDispatchSelectedIds = [...set];
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-filter')) {
+    const key = input.dataset.scheduledFilter;
+    state.scheduledQueueFilters = { ...(state.scheduledQueueFilters || {}), [key]: input.value || 'all' };
+    state.scheduledQueuePage = 1;
+    state.selectedScheduledRequestId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-per-page')) {
+    state.scheduledQueuePerPage = Number(input.value || 10);
+    state.scheduledQueuePage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-check')) {
+    const id = input.dataset.scheduledCheck;
+    const set = new Set((state.scheduledQueueSelectedIds || []).map(String));
+    if (input.checked) set.add(String(id)); else set.delete(String(id));
+    state.scheduledQueueSelectedIds = [...set];
     return;
   }
   if (input && input.hasAttribute('data-assign-guard') && state.role === 'admin' && state.view === 'pending-dispatch') {
@@ -6277,6 +6732,12 @@ document.addEventListener('change', event => {
     render();
     return;
   }
+  if (input && input.hasAttribute('data-scheduled-search')) {
+    state.scheduledQueueSearch = input.value || '';
+    state.scheduledQueuePage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-pending-filter')) {
     const key = input.dataset.pendingFilter;
     state.pendingDispatchFilters = { ...(state.pendingDispatchFilters || {}), [key]: input.value || 'all' };
@@ -6296,6 +6757,27 @@ document.addEventListener('change', event => {
     const set = new Set((state.pendingDispatchSelectedIds || []).map(String));
     if (input.checked) set.add(String(id)); else set.delete(String(id));
     state.pendingDispatchSelectedIds = [...set];
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-filter')) {
+    const key = input.dataset.scheduledFilter;
+    state.scheduledQueueFilters = { ...(state.scheduledQueueFilters || {}), [key]: input.value || 'all' };
+    state.scheduledQueuePage = 1;
+    state.selectedScheduledRequestId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-per-page')) {
+    state.scheduledQueuePerPage = Number(input.value || 10);
+    state.scheduledQueuePage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-scheduled-check')) {
+    const id = input.dataset.scheduledCheck;
+    const set = new Set((state.scheduledQueueSelectedIds || []).map(String));
+    if (input.checked) set.add(String(id)); else set.delete(String(id));
+    state.scheduledQueueSelectedIds = [...set];
     return;
   }
   if (input && input.hasAttribute('data-assign-guard') && state.role === 'admin' && state.view === 'pending-dispatch') {
