@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.56 Settings Page Redesign */
+/* v3.0.57 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.56 Dispatch map blueprint fix */
+/* v3.0.57 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.56 Dispatch online guard filter + default map button */
+/* v3.0.57 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.56 Dispatch Board Command Center */
+/* v3.0.57 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Dispatch Live GPS Command Center */
+/* v3.0.57 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Pending Dispatch Command Center */
+/* v3.0.57 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Dispatch route + distance/ETA fix */
+/* v3.0.57 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Scheduled Queue Command Center */
+/* v3.0.57 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.56 Scheduled Queue data + layout polish */
+/* v3.0.57 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Guards Data + Layout Fix */
+/* v3.0.57 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Guards data + layout fix */
+/* v3.0.57 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.56 Guard Approvals Command Center */
+/* v3.0.57 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.56 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.57 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.56 Client login + Dispatch sidebar proportion fix */
+/* v3.0.57 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9472,7 +9472,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   font-size: 10px !important;
 }
 
-/* v3.0.56 Dispatch sidebar profile overlap fix */
+/* v3.0.57 Dispatch sidebar profile overlap fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   align-content: stretch !important;
@@ -9551,7 +9551,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 2 !important;
 }
 
-/* v3.0.56 Dispatch sidebar overlap fix - hard separation between profile and nav */
+/* v3.0.57 Dispatch sidebar overlap fix - hard separation between profile and nav */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -9636,7 +9636,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   flex-shrink: 0 !important;
 }
 
-/* v3.0.56 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
+/* v3.0.57 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   row-gap: 0 !important;
@@ -9726,4 +9726,111 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .sidebar.global-sidebar-redesign.sidebar-admin .nav-item.active {
   z-index: 3 !important;
+}
+
+/* v3.0.57 Sidebar profile/nav stack fix
+   The Dispatch profile now lives inside a fixed reserved zone, so Dashboard cannot render underneath it. */
+.sidebar.global-sidebar-redesign.sidebar-admin {
+  display: grid !important;
+  grid-template-rows: auto 124px minmax(0, 1fr) auto !important;
+  row-gap: 12px !important;
+  align-content: stretch !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone {
+  grid-row: 2 !important;
+  height: 124px !important;
+  min-height: 124px !important;
+  max-height: 124px !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 4 !important;
+  margin: 0 !important;
+  padding: 0 0 24px 0 !important;
+  box-sizing: border-box !important;
+  border-bottom: 1px solid rgba(113,169,232,.14) !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-card {
+  position: static !important;
+  z-index: auto !important;
+  width: 100% !important;
+  height: 92px !important;
+  min-height: 92px !important;
+  max-height: 92px !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) !important;
+  grid-template-areas: 'avatar copy' !important;
+  align-items: center !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .avatar {
+  grid-area: avatar !important;
+  position: static !important;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  min-height: 52px !important;
+  transform: none !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-main-copy {
+  grid-area: copy !important;
+  position: static !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  transform: none !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-role-pill,
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-chevron {
+  display: none !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-card strong,
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-card span,
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-main-copy em {
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-card strong {
+  font-size: 13px !important;
+  line-height: 1.12 !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-card span {
+  font-size: 10.5px !important;
+  line-height: 1.12 !important;
+  margin-top: 4px !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .admin-profile-zone .profile-main-copy em {
+  display: inline-flex !important;
+  width: max-content !important;
+  font-size: 10.5px !important;
+  margin-top: 6px !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-scroll {
+  grid-row: 3 !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-scroll .nav-item:first-of-type,
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-scroll .nav-item:first-child {
+  margin-top: 0 !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-item {
+  position: relative !important;
+  z-index: 1 !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-item.active {
+  z-index: 2 !important;
+}
+.sidebar.global-sidebar-redesign:not(.sidebar-admin) .profile-zone {
+  display: contents;
 }

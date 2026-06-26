@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-sidebar-hard-separation",
-  "version": "3.0.56",
+  "name": "co-pilot-security-sidebar-profile-nav-stack-fix",
+  "version": "3.0.57",
   "private": true,
-  "description": "Hard separates Dispatch/Admin sidebar profile from nav so the Dashboard button cannot sit underneath the profile card.",
+  "description": "Fixes Dispatch/Admin sidebar by reserving a real profile zone above nav so Dashboard cannot render under the profile.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

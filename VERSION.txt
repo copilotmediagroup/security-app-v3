@@ -1,19 +1,19 @@
 Co Pilot Security
-Version: 3.0.56
-Build Name: DISPATCH SIDEBAR HARD SEPARATION
+Version: 3.0.57
+Build Name: SIDEBAR PROFILE NAV STACK FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.55 Dispatch Sidebar Overlap Fix.
-- Hard-separated the Dispatch/Admin profile card from the Dashboard nav button.
-- Added fixed bottom spacing below the Dispatch profile card.
-- Added a divider and top padding before the Dispatch nav list.
-- Dashboard should now be clearly below the profile card, not behind or touching it.
-- Guard and Client sidebars remain preserved.
+- Built from v3.0.56.
+- Fixed the real cause of the Dispatch sidebar issue.
+- The Dispatch profile card is now wrapped inside a reserved profile zone.
+- The Dashboard/nav list now starts in a separate grid row below the profile zone.
+- Dashboard can no longer render underneath or on top of the profile card.
+- Guard and Client sidebars are preserved.
 - No new SQL required.
 
 Badge:
-v3.0.56 DISPATCH SIDEBAR HARD SEPARATION
+v3.0.57 SIDEBAR PROFILE NAV STACK FIX
 
 SQL:
 No new SQL required.

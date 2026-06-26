@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T22-08-v3056';
+const CP_DEV_CACHE_BUST = '2026-06-25T22-18-v3057';
 const BUILD = {
-  version: '3.0.56',
-  label: 'v3.0.56 DISPATCH SIDEBAR HARD SEPARATION'
+  version: '3.0.57',
+  label: 'v3.0.57 SIDEBAR PROFILE NAV STACK FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -1465,15 +1465,17 @@ function renderSidebar() {
       <div class="logo-box"><span>CP</span></div>
       <div><strong>Co Pilot</strong><small>Security</small></div>
     </div>
-    <div class="profile-card">
-      ${avatar(name, photo)}
-      <div class="profile-main-copy">
-        <strong>${esc(name)}</strong>
-        <span>${esc(portalText)}</span>
-        <em><i></i>Online</em>
+    <div class="${role === 'admin' ? 'admin-profile-zone' : 'profile-zone'}">
+      <div class="profile-card">
+        ${avatar(name, photo)}
+        <div class="profile-main-copy">
+          <strong>${esc(name)}</strong>
+          <span>${esc(portalText)}</span>
+          <em><i></i>Online</em>
+        </div>
+        <b class="profile-role-pill">${esc(roleText)}</b>
+        <i class="profile-chevron">⌄</i>
       </div>
-      <b class="profile-role-pill">${esc(roleText)}</b>
-      <i class="profile-chevron">⌄</i>
     </div>
     <div class="nav-scroll">
       ${nav.map(item => {

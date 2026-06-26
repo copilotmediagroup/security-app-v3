@@ -1,11 +1,11 @@
-# Co Pilot Security v3.0.56 — Dispatch Sidebar Hard Separation
+# Co Pilot Security v3.0.57 — Sidebar Profile Nav Stack Fix
 
 ## What changed
-- Hard-separated the Dispatch/Admin profile card from the Dashboard button.
-- Added fixed space below the profile card.
-- Added divider and padding before the nav list.
-- The Dashboard button should no longer sit under, behind, or touch the profile card.
-- Guard and Client sidebars are preserved.
+- Fixed the Dispatch/Admin sidebar overlap at the structure level.
+- Added an `admin-profile-zone` wrapper around the Dispatch profile card.
+- The sidebar grid now reserves a real row for the profile zone.
+- The Dashboard button starts in the nav row below the profile zone.
+- Guard and Client sidebar behavior are preserved.
 
 ## SQL
 No new SQL required.

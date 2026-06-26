@@ -1,16 +1,14 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.56",
-  "buildName": "DISPATCH SIDEBAR HARD SEPARATION",
-  "type": "dispatch-sidebar-hard-separation",
+  "version": "3.0.57",
+  "buildName": "SIDEBAR PROFILE NAV STACK FIX",
+  "type": "sidebar-profile-nav-stack-fix",
   "sql_required": false,
   "features": [
-    "Hard-separated Dispatch/Admin profile card from the Dashboard nav button",
-    "Added large fixed margin below Dispatch profile card",
-    "Added a divider and padding above Dispatch nav list",
-    "Removed profile role pill/chevron in Dispatch only to prevent crowding",
-    "Preserved Guard and Client sidebars",
-    "Preserved Client login fix",
+    "Changed Dispatch sidebar DOM so profile card is wrapped in a reserved admin-profile-zone",
+    "Dispatch nav list now starts in a separate grid row below the profile zone",
+    "Dashboard button cannot render underneath the profile card",
+    "Guard and Client sidebar behavior preserved",
     "No new SQL required"
   ]
 }
