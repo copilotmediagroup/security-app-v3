@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.53 Settings Page Redesign */
+/* v3.0.54 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.53 Dispatch map blueprint fix */
+/* v3.0.54 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.53 Dispatch online guard filter + default map button */
+/* v3.0.54 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.53 Dispatch Board Command Center */
+/* v3.0.54 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Dispatch Live GPS Command Center */
+/* v3.0.54 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Pending Dispatch Command Center */
+/* v3.0.54 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Dispatch route + distance/ETA fix */
+/* v3.0.54 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Scheduled Queue Command Center */
+/* v3.0.54 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.53 Scheduled Queue data + layout polish */
+/* v3.0.54 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Guards Data + Layout Fix */
+/* v3.0.54 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Guards data + layout fix */
+/* v3.0.54 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.53 Guard Approvals Command Center */
+/* v3.0.54 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.53 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.54 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.53 Client login + Dispatch sidebar proportion fix */
+/* v3.0.54 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9470,4 +9470,83 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .sidebar.global-sidebar-redesign.sidebar-admin .version-mini {
   height: 34px !important;
   font-size: 10px !important;
+}
+
+/* v3.0.54 Dispatch sidebar profile overlap fix */
+.sidebar.global-sidebar-redesign.sidebar-admin {
+  grid-template-rows: auto auto minmax(0, 1fr) auto !important;
+  align-content: stretch !important;
+  gap: 13px !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-card {
+  position: relative !important;
+  z-index: 3 !important;
+  min-height: 76px !important;
+  height: 76px !important;
+  max-height: 76px !important;
+  margin: 0 0 8px !important;
+  padding: 10px !important;
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) !important;
+  grid-template-areas: 'avatar copy' !important;
+  align-items: center !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-card .avatar {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  border-radius: 14px !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-main-copy {
+  grid-area: copy !important;
+  align-self: center !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-card strong {
+  display: block !important;
+  font-size: 13px !important;
+  line-height: 1.05 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-card span {
+  display: block !important;
+  margin-top: 3px !important;
+  font-size: 10.5px !important;
+  line-height: 1.05 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-main-copy em {
+  margin-top: 5px !important;
+  font-size: 10.5px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-role-pill,
+.sidebar.global-sidebar-redesign.sidebar-admin .profile-chevron {
+  display: none !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-scroll {
+  position: relative !important;
+  z-index: 1 !important;
+  padding-top: 8px !important;
+  margin-top: 0 !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-heading:first-child {
+  margin-top: 6px !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-item {
+  position: relative !important;
+  z-index: 1 !important;
+}
+.sidebar.global-sidebar-redesign.sidebar-admin .nav-item.active {
+  z-index: 2 !important;
 }

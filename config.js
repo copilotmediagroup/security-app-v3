@@ -1,5 +1,5 @@
 window.COPILOT_SECURITY_CONFIG = {
   supabaseUrl: 'https://riysdcczjdsmxtyqceuj.supabase.co',
   supabaseAnonKey: 'sb_publishable_UewIFGu15bJTr6PPRCLDlg_hHDbu8xO',
-  appVersion: '3.0.53-client-login-dispatch-sidebar-fix'
+  appVersion: '3.0.54-dispatch-sidebar-profile-fix'
 };

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-login-dispatch-sidebar-fix",
-  "version": "3.0.53",
+  "name": "co-pilot-security-dispatch-sidebar-profile-fix",
+  "version": "3.0.54",
   "private": true,
-  "description": "Fixes client login crash caused by map route variable and tunes Dispatch sidebar proportions after global sidebar redesign.",
+  "description": "Fixes Dispatch sidebar profile card overlap while preserving the global sidebar redesign and client login fix.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

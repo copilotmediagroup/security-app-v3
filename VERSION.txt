@@ -1,19 +1,19 @@
 Co Pilot Security
-Version: 3.0.53
-Build Name: CLIENT LOGIN + DISPATCH SIDEBAR FIX
+Version: 3.0.54
+Build Name: DISPATCH SIDEBAR PROFILE FIX
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.52.
-- Fixed the Client login crash caused by dispatchRoutePaths being referenced inside Client map fallback rendering.
-- Client map routes now use the correct Client routePath variable.
-- Added role-specific sidebar classes for Admin, Guard, and Client.
-- Tuned Dispatch/Admin sidebar proportions only so the profile card and nav no longer overlap.
-- Preserved the new global sidebar style you liked.
+- Built from v3.0.53 Client Login + Dispatch Sidebar Fix.
+- Fixed the remaining Dispatch/Admin sidebar profile overlap issue.
+- Dispatch profile card is now compact and proportional.
+- Dashboard/nav items now start below the profile card and no longer cover the admin photo/text.
+- Guard and Client sidebar styling remains preserved.
+- v3.0.53 Client login fix remains preserved.
 - No new SQL required.
 
 Badge:
-v3.0.53 CLIENT LOGIN + DISPATCH SIDEBAR FIX
+v3.0.54 DISPATCH SIDEBAR PROFILE FIX
 
 SQL:
 No new SQL required.

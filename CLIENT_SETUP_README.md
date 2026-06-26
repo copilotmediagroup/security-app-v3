@@ -1,13 +1,11 @@
-# Co Pilot Security v3.0.53 — Client Login + Dispatch Sidebar Fix
+# Co Pilot Security v3.0.54 — Dispatch Sidebar Profile Fix
 
-## Fixes
-- Client login no longer crashes with `dispatchRoutePaths is not defined`.
-- Client patrol map and client property map now use the correct route path variable for their own fallback map routes.
-- Dispatch/Admin sidebar profile card, avatar, nav rows, platform card, and version badge were made more proportionate so the profile area does not overlap the nav.
+## What changed
+- Fixed the Dispatch/Admin sidebar profile overlap.
+- The Dispatch profile card is now a compact two-column profile row.
+- The Dashboard/nav area starts underneath the profile card instead of covering it.
+- Guard and Client sidebar layouts are preserved.
+- Client login fix from v3.0.53 is preserved.
 
-## Preserved
-- v3.0.52 global sidebar redesign direction.
-- Guard sidebar appearance.
-- Existing Guard Approvals page.
-- Existing Supabase configuration.
-- No new SQL required.
+## SQL
+No new SQL required.

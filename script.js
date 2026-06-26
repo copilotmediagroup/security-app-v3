@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T20-05-v3051';
 const BUILD = {
-  version: '3.0.53',
-  label: 'v3.0.53 CLIENT LOGIN + DISPATCH SIDEBAR FIX'
+  version: '3.0.54',
+  label: 'v3.0.54 DISPATCH SIDEBAR PROFILE FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
