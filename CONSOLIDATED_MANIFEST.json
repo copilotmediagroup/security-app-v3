@@ -1,20 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.52",
-  "buildName": "GLOBAL SIDEBAR REDESIGN",
-  "type": "global-sidebar-redesign",
+  "version": "3.0.53",
+  "buildName": "CLIENT LOGIN + DISPATCH SIDEBAR FIX",
+  "type": "client-login-dispatch-sidebar-fix",
   "sql_required": false,
   "features": [
-    "Global sidebar redesigned for Dispatch/Admin, Guard, and Client portals",
-    "Wider, more breathable sidebar layout inspired by generated mockup",
-    "Larger Co Pilot brand block and premium CP logo treatment",
-    "Improved user profile card with portal label, role badge, and online indicator",
-    "Rounded navigation items with larger icon boxes and less cramped spacing",
-    "Active nav state changed from harsh full-width bar to premium rounded command-center highlight",
-    "Operations/Account headings have cleaner spacing and visual separators",
-    "Sidebar nav remains scrollable but hides ugly native white scrollbars",
-    "Added compact platform status card above version badge",
-    "Version badge remains visible and cleaner at sidebar bottom",
+    "Fixed client login crash caused by undefined dispatchRoutePaths variable in client map fallback rendering",
+    "Client patrol map now uses its own routePath variable correctly",
+    "Client property map now uses its own routePath variable correctly",
+    "Added role-specific sidebar classes for admin/guard/client",
+    "Tuned Dispatch/Admin sidebar proportions only while preserving the global sidebar redesign direction",
+    "Reduced Dispatch profile card/avatar/nav item proportions to prevent overlap",
+    "Kept Guard and Client sidebar styling unchanged except for the crash fix",
     "No new SQL required"
   ]
 }

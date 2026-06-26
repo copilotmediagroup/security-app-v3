@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T20-05-v3051';
 const BUILD = {
-  version: '3.0.52',
-  label: 'v3.0.52 GLOBAL SIDEBAR REDESIGN'
+  version: '3.0.53',
+  label: 'v3.0.53 CLIENT LOGIN + DISPATCH SIDEBAR FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -1459,7 +1459,7 @@ function renderSidebar() {
   const nav = NAV[role] || NAV.admin;
   const roleText = roleLabel(role);
   const portalText = role === 'admin' ? 'Dispatch Portal' : role === 'guard' ? 'Guard Portal' : 'Client Portal';
-  return `<aside class="sidebar global-sidebar-redesign">
+  return `<aside class="sidebar global-sidebar-redesign sidebar-${esc(role)}">
     <button class="sidebar-collapse-visual" type="button" aria-label="Sidebar style control">‹‹</button>
     <div class="sidebar-brand">
       <div class="logo-box"><span>CP</span></div>
@@ -3589,7 +3589,7 @@ function clientLivePatrolMapCard() {
       <div class="guard302-map-fallback" id="client-live-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        ${dispatchRoutePaths ? `<svg class="guard302-fallback-route dispatch-multi-route" viewBox="0 0 100 100" preserveAspectRatio="none">${dispatchRoutePaths}</svg>` : ''}
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
         ${entries.map(entry => {
           const pos = entry.coords ? mapPercentForPoint(entry.coords.lat, entry.coords.lng, bounds) : entry.fallback;
           return `<button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(entry.property.id)}" style="left:${pos.x.toFixed ? pos.x.toFixed(2) : pos.x}%;top:${pos.y.toFixed ? pos.y.toFixed(2) : pos.y}%" aria-label="Open property card"><span></span></button>`;
@@ -4086,7 +4086,7 @@ function clientPropertyMapCard(property = {}) {
       <div class="guard302-map-fallback" id="client-property-detail-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        ${dispatchRoutePaths ? `<svg class="guard302-fallback-route dispatch-multi-route" viewBox="0 0 100 100" preserveAspectRatio="none">${dispatchRoutePaths}</svg>` : ''}
+        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
         <button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(property.id)}" style="left:${propertyPos.x.toFixed ? propertyPos.x.toFixed(2) : propertyPos.x}%;top:${propertyPos.y.toFixed ? propertyPos.y.toFixed(2) : propertyPos.y}%" aria-label="Open property card"><span></span></button>
         ${showGuard && guardPos ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${guardPos.x.toFixed(2)}%;top:${guardPos.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
         <small>${esc(liveGps.mapNotice || 'Property map ready.')}</small>

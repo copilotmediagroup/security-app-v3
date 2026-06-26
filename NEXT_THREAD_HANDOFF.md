@@ -1,10 +1,11 @@
-# Next Thread Handoff — Co Pilot Security v3.0.52
+# Next Thread Handoff — Co Pilot Security v3.0.53
 
-Latest build: v3.0.52 GLOBAL SIDEBAR REDESIGN
+Latest build: v3.0.53 CLIENT LOGIN + DISPATCH SIDEBAR FIX
 
 ## What changed
-- Built from v3.0.51.
-- Global sidebar redesign applied to Dispatch/Admin, Guard, and Client portals.
-- Sidebar now uses wider spacing, larger profile card, premium rounded navigation items, improved active state, hidden native scrollbars, platform status card, and cleaner version badge.
-- All existing pages and v3.0.51 Guard Approvals features are preserved.
+- Built from v3.0.52.
+- Fixed Client login crash: `dispatchRoutePaths is not defined`.
+- Client maps now use `routePath` in client fallback route SVGs instead of the Dispatch-only route variable.
+- Added `sidebar-admin`, `sidebar-guard`, and `sidebar-client` role classes to the sidebar.
+- Tuned Dispatch/Admin sidebar proportions only to stop profile/nav overlap while keeping the clean global sidebar redesign.
 - No new SQL required.

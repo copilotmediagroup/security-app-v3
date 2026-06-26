@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-global-sidebar-redesign",
-  "version": "3.0.52",
+  "name": "co-pilot-security-client-login-dispatch-sidebar-fix",
+  "version": "3.0.53",
   "private": true,
-  "description": "Global sidebar redesign for Dispatch/Admin, Guard, and Client portals with larger spacing, premium navigation, improved profile card, hidden white scrollbars, and friendlier user experience.",
+  "description": "Fixes client login crash caused by map route variable and tunes Dispatch sidebar proportions after global sidebar redesign.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
