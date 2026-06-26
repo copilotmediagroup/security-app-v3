@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-guard-approvals-command-center",
-  "version": "3.0.51",
+  "name": "co-pilot-security-global-sidebar-redesign",
+  "version": "3.0.52",
   "private": true,
-  "description": "Redesigns Guard Approvals into the command-center onboarding review center with KPIs, filters, applicant table, detail rail, approval actions, and pagination.",
+  "description": "Global sidebar redesign for Dispatch/Admin, Guard, and Client portals with larger spacing, premium navigation, improved profile card, hidden white scrollbars, and friendlier user experience.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,19 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.51",
-  "buildName": "GUARD APPROVALS COMMAND CENTER",
-  "type": "guard-approvals-command-center",
+  "version": "3.0.52",
+  "buildName": "GLOBAL SIDEBAR REDESIGN",
+  "type": "global-sidebar-redesign",
   "sql_required": false,
   "features": [
-    "Rebuilt Guard Approvals page into command-center onboarding review layout",
-    "Added KPI row: Total Applications, Pending Review, Approved Today, Rejected, Interview Needed, Missing Docs",
-    "Added tabs: All Applications, Pending, Interview, Approved, Rejected",
-    "Added filters: Status, Rank, Experience, Background Check, Sort",
-    "Added applicant table with checkbox, applicant, rank, experience, license status, background check, availability, submitted, status, actions",
-    "Added selected applicant right rail with profile, contact info, experience, guard card, availability, certifications, onboarding checklist, and notes",
-    "Added Approve Guard, Reject Application, Request Info, Schedule Interview, Search, Refresh, Pagination, Rows per page",
-    "Approve/reject uses the existing signup approval/rejection flow when the row is a signup",
-    "Request info and interview use local workflow state without requiring new SQL",
+    "Global sidebar redesigned for Dispatch/Admin, Guard, and Client portals",
+    "Wider, more breathable sidebar layout inspired by generated mockup",
+    "Larger Co Pilot brand block and premium CP logo treatment",
+    "Improved user profile card with portal label, role badge, and online indicator",
+    "Rounded navigation items with larger icon boxes and less cramped spacing",
+    "Active nav state changed from harsh full-width bar to premium rounded command-center highlight",
+    "Operations/Account headings have cleaner spacing and visual separators",
+    "Sidebar nav remains scrollable but hides ugly native white scrollbars",
+    "Added compact platform status card above version badge",
+    "Version badge remains visible and cleaner at sidebar bottom",
     "No new SQL required"
   ]
 }

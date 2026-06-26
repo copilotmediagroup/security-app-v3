@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T20-05-v3051';
 const BUILD = {
-  version: '3.0.51',
-  label: 'v3.0.51 GUARD APPROVALS COMMAND CENTER'
+  version: '3.0.52',
+  label: 'v3.0.52 GLOBAL SIDEBAR REDESIGN'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -1456,18 +1456,35 @@ function renderSidebar() {
   const role = state.role || 'admin';
   const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'Owner Admin';
   const photo = state.profile?.avatar_url || state.profile?.profile_photo_url || '';
-  return `<aside class="sidebar">
-    <div class="sidebar-brand"><div class="logo-box">CP</div><div><strong>Co Pilot</strong><small>Security</small></div></div>
-    <div class="profile-card">${avatar(name, photo)}<div><strong>${esc(name)}</strong><span>${esc(roleLabel(role))} • <b>Online</b></span></div><i>⌄</i></div>
+  const nav = NAV[role] || NAV.admin;
+  const roleText = roleLabel(role);
+  const portalText = role === 'admin' ? 'Dispatch Portal' : role === 'guard' ? 'Guard Portal' : 'Client Portal';
+  return `<aside class="sidebar global-sidebar-redesign">
+    <button class="sidebar-collapse-visual" type="button" aria-label="Sidebar style control">‹‹</button>
+    <div class="sidebar-brand">
+      <div class="logo-box"><span>CP</span></div>
+      <div><strong>Co Pilot</strong><small>Security</small></div>
+    </div>
+    <div class="profile-card">
+      ${avatar(name, photo)}
+      <div class="profile-main-copy">
+        <strong>${esc(name)}</strong>
+        <span>${esc(portalText)}</span>
+        <em><i></i>Online</em>
+      </div>
+      <b class="profile-role-pill">${esc(roleText)}</b>
+      <i class="profile-chevron">⌄</i>
+    </div>
     <div class="nav-scroll">
-      ${(NAV[role] || NAV.admin).map(item => {
-        if (item[0] === 'heading') return `<div class="nav-heading">${esc(item[2])}</div>`;
+      ${nav.map(item => {
+        if (item[0] === 'heading') return `<div class="nav-heading"><span>${esc(item[2])}</span></div>`;
         const badge = navBadge(item[0]);
         return `<button class="nav-item ${state.view === item[0] ? 'active' : ''}" data-view="${esc(item[0])}"><i>${esc(item[1])}</i><span>${esc(item[2])}</span>${badge ? `<b>${esc(badge)}</b>` : ''}</button>`;
       }).join('')}
     </div>
     <div class="sidebar-footer">
       <button class="nav-item logout-item" data-action="logout"><i>↪</i><span>Logout</span></button>
+      <div class="sidebar-platform-card"><i>✓</i><span><strong>CoPilot Security</strong><small>Platform Online</small></span></div>
       <span class="version-mini">${esc(BUILD.label)}</span>
     </div>
   </aside>`;

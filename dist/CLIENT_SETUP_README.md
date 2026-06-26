@@ -1,20 +1,24 @@
-# Co Pilot Security v3.0.50 — Guards Data + Layout Fix
+# Co Pilot Security v3.0.52 — Global Sidebar Redesign
 
 ## What changed
-This build preserves the v3.0.49 Guards Command Center and fixes the issues found during testing.
+The sidebar has been redesigned globally across all three portals:
 
-## Fixes
-- Selected guard detail rail now uses the selected guard record for phone/email.
-- Obviously mismatched generic emails are hidden instead of being shown under the wrong guard.
-- Online detection is stricter: approved, active, available, or on-duty account status alone does not mean live online.
-- GPS status now shows clearer labels:
-  - Live now
-  - Online saved GPS
-  - GPS stale
-- Guards table no longer uses the ugly horizontal scrollbar.
-- Action buttons are no longer cut off.
-- Filter labels are shortened and fit better.
-- Right rail is more compact so action buttons stay visible.
+- Dispatch/Admin
+- Guard
+- Client
 
-## SQL
-No new SQL required.
+## Sidebar improvements
+- Wider and more breathable layout.
+- Larger Co Pilot brand block.
+- Cleaner profile card with portal label, role badge, and online status.
+- Rounded nav buttons with larger icon boxes.
+- Softer premium active state instead of cramped harsh rows.
+- Cleaner Operations / Account headings.
+- Hidden native white scrollbars while keeping scroll behavior.
+- Added platform status card near the footer.
+- Cleaner bottom version badge.
+
+## Preserved
+- All existing role navigation items remain available.
+- All v3.0.51 Guard Approvals functionality remains intact.
+- No new SQL required.

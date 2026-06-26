@@ -1,54 +1,24 @@
-# Co Pilot Security v3.0.51 — Guard Approvals Command Center
+# Co Pilot Security v3.0.52 — Global Sidebar Redesign
 
 ## What changed
-The Admin `Guard Approvals` page has been rebuilt from basic approval cards into a full onboarding review command center.
+The sidebar has been redesigned globally across all three portals:
 
-## New Guard Approvals sections
-- Header with search and refresh
-- KPI row:
-  - Total Applications
-  - Pending Review
-  - Approved Today
-  - Rejected
-  - Interview Needed
-  - Missing Docs
-- Tabs:
-  - All Applications
-  - Pending
-  - Interview
-  - Approved
-  - Rejected
-- Filters:
-  - Status
-  - Rank
-  - Experience
-  - Background Check
-  - Sort
-- Applicant table:
-  - Applicant
-  - Rank Applied For
-  - Experience
-  - License Status
-  - Background Check
-  - Availability
-  - Submitted
-  - Status
-  - Actions
-- Right rail:
-  - Applicant profile
-  - Phone/email/location
-  - Experience
-  - Guard card
-  - Certifications
-  - Onboarding checklist
-  - Review notes
-  - Approve / Request Info / Schedule Interview / Reject
+- Dispatch/Admin
+- Guard
+- Client
 
-## Functional behavior
-- Search filters applicants.
-- Tabs filter applications by status.
-- Dropdown filters update the table.
-- Rows select the applicant and update the right rail.
-- Approve and Reject use the existing signup approval/rejection flow for signup rows.
-- Request Info and Schedule Interview save local workflow state and update the UI.
+## Sidebar improvements
+- Wider and more breathable layout.
+- Larger Co Pilot brand block.
+- Cleaner profile card with portal label, role badge, and online status.
+- Rounded nav buttons with larger icon boxes.
+- Softer premium active state instead of cramped harsh rows.
+- Cleaner Operations / Account headings.
+- Hidden native white scrollbars while keeping scroll behavior.
+- Added platform status card near the footer.
+- Cleaner bottom version badge.
+
+## Preserved
+- All existing role navigation items remain available.
+- All v3.0.51 Guard Approvals functionality remains intact.
 - No new SQL required.

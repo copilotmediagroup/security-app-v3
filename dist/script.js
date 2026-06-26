@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T19-50-v3050';
+const CP_DEV_CACHE_BUST = '2026-06-25T20-05-v3051';
 const BUILD = {
-  version: '3.0.50',
-  label: 'v3.0.50 GUARDS DATA LAYOUT FIX'
+  version: '3.0.52',
+  label: 'v3.0.52 GLOBAL SIDEBAR REDESIGN'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -83,7 +83,14 @@ const state = {
   selectedGuardId: '',
   guardsPage: 1,
   guardsPerPage: 10,
-  guardProfileMode: 'overview'
+  guardProfileMode: 'overview',
+  guardApprovalSearch: '',
+  guardApprovalTab: 'all',
+  guardApprovalFilters: { status: 'all', rank: 'all', experience: 'all', background: 'all', sort: 'newest' },
+  selectedGuardApprovalId: '',
+  guardApprovalSelectedIds: [],
+  guardApprovalPage: 1,
+  guardApprovalPerPage: 5
 };;
 const liveGps = {
   online: false,
@@ -1449,18 +1456,35 @@ function renderSidebar() {
   const role = state.role || 'admin';
   const name = state.profile?.display_name || state.profile?.name || state.profile?.email || 'Owner Admin';
   const photo = state.profile?.avatar_url || state.profile?.profile_photo_url || '';
-  return `<aside class="sidebar">
-    <div class="sidebar-brand"><div class="logo-box">CP</div><div><strong>Co Pilot</strong><small>Security</small></div></div>
-    <div class="profile-card">${avatar(name, photo)}<div><strong>${esc(name)}</strong><span>${esc(roleLabel(role))} • <b>Online</b></span></div><i>⌄</i></div>
+  const nav = NAV[role] || NAV.admin;
+  const roleText = roleLabel(role);
+  const portalText = role === 'admin' ? 'Dispatch Portal' : role === 'guard' ? 'Guard Portal' : 'Client Portal';
+  return `<aside class="sidebar global-sidebar-redesign">
+    <button class="sidebar-collapse-visual" type="button" aria-label="Sidebar style control">‹‹</button>
+    <div class="sidebar-brand">
+      <div class="logo-box"><span>CP</span></div>
+      <div><strong>Co Pilot</strong><small>Security</small></div>
+    </div>
+    <div class="profile-card">
+      ${avatar(name, photo)}
+      <div class="profile-main-copy">
+        <strong>${esc(name)}</strong>
+        <span>${esc(portalText)}</span>
+        <em><i></i>Online</em>
+      </div>
+      <b class="profile-role-pill">${esc(roleText)}</b>
+      <i class="profile-chevron">⌄</i>
+    </div>
     <div class="nav-scroll">
-      ${(NAV[role] || NAV.admin).map(item => {
-        if (item[0] === 'heading') return `<div class="nav-heading">${esc(item[2])}</div>`;
+      ${nav.map(item => {
+        if (item[0] === 'heading') return `<div class="nav-heading"><span>${esc(item[2])}</span></div>`;
         const badge = navBadge(item[0]);
         return `<button class="nav-item ${state.view === item[0] ? 'active' : ''}" data-view="${esc(item[0])}"><i>${esc(item[1])}</i><span>${esc(item[2])}</span>${badge ? `<b>${esc(badge)}</b>` : ''}</button>`;
       }).join('')}
     </div>
     <div class="sidebar-footer">
       <button class="nav-item logout-item" data-action="logout"><i>↪</i><span>Logout</span></button>
+      <div class="sidebar-platform-card"><i>✓</i><span><strong>CoPilot Security</strong><small>Platform Online</small></span></div>
       <span class="version-mini">${esc(BUILD.label)}</span>
     </div>
   </aside>`;
@@ -6226,6 +6250,312 @@ function guardsCommandCenterView() {
 }
 
 
+
+function guardApprovalOverrideKey() { return 'cp_security_guard_approval_overrides_v1'; }
+function readGuardApprovalOverrides() {
+  try { const parsed = JSON.parse(localStorage.getItem(guardApprovalOverrideKey()) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
+}
+function writeGuardApprovalOverrides(map = {}) { try { localStorage.setItem(guardApprovalOverrideKey(), JSON.stringify(map)); } catch {} }
+function saveGuardApprovalOverride(id, patch = {}) {
+  const map = readGuardApprovalOverrides();
+  map[String(id)] = { ...(map[String(id)] || {}), ...patch, updated_at: new Date().toISOString() };
+  writeGuardApprovalOverrides(map);
+}
+function guardApprovalBaseRows() {
+  const rows = [];
+  const seen = new Set();
+  (state.guardSignups || []).forEach((item, idx) => {
+    const email = String(item.email || '').trim().toLowerCase();
+    const id = String(item.id || item.signup_id || email || `signup-${idx}`);
+    seen.add(email || id);
+    rows.push({
+      ...item,
+      id,
+      source: 'signup',
+      name: item.name || item.display_name || item.full_name || item.email || 'Guard Applicant',
+      photo_url: item.photo_url || item.avatar_url || item.image_url || '',
+      rank_applied_for: item.rank_applied_for || item.requested_rank || guardRankFor(item) || 'Guard',
+      status: item.status || item.approval_status || 'pending',
+      application_number: item.application_number || `APP-${String(id).slice(0, 8)}`,
+      experience_years: item.experience_years || item.years_experience || item.experience || '—',
+      license_status: item.license_status || item.guard_card_status || 'active',
+      background_status: item.background_status || item.background_check_status || 'clear',
+      availability: item.availability || item.shift_availability || 'Full Time',
+      preferred_shift: item.preferred_shift || item.shift || 'Days',
+      city: item.city || item.location_city || '—',
+      state: item.state || item.location_state || '',
+      guard_card_number: item.guard_card_number || item.license_number || '—',
+      review_notes: item.review_notes || item.notes || 'No review notes yet.'
+    });
+  });
+  (state.guards || []).forEach((guard, idx) => {
+    const email = String(guard.email || '').trim().toLowerCase();
+    const id = String(guard.id || email || `guard-${idx}`);
+    if (email && seen.has(email)) return;
+    rows.push({
+      ...guard,
+      id,
+      source: 'guard',
+      name: guard.name || guard.display_name || guard.full_name || guard.email || 'Guard',
+      photo_url: guard.photo_url || guard.avatar_url || guard.image_url || '',
+      rank_applied_for: guard.rank_applied_for || guard.rank || guard.guard_rank || guardRankFor(guard) || 'Guard',
+      status: guard.approval_status || 'approved',
+      application_number: guard.application_number || `APP-${String(id).slice(0, 8)}`,
+      experience_years: guard.experience_years || guard.years_experience || '—',
+      license_status: guard.license_status || guard.guard_card_status || 'active',
+      background_status: guard.background_status || guard.background_check_status || 'clear',
+      availability: guard.availability || guard.shift_availability || 'Full Time',
+      preferred_shift: guard.preferred_shift || guard.shift || 'Any Shift',
+      city: guard.city || guard.location_city || '—',
+      state: guard.state || guard.location_state || '',
+      guard_card_number: guard.guard_card_number || guard.license_number || '—',
+      review_notes: guard.review_notes || 'Approved guard record.'
+    });
+  });
+  const overrides = readGuardApprovalOverrides();
+  return rows.map(row => ({ ...row, ...(overrides[String(row.id)] || {}) }));
+}
+function approvalStatus(app = {}) {
+  const s = String(app.status || app.approval_status || 'pending').toLowerCase().replace(/\s+/g, '_');
+  if (['needs_interview','interview_needed','schedule_interview','scheduled_interview'].includes(s)) return 'interview';
+  if (['missing_docs','request_info','needs_info','incomplete'].includes(s)) return 'missing_docs';
+  if (['approved','active'].includes(s)) return 'approved';
+  if (['rejected','declined','denied'].includes(s)) return 'rejected';
+  return 'pending';
+}
+function approvalRank(app = {}) { return app.rank_applied_for || app.requested_rank || app.rank || app.guard_rank || guardRankFor(app) || 'Guard'; }
+function approvalExperienceYears(app = {}) {
+  const raw = app.experience_years || app.years_experience || app.experience || '';
+  const n = Number(String(raw).match(/\d+/)?.[0] || raw);
+  return Number.isFinite(n) ? n : null;
+}
+function approvalExperienceLabel(app = {}) {
+  const n = approvalExperienceYears(app);
+  if (n === null) return String(app.experience_years || app.experience || '—');
+  return `${n}+ yrs`;
+}
+function approvalBackgroundStatus(app = {}) {
+  const s = String(app.background_status || app.background_check_status || 'clear').toLowerCase().replace(/\s+/g, '_');
+  if (/progress|pending|review/.test(s)) return 'in_progress';
+  if (/issue|flag|fail|problem/.test(s)) return 'issue';
+  return 'clear';
+}
+function approvalLicenseStatus(app = {}) {
+  const s = String(app.license_status || app.guard_card_status || 'active').toLowerCase().replace(/\s+/g, '_');
+  if (/expire/.test(s)) return 'expired';
+  if (/pending|missing|review/.test(s)) return 'pending';
+  return 'active';
+}
+function applicantMissingDocs(app = {}) {
+  const missing = [];
+  if (approvalLicenseStatus(app) !== 'active') missing.push('Guard Card');
+  if (approvalBackgroundStatus(app) !== 'clear') missing.push('Background Check');
+  if (approvalStatus(app) === 'missing_docs') missing.push('Requested Docs');
+  if (String(app.training_docs_complete || '').toLowerCase() === 'false') missing.push('Training Docs');
+  return [...new Set(missing)];
+}
+function guardApprovalRows() { return guardApprovalBaseRows(); }
+function guardApprovalCounts() {
+  const apps = guardApprovalRows();
+  const today = new Date().toDateString();
+  return {
+    total: apps.length,
+    pending: apps.filter(a => approvalStatus(a) === 'pending').length,
+    approvedToday: apps.filter(a => approvalStatus(a) === 'approved' && new Date(a.approved_at || a.updated_at || a.created_at || Date.now()).toDateString() === today).length,
+    rejected: apps.filter(a => approvalStatus(a) === 'rejected').length,
+    interview: apps.filter(a => approvalStatus(a) === 'interview').length,
+    missingDocs: apps.filter(a => applicantMissingDocs(a).length > 0).length
+  };
+}
+function guardApprovalKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="approval-kpi ${esc(tone)}"><div class="approval-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function guardApprovalKpiRow() {
+  const c = guardApprovalCounts();
+  return `<section class="guard-approvals-kpi-row">
+    ${guardApprovalKpi('▣','Total Applications',c.total,'All time','blue')}
+    ${guardApprovalKpi('◷','Pending Review',c.pending,'Requires attention','amber')}
+    ${guardApprovalKpi('✓','Approved Today',c.approvedToday,'Updated today','green')}
+    ${guardApprovalKpi('×','Rejected',c.rejected,'This week','red')}
+    ${guardApprovalKpi('♙','Interview Needed',c.interview,'Scheduled','purple')}
+    ${guardApprovalKpi('▤','Missing Docs',c.missingDocs,'Incomplete','orange')}
+  </section>`;
+}
+function guardApprovalTabButton(key, label, count) {
+  const active = (state.guardApprovalTab || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-approval-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function guardApprovalTabs() {
+  const rows = guardApprovalRows();
+  const counts = {
+    all: rows.length,
+    pending: rows.filter(a => approvalStatus(a) === 'pending').length,
+    interview: rows.filter(a => approvalStatus(a) === 'interview').length,
+    approved: rows.filter(a => approvalStatus(a) === 'approved').length,
+    rejected: rows.filter(a => approvalStatus(a) === 'rejected').length
+  };
+  return `<nav class="guard-approval-tabs">
+    ${guardApprovalTabButton('all','All Applications',counts.all)}
+    ${guardApprovalTabButton('pending','Pending',counts.pending)}
+    ${guardApprovalTabButton('interview','Interview',counts.interview)}
+    ${guardApprovalTabButton('approved','Approved',counts.approved)}
+    ${guardApprovalTabButton('rejected','Rejected',counts.rejected)}
+  </nav>`;
+}
+function guardApprovalFilterBar() {
+  const f = state.guardApprovalFilters || {};
+  return `<section class="guard-approval-filter-bar">
+    <select data-approval-filter="status"><option value="all">All Status</option><option value="pending" ${f.status==='pending'?'selected':''}>Pending</option><option value="interview" ${f.status==='interview'?'selected':''}>Needs Interview</option><option value="approved" ${f.status==='approved'?'selected':''}>Approved</option><option value="rejected" ${f.status==='rejected'?'selected':''}>Rejected</option><option value="missing_docs" ${f.status==='missing_docs'?'selected':''}>Missing Docs</option></select>
+    <select data-approval-filter="rank"><option value="all">All Ranks</option><option value="guard" ${f.rank==='guard'?'selected':''}>Guard</option><option value="officer" ${f.rank==='officer'?'selected':''}>Officer</option><option value="corporal" ${f.rank==='corporal'?'selected':''}>Corporal</option><option value="sergeant" ${f.rank==='sergeant'?'selected':''}>Sergeant</option><option value="supervisor" ${f.rank==='supervisor'?'selected':''}>Supervisor</option></select>
+    <select data-approval-filter="experience"><option value="all">All Experience</option><option value="0-1" ${f.experience==='0-1'?'selected':''}>0–1 Years</option><option value="2-4" ${f.experience==='2-4'?'selected':''}>2–4 Years</option><option value="5-plus" ${f.experience==='5-plus'?'selected':''}>5+ Years</option></select>
+    <select data-approval-filter="background"><option value="all">Background Check</option><option value="clear" ${f.background==='clear'?'selected':''}>Clear</option><option value="in_progress" ${f.background==='in_progress'?'selected':''}>In Progress</option><option value="issue" ${f.background==='issue'?'selected':''}>Issue Found</option></select>
+    <select data-approval-filter="sort"><option value="newest" ${f.sort==='newest'?'selected':''}>Sort: Newest</option><option value="oldest" ${f.sort==='oldest'?'selected':''}>Sort: Oldest</option><option value="priority" ${f.sort==='priority'?'selected':''}>Sort: Priority</option></select>
+    <button type="button" data-action="guard-approval-clear-filters">⌁ Filters</button>
+  </section>`;
+}
+function filteredGuardApprovals() {
+  let rows = guardApprovalRows();
+  const q = String(state.guardApprovalSearch || '').trim().toLowerCase();
+  const f = state.guardApprovalFilters || {};
+  const tab = state.guardApprovalTab || 'all';
+  if (tab !== 'all') rows = rows.filter(app => approvalStatus(app) === tab);
+  if (q) rows = rows.filter(app => [app.name, app.email, app.phone, app.application_number, approvalRank(app), app.city, app.state].join(' ').toLowerCase().includes(q));
+  if (f.status && f.status !== 'all') rows = rows.filter(app => approvalStatus(app) === f.status);
+  if (f.rank && f.rank !== 'all') rows = rows.filter(app => String(approvalRank(app)).toLowerCase() === f.rank);
+  if (f.background && f.background !== 'all') rows = rows.filter(app => approvalBackgroundStatus(app) === f.background);
+  if (f.experience && f.experience !== 'all') rows = rows.filter(app => {
+    const n = approvalExperienceYears(app);
+    if (n === null) return false;
+    if (f.experience === '0-1') return n <= 1;
+    if (f.experience === '2-4') return n >= 2 && n <= 4;
+    if (f.experience === '5-plus') return n >= 5;
+    return true;
+  });
+  const priority = { pending: 0, missing_docs: 1, interview: 2, rejected: 3, approved: 4 };
+  rows = rows.slice().sort((a,b) => {
+    if (f.sort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (f.sort === 'priority') return (priority[approvalStatus(a)] ?? 9) - (priority[approvalStatus(b)] ?? 9);
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
+  return rows;
+}
+function selectedGuardApproval() {
+  const rows = filteredGuardApprovals();
+  return rows.find(app => String(app.id) === String(state.selectedGuardApprovalId)) || rows[0] || null;
+}
+function approvalStatusBadge(app = {}) {
+  const status = approvalStatus(app);
+  const label = status === 'interview' ? 'Needs Interview' : status === 'missing_docs' ? 'Missing Docs' : statusText(status);
+  return `<span class="approval-status ${esc(status)}">${esc(label)}</span>`;
+}
+function licenseStatusBadge(app = {}) {
+  const status = approvalLicenseStatus(app);
+  return `<span class="license-badge ${esc(status)}">${esc(statusText(status))}</span>`;
+}
+function backgroundStatusBadge(app = {}) {
+  const status = approvalBackgroundStatus(app);
+  const label = status === 'in_progress' ? 'In Progress' : status === 'issue' ? 'Review' : 'Clear';
+  return `<span class="background-badge ${esc(status)}">${esc(label)}</span>`;
+}
+function isApprovalChecked(id) { return (state.guardApprovalSelectedIds || []).map(String).includes(String(id)); }
+function guardApprovalRow(app = {}) {
+  const selected = String(state.selectedGuardApprovalId || '') === String(app.id);
+  return `<div class="guard-approval-row ${selected ? 'selected' : ''}">
+    <label class="approval-check"><input type="checkbox" data-approval-check="${esc(app.id)}" ${isApprovalChecked(app.id) ? 'checked' : ''}></label>
+    <button type="button" class="approval-applicant-cell" data-action="select-guard-approval" data-approval-id="${esc(app.id)}">${avatar(app.name || app.email || 'Applicant', app.photo_url)}<span><strong>${esc(app.name || app.email || 'Applicant')}</strong><small>${esc(app.application_number || shortRequestId(app.id))}</small></span></button>
+    <div>${esc(approvalRank(app))}</div>
+    <div>${esc(approvalExperienceLabel(app))}</div>
+    <div>${licenseStatusBadge(app)}</div>
+    <div>${backgroundStatusBadge(app)}</div>
+    <div><strong>${esc(app.availability || 'Full Time')}</strong><small>${esc(app.preferred_shift || 'Days')}</small></div>
+    <div><strong>${esc(fmtDate(app.created_at))}</strong><small>${esc(fmtTime(app.created_at))}</small></div>
+    <div>${approvalStatusBadge(app)}</div>
+    <div class="approval-actions"><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">⊙</button><button type="button" data-action="message-approval" data-approval-id="${esc(app.id)}">☵</button><button type="button" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓</button><button type="button" data-action="reject-guard" data-approval-id="${esc(app.id)}">×</button></div>
+  </div>`;
+}
+function guardApprovalTable() {
+  const rows = filteredGuardApprovals();
+  const per = Number(state.guardApprovalPerPage || 5);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.guardApprovalPage = Math.min(Math.max(1, state.guardApprovalPage || 1), maxPage);
+  const start = (state.guardApprovalPage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<div class="guard-approval-table"><div class="guard-approval-head-row"><span></span><span>Applicant</span><span>Rank Applied For</span><span>Experience</span><span>License Status</span><span>Background Check</span><span>Availability</span><span>Submitted</span><span>Status</span><span>Actions</span></div>${pageRows.length ? pageRows.map(guardApprovalRow).join('') : '<div class="approval-empty-results">No guard applications match your filters.</div>'}</div>`;
+}
+function guardApprovalPagination() {
+  const rows = filteredGuardApprovals();
+  const per = Number(state.guardApprovalPerPage || 5);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  const start = rows.length ? (state.guardApprovalPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.guardApprovalPage || 1) * per);
+  return `<footer class="approval-pagination"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} results</span><div><button type="button" data-action="approval-page-prev">‹</button><strong>${esc(state.guardApprovalPage || 1)}</strong><button type="button" data-action="approval-page-next">›</button></div><label>Rows per page: <select data-approval-per-page><option value="5" ${per===5?'selected':''}>5</option><option value="10" ${per===10?'selected':''}>10</option><option value="20" ${per===20?'selected':''}>20</option></select></label></footer>`;
+}
+function approvalCertifications(app = {}) {
+  const certs = Array.isArray(app.certifications) ? app.certifications : ['Unarmed Guard License', 'CPR / First Aid', 'OC Spray Certified', 'Handcuffing Certified', 'Fire Watch Certified'];
+  return `<section class="approval-cert-card"><h3>Certifications</h3><div class="approval-check-list">${certs.map(cert => `<span><i>✓</i>${esc(cert)}</span>`).join('')}</div></section>`;
+}
+function approvalOnboardingChecklist(app = {}) {
+  const checklist = [['ID Verified', app.id_verified !== false], ['Guard Card', approvalLicenseStatus(app) === 'active'], ['Background Check', approvalBackgroundStatus(app) === 'clear'], ['Drug Screen', app.drug_screen_status === 'clear' || app.drug_screen_status === true], ['Interview Complete', app.interview_complete === true || approvalStatus(app) === 'approved'], ['Training Docs', app.training_docs_complete === true || approvalStatus(app) === 'approved']];
+  return `<section class="approval-onboarding-card"><h3>Onboarding Checklist</h3><div class="approval-check-list">${checklist.map(([label, done]) => `<span class="${done ? 'done' : 'missing'}"><i>${done ? '✓' : '×'}</i>${esc(label)}</span>`).join('')}</div></section>`;
+}
+function approvalReviewNotes(app = {}) {
+  return `<section class="approval-notes-card"><div><h3>Notes / Review Comments</h3><button type="button" data-action="edit-approval-notes" data-approval-id="${esc(app.id)}">Edit</button></div><p>${esc(app.review_notes || app.notes || 'No review notes yet.')}</p><small>— ${esc(app.reviewed_by || 'Dispatch Admin')}, ${esc(fmtDate(app.updated_at || app.created_at))}</small></section>`;
+}
+function guardApprovalDetailRail() {
+  const app = selectedGuardApproval();
+  if (!app) return `<aside class="guard-approval-detail-rail"><section class="panel panel-pad guard-approval-detail-card"><div class="empty">Select an application.</div></section></aside>`;
+  return `<aside class="guard-approval-detail-rail"><section class="panel panel-pad guard-approval-detail-card">
+    <button type="button" class="approval-rail-close" data-action="clear-selected-approval">×</button>
+    <div class="approval-profile-head">${avatar(app.name || app.email || 'Applicant', app.photo_url)}<div><h2>${esc(app.name || app.email || 'Applicant')}</h2><p>Applying For: <strong>${esc(approvalRank(app))}</strong></p>${approvalStatusBadge(app)}</div></div>
+    <dl class="approval-info-list"><dt>Phone</dt><dd>${esc(app.phone || '—')}</dd><dt>Email</dt><dd>${esc(app.email || '—')}</dd><dt>Location</dt><dd>${esc([app.city, app.state].filter(Boolean).join(', ') || '—')}</dd><dt>Experience</dt><dd>${esc(approvalExperienceLabel(app))}</dd><dt>Guard Card</dt><dd>${esc(app.guard_card_number || app.license_number || '—')}</dd><dt>Availability</dt><dd>${esc(app.availability || 'Full Time')}</dd></dl>
+    <div class="approval-detail-split">${approvalCertifications(app)}${approvalOnboardingChecklist(app)}</div>
+    ${approvalReviewNotes(app)}
+    <div class="approval-detail-actions"><button type="button" class="approve" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓ Approve Guard</button><button type="button" class="info" data-action="request-guard-info" data-approval-id="${esc(app.id)}">✉ Request Info</button><button type="button" class="interview" data-action="schedule-guard-interview" data-approval-id="${esc(app.id)}">▣ Schedule Interview</button><button type="button" class="reject" data-action="reject-guard" data-approval-id="${esc(app.id)}">× Reject Application</button></div>
+  </section></aside>`;
+}
+function guardApprovalsHeader() {
+  return `<header class="dashboard-header guard-approvals-header"><div class="title-block"><h1>Guard Approvals</h1><p>Review new guard applications, approve qualified officers, and manage onboarding status.</p></div><div class="approval-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="approval-search"><input type="search" data-guard-approval-search placeholder="Search applicants..." value="${esc(state.guardApprovalSearch || '')}"><b>⌕</b></label><button type="button" data-action="guard-approvals-refresh">⟳ Refresh</button></div></header>`;
+}
+function guardApprovalsCommandCenterView() {
+  const autoSelected = selectedGuardApproval();
+  if (autoSelected && !state.selectedGuardApprovalId) state.selectedGuardApprovalId = autoSelected.id;
+  return `<div class="dashboard guard-approvals-shell">${guardApprovalsHeader()}${guardApprovalKpiRow()}<section class="guard-approvals-layout"><main class="guard-approvals-main panel">${guardApprovalTabs()}${guardApprovalFilterBar()}${guardApprovalTable()}${guardApprovalPagination()}</main>${guardApprovalDetailRail()}</section></div>`;
+}
+async function approveGuardApplication(id) {
+  const app = guardApprovalRows().find(a => String(a.id) === String(id));
+  if (!app) throw new Error('Application not found.');
+  saveGuardRank({ id: app.id, email: app.email, signup_id: app.source === 'signup' ? app.id : '' }, approvalRank(app));
+  if (app.source === 'signup') {
+    await approveSignup('guard', id);
+    return;
+  }
+  saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString() });
+  await loadData();
+  render();
+  toast('Guard approved.', 'success');
+}
+async function rejectGuardApplication(id) {
+  const app = guardApprovalRows().find(a => String(a.id) === String(id));
+  if (app?.source === 'signup') {
+    await rejectSignup('guard', id);
+    return;
+  }
+  saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString() });
+  await loadData();
+  render();
+  toast('Application rejected.', 'success');
+}
+async function requestGuardMoreInfo(id) {
+  saveGuardApprovalOverride(id, { status: 'missing_docs', review_notes: 'Additional information requested by Dispatch.' });
+  render();
+  toast('Info request sent.', 'success');
+}
+async function scheduleGuardInterview(id) {
+  saveGuardApprovalOverride(id, { status: 'interview', interview_requested_at: new Date().toISOString(), review_notes: 'Interview requested by Dispatch.' });
+  render();
+  toast('Interview scheduled.', 'success');
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -6234,7 +6564,7 @@ function renderRoleView() {
     if (state.view === 'pending-dispatch') return pendingDispatchView();
     if (state.view === 'scheduled-queue') return scheduledQueueView();
     if (state.view === 'guards') return guardsCommandCenterView();
-    if (state.view === 'guard-approvals') return guardApprovalsView();
+    if (state.view === 'guard-approvals') return guardApprovalsCommandCenterView();
     if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
     if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
     if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
@@ -6750,6 +7080,77 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.approvalTab) {
+      state.guardApprovalTab = button.dataset.approvalTab || 'all';
+      state.guardApprovalPage = 1;
+      state.selectedGuardApprovalId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-guard-approval' || button.dataset.action === 'view-approval') {
+      state.selectedGuardApprovalId = button.dataset.approvalId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'approve-guard') {
+      await approveGuardApplication(button.dataset.approvalId);
+      return;
+    }
+    if (button.dataset.action === 'reject-guard') {
+      await rejectGuardApplication(button.dataset.approvalId);
+      return;
+    }
+    if (button.dataset.action === 'request-guard-info') {
+      await requestGuardMoreInfo(button.dataset.approvalId);
+      return;
+    }
+    if (button.dataset.action === 'schedule-guard-interview') {
+      await scheduleGuardInterview(button.dataset.approvalId);
+      return;
+    }
+    if (button.dataset.action === 'message-approval') {
+      state.selectedGuardApprovalId = button.dataset.approvalId || state.selectedGuardApprovalId;
+      state.view = 'messages';
+      render();
+      toast('Applicant message thread selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'edit-approval-notes') {
+      state.selectedGuardApprovalId = button.dataset.approvalId || state.selectedGuardApprovalId;
+      toast('Notes editor selected for next modal build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'clear-selected-approval') {
+      state.selectedGuardApprovalId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'guard-approval-clear-filters') {
+      state.guardApprovalSearch = '';
+      state.guardApprovalTab = 'all';
+      state.guardApprovalFilters = { status: 'all', rank: 'all', experience: 'all', background: 'all', sort: 'newest' };
+      state.guardApprovalPage = 1;
+      state.selectedGuardApprovalId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'guard-approvals-refresh') {
+      await loadData();
+      render();
+      toast('Guard approvals refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'approval-page-prev') {
+      state.guardApprovalPage = Math.max(1, (state.guardApprovalPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'approval-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredGuardApprovals().length / Number(state.guardApprovalPerPage || 5)));
+      state.guardApprovalPage = Math.min(maxPage, (state.guardApprovalPage || 1) + 1);
+      render();
+      return;
+    }
     if (button.dataset.action === 'clear-selected-guard') {
       state.selectedGuardId = '';
       state.guardProfileMode = 'overview';
@@ -7048,6 +7449,41 @@ document.addEventListener('submit', async event => {
 document.addEventListener('input', event => {
   const input = event.target;
 
+  if (input && input.hasAttribute('data-guard-approval-search')) {
+    state.guardApprovalSearch = input.value || '';
+    state.guardApprovalPage = 1;
+    state.selectedGuardApprovalId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guard-approval-search')) {
+    state.guardApprovalSearch = input.value || '';
+    state.guardApprovalPage = 1;
+    state.selectedGuardApprovalId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-approval-filter')) {
+    const key = input.dataset.approvalFilter;
+    state.guardApprovalFilters = { ...(state.guardApprovalFilters || {}), [key]: input.value || 'all' };
+    state.guardApprovalPage = 1;
+    state.selectedGuardApprovalId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-approval-check')) {
+    const id = input.dataset.approvalCheck;
+    const set = new Set((state.guardApprovalSelectedIds || []).map(String));
+    if (input.checked) set.add(String(id)); else set.delete(String(id));
+    state.guardApprovalSelectedIds = [...set];
+    return;
+  }
+  if (input && input.hasAttribute('data-approval-per-page')) {
+    state.guardApprovalPerPage = Number(input.value || 5);
+    state.guardApprovalPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-guards-search')) {
     state.guardsSearch = input.value || '';
     state.guardsPage = 1;

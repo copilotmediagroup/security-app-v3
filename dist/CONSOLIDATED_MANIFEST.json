@@ -1,18 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.50",
-  "buildName": "GUARDS DATA LAYOUT FIX",
-  "type": "guards-data-layout-fix",
+  "version": "3.0.52",
+  "buildName": "GLOBAL SIDEBAR REDESIGN",
+  "type": "global-sidebar-redesign",
   "sql_required": false,
   "features": [
-    "Fix selected guard detail rail so phone/email come from the selected guard record only",
-    "Suppress obviously mismatched generic guard emails in the detail rail",
-    "Tighten online detection so approved/on-duty status is not treated as live online by itself",
-    "Update guard GPS display to show Live now / Online saved GPS / GPS stale instead of misleading stale-only timestamps",
-    "Fix table width and action column cutoff by removing horizontal overflow and compacting columns",
-    "Shorten filter dropdown labels and improve filter row fit",
-    "Compact the right detail rail so action buttons stay visible",
-    "Preserve v3.0.49 Guards Command Center features and actions",
+    "Global sidebar redesigned for Dispatch/Admin, Guard, and Client portals",
+    "Wider, more breathable sidebar layout inspired by generated mockup",
+    "Larger Co Pilot brand block and premium CP logo treatment",
+    "Improved user profile card with portal label, role badge, and online indicator",
+    "Rounded navigation items with larger icon boxes and less cramped spacing",
+    "Active nav state changed from harsh full-width bar to premium rounded command-center highlight",
+    "Operations/Account headings have cleaner spacing and visual separators",
+    "Sidebar nav remains scrollable but hides ugly native white scrollbars",
+    "Added compact platform status card above version badge",
+    "Version badge remains visible and cleaner at sidebar bottom",
     "No new SQL required"
   ]
 }

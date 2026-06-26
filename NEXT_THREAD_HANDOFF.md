@@ -1,11 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.51
+# Next Thread Handoff — Co Pilot Security v3.0.52
 
-Latest build: v3.0.51 GUARD APPROVALS COMMAND CENTER
+Latest build: v3.0.52 GLOBAL SIDEBAR REDESIGN
 
 ## What changed
-- Built from v3.0.50.
-- Rebuilt Guard Approvals into command-center onboarding review page.
-- Added KPIs, tabs, filters, applicant table, detail rail, certifications, onboarding checklist, review notes, approve/reject/request info/interview actions, search, refresh, and pagination.
-- Approve/reject use the existing guard signup flow for signup rows.
-- Request info/interview use local workflow state without new SQL.
+- Built from v3.0.51.
+- Global sidebar redesign applied to Dispatch/Admin, Guard, and Client portals.
+- Sidebar now uses wider spacing, larger profile card, premium rounded navigation items, improved active state, hidden native scrollbars, platform status card, and cleaner version badge.
+- All existing pages and v3.0.51 Guard Approvals features are preserved.
 - No new SQL required.

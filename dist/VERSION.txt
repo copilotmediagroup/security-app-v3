@@ -1,21 +1,18 @@
 Co Pilot Security
-Version: 3.0.50
-Build Name: GUARDS DATA LAYOUT FIX
+Version: 3.0.52
+Build Name: GLOBAL SIDEBAR REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.49 Guards Command Center.
-- Fixed selected guard detail rail data so phone/email fields come from the selected guard record only.
-- Added guard contact safeguards to avoid showing an obviously mismatched generic guard email under another guard.
-- Tightened online detection so approved/on-duty account state is not treated as live online by itself.
-- Improved GPS labels: Live now, Online saved GPS, or GPS stale instead of misleading stale timestamps.
-- Removed ugly horizontal table overflow and fixed the action column cutoff.
-- Shortened filter labels so they fit cleanly.
-- Compact right rail layout so Message / View Route / Assign Patrol / View Profile stay visible.
+- Built from the prior guard approvals build.
+- Redesigned the global sidebar for Dispatch/Admin, Guard, and Client portals.
+- Sidebar now matches the cleaner generated mockup direction: wider, less cramped, more user-friendly, and premium command-center style.
+- Added larger brand area, improved profile card, rounded nav buttons, cleaner active state, better section headings, hidden native white scrollbars, platform status card, and cleaner version badge.
+- Preserved all Guard Approvals functionality from the prior build.
 - No new SQL required.
 
 Badge:
-v3.0.50 GUARDS DATA LAYOUT FIX
+v3.0.52 GLOBAL SIDEBAR REDESIGN
 
 SQL:
 No new SQL required.
