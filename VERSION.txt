@@ -1,23 +1,25 @@
 Co Pilot Security
-Version: 3.0.60
-Build Name: PROOF REVIEW COMMAND CENTER
+Version: 3.0.61
+Build Name: REPORT BUILDER COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.59.
-- Rebuilt Dispatch/Admin Proof Review into a full command-center media evidence review page.
-- Added KPI row: Pending Review, Approved, Rejected, Included in Reports, Total Media, Expired Proofs.
-- Added tabs: All Proof, Pending Review, Approved, Rejected, Included in Reports.
-- Added filters: Guard, Client, Property, Type, Date Range, Sort.
-- Added searchable proof media list with thumbnails, photo/video badges, guard, property, patrol, uploaded time, status, and actions.
-- Added selected proof detail rail with preview, proof metadata, property/guard/patrol details, notes, approve/reject/include actions, and internal note save.
-- Added pagination, rows per page, clear filters, and CSV export.
-- Proof Review uses guard-uploaded media only. No URL inputs were added anywhere.
-- Review status and report inclusion are stored locally if permanent Supabase review fields are not available.
+- Built from v3.0.60.
+- Rebuilt Dispatch/Admin Report Builder into a full command-center final report creation workflow.
+- Added KPI row: Draft Reports, Ready To Publish, Published Reports, Total Reports, Photos Included, Videos Included.
+- Added 4-step builder flow: Select Patrol, Select Proof, Build Report, Review & Publish.
+- Added completed patrol/job selector with Client, Property, and Patrol / Job dropdowns.
+- Added selected job summary card showing property photo, client, property, patrol type, guard, date, time, and duration.
+- Added guard-uploaded proof selector with photo/video proof cards, Select All, pagination, and items per page.
+- Added live report preview right rail with client-facing report paper layout.
+- Added Report Options: template, report title, include guard notes, include patrol summary, selected proof count, Save as Draft, Review & Publish.
+- Added Save Draft and Publish workflows using local report storage if permanent report SQL fields are unavailable.
+- Publishing without proof is allowed after confirmation, matching the requirement that Admin can finalize reports even without photos/videos.
+- No URL inputs were added. Proof comes from guard-uploaded media only.
 - No new SQL required.
 
 Badge:
-v3.0.60 PROOF REVIEW COMMAND CENTER
+v3.0.61 REPORT BUILDER COMMAND CENTER
 
 SQL:
 No new SQL required.

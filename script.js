@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T23-15-v3060';
+const CP_DEV_CACHE_BUST = '2026-06-25T23-35-v3061';
 const BUILD = {
-  version: '3.0.60',
-  label: 'v3.0.60 PROOF REVIEW COMMAND CENTER'
+  version: '3.0.61',
+  label: 'v3.0.61 REPORT BUILDER COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -109,7 +109,20 @@ const state = {
   selectedProofId: '',
   proofReviewCheckedIds: [],
   proofReviewPage: 1,
-  proofReviewPerPage: 10
+  proofReviewPerPage: 10,
+  reportBuilderSearch: '',
+  reportBuilderStep: 1,
+  selectedReportRequestId: '',
+  selectedReportProofIds: [],
+  reportBuilderTemplate: 'standard',
+  reportBuilderTitle: '',
+  reportBuilderIncludeGuardNotes: true,
+  reportBuilderIncludeSummary: true,
+  currentReportDraftId: '',
+  reportBuilderClientFilter: 'all',
+  reportBuilderPropertyFilter: 'all',
+  reportBuilderPage: 1,
+  reportBuilderPerPage: 8
 };;
 const liveGps = {
   online: false,
@@ -6578,7 +6591,7 @@ async function scheduleGuardInterview(id) {
 }
 
 
-/* v3.0.60 Admin Clients Command Center */
+/* v3.0.61 Admin Clients Command Center */
 function adminClientSourceRows() {
   const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
   const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
@@ -6951,7 +6964,7 @@ async function adminClientRefresh() {
 }
 
 
-/* v3.0.60 Activity Log Command Center */
+/* v3.0.61 Activity Log Command Center */
 function activitySafeId(prefix, item = {}, idx = 0) {
   return `${prefix}-${item.id || item.request_id || item.thread_id || item.created_at || item.updated_at || idx}`;
 }
@@ -7459,7 +7472,7 @@ function exportActivityLogCsv() {
 }
 
 
-/* v3.0.60 Proof Review Command Center */
+/* v3.0.61 Proof Review Command Center */
 function proofReviewStateKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_proof_review_state_${who}`;
@@ -7846,6 +7859,416 @@ function exportProofReviewCsv() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+
+/* v3.0.61 Report Builder Command Center */
+function reportBuilderStorageKey() {
+  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
+  return `cp_security_report_builder_records_${who}`;
+}
+function readLocalReportBuilderRecords() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(reportBuilderStorageKey()) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function writeLocalReportBuilderRecords(records = []) {
+  try { localStorage.setItem(reportBuilderStorageKey(), JSON.stringify(records.slice(0, 500))); } catch {}
+}
+function saveLocalReportBuilderRecord(record = {}) {
+  const records = readLocalReportBuilderRecords();
+  const idx = records.findIndex(item => String(item.id) === String(record.id));
+  if (idx >= 0) records[idx] = { ...records[idx], ...record, updated_at: new Date().toISOString() };
+  else records.unshift(record);
+  writeLocalReportBuilderRecords(records);
+}
+function createReportBuilderId(prefix = 'rpt') {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+function reportStatus(report = {}) {
+  const raw = String(report.status || report.report_status || '').toLowerCase();
+  if (report.released_at || report.published_at) return 'published';
+  if (/publish|release|complete/.test(raw)) return 'published';
+  if (/ready|review/.test(raw)) return 'ready';
+  if (/draft/.test(raw)) return 'draft';
+  return raw || 'draft';
+}
+function reportBuilderAllReports() {
+  const fromState = (state.patrolReports || []).map(report => ({ ...report, _source: 'state' }));
+  const local = readLocalReportBuilderRecords().map(report => ({ ...report, _source: 'local' }));
+  const seen = new Set();
+  return [...local, ...fromState].filter(report => {
+    const key = String(report.id || report.request_id || report.patrol_request_id || report.title || Math.random());
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function proofMediaTypeFromItem(item = {}) {
+  const raw = `${item.file_type || item.mime_type || item.type || ''} ${item.file_name || item.name || item.object_path || ''} ${proofUrlValue(item) || ''}`.toLowerCase();
+  if (raw.includes('video') || raw.endsWith('.mp4') || raw.endsWith('.mov') || raw.endsWith('.webm') || raw.endsWith('.m4v')) return 'video';
+  return 'photo';
+}
+function reportBuilderCounts() {
+  const reports = reportBuilderAllReports();
+  const proofRows = typeof proofReviewRows === 'function' ? proofReviewRows() : proofReviewAllProofItems().map((proof, idx) => ({ id: proof.id || idx, proof, fileType: proof.file_type, fileName: proof.file_name, mediaUrl: proofUrlValue(proof) }));
+  return {
+    drafts: reports.filter(r => reportStatus(r) === 'draft').length,
+    ready: reports.filter(r => reportStatus(r) === 'ready').length,
+    published: reports.filter(r => reportStatus(r) === 'published').length,
+    total: reports.length,
+    photos: proofRows.filter(row => proofMediaType(row) === 'photo').length,
+    videos: proofRows.filter(row => proofMediaType(row) === 'video').length
+  };
+}
+function reportBuilderKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="report-builder-kpi ${esc(tone)}"><div class="report-builder-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function reportBuilderKpiRow() {
+  const c = reportBuilderCounts();
+  return `<section class="report-builder-kpis">
+    ${reportBuilderKpi('▤','Draft Reports',c.drafts,'In progress','blue')}
+    ${reportBuilderKpi('✓','Ready To Publish',c.ready,'Awaiting release','green')}
+    ${reportBuilderKpi('▣','Published Reports',c.published,'Released to clients','purple')}
+    ${reportBuilderKpi('⚙','Total Reports',c.total,'All time','orange')}
+    ${reportBuilderKpi('🖼','Photos Included',c.photos,'Available proof','cyan')}
+    ${reportBuilderKpi('🎥','Videos Included',c.videos,'Available proof','red')}
+  </section>`;
+}
+function completedReportRequests() {
+  const q = String(state.reportBuilderSearch || '').trim().toLowerCase();
+  let rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
+  if (!rows.length) rows = completedRequests();
+  if (state.reportBuilderClientFilter && state.reportBuilderClientFilter !== 'all') {
+    rows = rows.filter(req => String(req.client_id || '') === String(state.reportBuilderClientFilter));
+  }
+  if (state.reportBuilderPropertyFilter && state.reportBuilderPropertyFilter !== 'all') {
+    rows = rows.filter(req => String(req.property_id || '') === String(state.reportBuilderPropertyFilter));
+  }
+  if (q) {
+    rows = rows.filter(req => {
+      const property = propertyById(req.property_id) || {};
+      const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
+      const client = clientById(req.client_id || property.client_id) || {};
+      return [requestTitle(req), propertyDisplayName(property), propertyDisplayAddress(property), guardDisplayName(guard), client.business_name, client.name, req.status, req.request_type, req.patrol_type, req.instructions, req.notes].join(' ').toLowerCase().includes(q);
+    });
+  }
+  return rows.sort((a,b) => new Date(b.completed_at || b.updated_at || b.created_at || 0) - new Date(a.completed_at || a.updated_at || a.created_at || 0));
+}
+function selectedReportRequest() {
+  const rows = completedReportRequests();
+  const selected = rows.find(req => String(req.id) === String(state.selectedReportRequestId));
+  const fallback = selected || rows[0] || null;
+  if (fallback && !state.selectedReportRequestId) state.selectedReportRequestId = fallback.id;
+  return fallback;
+}
+function reportBuilderClientOptions() {
+  const rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
+  const clients = [...new Map(rows.map(req => {
+    const property = propertyById(req.property_id) || {};
+    const client = clientById(req.client_id || property.client_id) || {};
+    return [String(client.id || req.client_id || ''), client];
+  }).filter(([id]) => id)).values()];
+  return `<option value="all">All Clients</option>${clients.map(client => `<option value="${esc(client.id)}" ${String(state.reportBuilderClientFilter) === String(client.id) ? 'selected' : ''}>${esc(client.business_name || client.company_name || client.name || client.email || 'Client')}</option>`).join('')}`;
+}
+function reportBuilderPropertyOptions() {
+  const rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
+  const props = [...new Map(rows.map(req => {
+    const property = propertyById(req.property_id) || {};
+    return [String(property.id || req.property_id || ''), property];
+  }).filter(([id]) => id)).values()];
+  return `<option value="all">All Properties</option>${props.map(property => `<option value="${esc(property.id)}" ${String(state.reportBuilderPropertyFilter) === String(property.id) ? 'selected' : ''}>${esc(propertyDisplayName(property))}</option>`).join('')}`;
+}
+function reportBuilderJobOptions() {
+  const rows = completedReportRequests();
+  if (!rows.length) return `<option value="">No completed patrols available</option>`;
+  return rows.map(req => `<option value="${esc(req.id)}" ${String(req.id) === String(selectedReportRequest()?.id) ? 'selected' : ''}>${esc(requestTitle(req))} • ${esc(propertyLabel(req))}</option>`).join('');
+}
+function reportBuilderSteps() {
+  const step = Number(state.reportBuilderStep || 1);
+  const steps = [[1,'Select Patrol'],[2,'Select Proof'],[3,'Build Report'],[4,'Review & Publish']];
+  return `<nav class="report-builder-steps">${steps.map(([num,label]) => `<button type="button" class="${step >= num ? 'active' : ''}" data-report-step="${esc(num)}"><b>${esc(num)}</b><span>${esc(label)}</span></button>`).join('')}</nav>`;
+}
+function reportRequestTimeRange(req = {}) {
+  const start = req.started_at || req.accepted_at || req.created_at;
+  const end = req.completed_at || req.updated_at || req.closed_at;
+  if (!start && !end) return '—';
+  return `${fmtTime(start || end)} – ${fmtTime(end || start)}`;
+}
+function reportRequestDuration(req = {}) {
+  const start = new Date(req.started_at || req.accepted_at || req.created_at || 0).getTime();
+  const end = new Date(req.completed_at || req.updated_at || req.closed_at || 0).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !start || !end || end <= start) {
+    const raw = req.estimated_duration || req.duration_minutes || req.duration || '';
+    if (raw) return String(raw).match(/min|hour|hr/i) ? String(raw) : `${raw} min`;
+    return '60 min';
+  }
+  const mins = Math.max(1, Math.round((end - start) / 60000));
+  if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  return `${mins} min`;
+}
+function reportNumber(req = {}) {
+  return `RPT-${String(req.request_number || req.id || Date.now()).replace(/[^a-z0-9]/gi, '').slice(0, 10).toUpperCase()}`;
+}
+function reportPropertyImage(property = {}) {
+  return property.photo_url || property.image_url || property.property_photo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
+}
+function selectedReportJobCard() {
+  const req = selectedReportRequest();
+  if (!req) return `<div class="report-builder-empty">Select a completed patrol.</div>`;
+  const property = propertyById(req.property_id) || {};
+  const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
+  const client = clientById(req.client_id || property.client_id) || {};
+  return `<article class="selected-report-job-card">
+    <img src="${esc(reportPropertyImage(property))}" alt="Property">
+    <div>
+      <h3>${esc(requestTitle(req))}<span>Completed</span></h3>
+      <dl>
+        <dt>Client</dt><dd>${esc(client.business_name || client.company_name || client.name || client.email || 'Client')}</dd>
+        <dt>Property</dt><dd>${esc(propertyDisplayName(property))}</dd>
+        <dt>Patrol Type</dt><dd>${esc(statusText(req.request_type || req.patrol_type || req.type || 'Patrol'))}</dd>
+        <dt>Guard</dt><dd>${esc(guardDisplayName(guard))}</dd>
+        <dt>Date</dt><dd>${esc(fmtDate(req.completed_at || req.updated_at || req.created_at))}</dd>
+        <dt>Time</dt><dd>${esc(reportRequestTimeRange(req))}</dd>
+        <dt>Duration</dt><dd>${esc(reportRequestDuration(req))}</dd>
+      </dl>
+    </div>
+  </article>`;
+}
+function reportBuilderSelectJob() {
+  return `<section class="report-builder-section">
+    <div class="report-builder-section-head"><div><h2>Select Patrol / Job</h2><p>Choose the completed patrol this report will be built from.</p></div><span class="report-builder-route">Guard → Proof → Dispatch → Client</span></div>
+    <div class="report-builder-select-grid">
+      <label><span>Client</span><select data-report-builder-filter="client">${reportBuilderClientOptions()}</select></label>
+      <label><span>Property</span><select data-report-builder-filter="property">${reportBuilderPropertyOptions()}</select></label>
+      <label><span>Patrol / Job</span><select data-report-builder-request>${reportBuilderJobOptions()}</select></label>
+      <button type="button" data-action="refresh-report-builder">⟳</button>
+    </div>
+    ${selectedReportJobCard()}
+  </section>`;
+}
+function reportBuilderProofRows() {
+  const req = selectedReportRequest();
+  if (!req) return [];
+  const requestId = String(req.id);
+  const rows = typeof proofReviewRows === 'function' ? proofReviewRows() : [];
+  return rows.filter(row => String(proofRequestIdValue(row.proof)) === requestId || String(row.request?.id || '') === requestId);
+}
+function selectedReportProofRows() {
+  const ids = new Set((state.selectedReportProofIds || []).map(String));
+  return reportBuilderProofRows().filter(row => ids.has(String(row.id)));
+}
+function isReportProofSelected(id) {
+  return (state.selectedReportProofIds || []).map(String).includes(String(id));
+}
+function toggleReportProofSelection(id) {
+  const set = new Set((state.selectedReportProofIds || []).map(String));
+  const key = String(id || '');
+  if (!key) return;
+  if (set.has(key)) set.delete(key);
+  else set.add(key);
+  state.selectedReportProofIds = [...set];
+  state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
+}
+function pagedReportBuilderProofRows() {
+  const rows = reportBuilderProofRows();
+  const per = Number(state.reportBuilderPerPage || 8);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.reportBuilderPage = Math.min(Math.max(1, state.reportBuilderPage || 1), maxPage);
+  const start = (state.reportBuilderPage - 1) * per;
+  return rows.slice(start, start + per);
+}
+function reportBuilderProofCard(row = {}) {
+  const selected = isReportProofSelected(row.id);
+  const type = proofMediaType(row);
+  return `<button type="button" class="report-proof-card ${selected ? 'selected' : ''}" data-action="toggle-report-proof" data-proof-id="${esc(row.id)}">
+    <span class="proof-checkmark">${selected ? '✓' : ''}</span>
+    ${proofThumbnail(row)}
+    <strong>${esc(row.title)}</strong>
+    <small>${esc(statusText(type))} • ${esc(fmtDate(row.uploadedAt))}, ${esc(fmtTime(row.uploadedAt))}</small>
+  </button>`;
+}
+function reportBuilderProofPagination() {
+  const rows = reportBuilderProofRows();
+  const per = Number(state.reportBuilderPerPage || 8);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.reportBuilderPage = Math.min(Math.max(1, state.reportBuilderPage || 1), maxPage);
+  const start = rows.length ? (state.reportBuilderPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.reportBuilderPage || 1) * per);
+  return `<footer class="report-proof-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} proof items</span><div class="report-proof-pagination"><button type="button" data-action="report-proof-page-prev">‹</button><strong>${esc(state.reportBuilderPage || 1)}</strong><button type="button" data-action="report-proof-page-next">›</button></div><label>Items per page:<select data-report-proof-per-page><option value="4" ${per === 4 ? 'selected' : ''}>4</option><option value="8" ${per === 8 ? 'selected' : ''}>8</option><option value="12" ${per === 12 ? 'selected' : ''}>12</option></select></label></footer>`;
+}
+function reportBuilderProofGrid() {
+  const rows = pagedReportBuilderProofRows();
+  const allRows = reportBuilderProofRows();
+  const allSelected = allRows.length && allRows.every(row => isReportProofSelected(row.id));
+  return `<section class="report-builder-section">
+    <div class="report-builder-section-head"><div><h2>Select Proof To Include</h2><p>Choose photos and videos for the client-facing final report.</p></div><label class="select-all-proof"><input type="checkbox" data-report-proof-select-all ${allSelected ? 'checked' : ''}> Select All</label></div>
+    <div class="report-proof-grid">${rows.length ? rows.map(reportBuilderProofCard).join('') : `<div class="report-builder-empty">No proof uploaded for this patrol yet. You can still publish a report without proof after confirmation.</div>`}</div>
+    ${reportBuilderProofPagination()}
+  </section>`;
+}
+function defaultReportTitle() {
+  const req = selectedReportRequest();
+  const property = req ? propertyById(req.property_id) : {};
+  return `${propertyDisplayName(property || {})} Patrol Report`;
+}
+function reportSummaryText(req = {}) {
+  return state.reportBuilderIncludeSummary
+    ? (req.summary || req.final_summary || req.details || req.instructions || 'Patrol was completed and reviewed by Dispatch.')
+    : 'Dispatch reviewed the completed patrol and prepared this client-facing report.';
+}
+function reportGuardNotes(req = {}) {
+  if (state.reportBuilderIncludeGuardNotes === false) return 'Guard notes hidden by report settings.';
+  return req.guard_notes || req.notes || req.final_notes || req.instructions || 'No guard notes submitted.';
+}
+function reportPaperProofThumb(row = {}) {
+  const type = proofMediaType(row);
+  const url = row.mediaUrl || '';
+  if (!url) return `<div class="paper-proof-thumb empty">${type === 'video' ? '🎥' : '🖼'}</div>`;
+  if (type === 'video') return `<div class="paper-proof-thumb video"><video src="${esc(url)}" muted playsinline></video><span>▶</span></div>`;
+  return `<div class="paper-proof-thumb"><img src="${esc(url)}" alt="${esc(row.title)}"></div>`;
+}
+function reportPaperPreview(req, proofRows = []) {
+  if (!req) return `<div class="report-paper-empty">Select a patrol to preview report.</div>`;
+  const property = propertyById(req.property_id) || {};
+  const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
+  const client = clientById(req.client_id || property.client_id) || {};
+  return `<article class="report-paper">
+    <header><div><strong>Co Pilot Security</strong><span>Patrol Report</span></div><small>REPORT ID: ${esc(reportNumber(req))}<br>Generated: ${esc(fmtDateTimeStamp(new Date().toISOString()))}</small></header>
+    <h3>${esc(state.reportBuilderTitle || defaultReportTitle())}</h3>
+    <p>${esc(propertyDisplayName(property))} • ${esc(propertyDisplayAddress(property))}</p>
+    <table><tbody>
+      <tr><td>Client</td><td>${esc(client.business_name || client.company_name || client.name || 'Client')}</td></tr>
+      <tr><td>Patrol / Job</td><td>${esc(requestTitle(req))}</td></tr>
+      <tr><td>Guard</td><td>${esc(guardDisplayName(guard))}</td></tr>
+      <tr><td>Duration</td><td>${esc(reportRequestDuration(req))}</td></tr>
+      <tr><td>Patrol Type</td><td>${esc(statusText(req.request_type || req.patrol_type || 'Patrol'))}</td></tr>
+    </tbody></table>
+    <h4>Patrol Summary</h4><p>${esc(reportSummaryText(req))}</p>
+    <h4>Proof Included (${proofRows.length})</h4><div class="report-paper-proof-grid">${proofRows.length ? proofRows.slice(0, 6).map(reportPaperProofThumb).join('') : '<span>No photos/videos selected.</span>'}</div>
+    <h4>Guard Notes</h4><p>${esc(reportGuardNotes(req))}</p>
+    <footer><span>Guard Signature</span><span>Dispatch Review</span></footer>
+  </article>`;
+}
+function reportOptionsPanel() {
+  const proofRows = selectedReportProofRows();
+  return `<section class="report-options-card">
+    <h2>Report Options</h2>
+    <div class="report-options-grid">
+      <label><span>Template</span><select data-report-template><option value="standard" ${state.reportBuilderTemplate === 'standard' ? 'selected' : ''}>Standard Patrol Report</option><option value="incident" ${state.reportBuilderTemplate === 'incident' ? 'selected' : ''}>Incident Report</option><option value="executive" ${state.reportBuilderTemplate === 'executive' ? 'selected' : ''}>Executive Summary</option></select></label>
+      <label><span>Report Title</span><input type="text" value="${esc(state.reportBuilderTitle || defaultReportTitle())}" data-report-title></label>
+    </div>
+    <label class="report-checkbox"><input type="checkbox" data-report-include-guard-notes ${state.reportBuilderIncludeGuardNotes !== false ? 'checked' : ''}> Include guard notes</label>
+    <label class="report-checkbox"><input type="checkbox" data-report-include-summary ${state.reportBuilderIncludeSummary ? 'checked' : ''}> Include patrol summary</label>
+    <div class="report-selection-summary"><span>ⓘ ${esc(proofRows.length)} photos/videos selected</span><button type="button" data-action="change-proof-selection">Change Selection</button></div>
+    <div class="report-publish-actions"><button type="button" data-action="save-report-draft">Save as Draft</button><button type="button" class="publish" data-action="review-and-publish-report">Review & Publish</button></div>
+  </section>`;
+}
+function reportPreviewPanel() {
+  const req = selectedReportRequest();
+  const proofRows = selectedReportProofRows();
+  return `<aside class="report-builder-preview-rail"><section class="report-preview-card"><div class="report-preview-head"><h2>Report Preview</h2><button type="button" data-action="preview-full-report">Preview Full Report ↗</button></div><div class="report-paper-preview">${reportPaperPreview(req, proofRows)}</div></section>${reportOptionsPanel()}</aside>`;
+}
+function reportBuilderHeader() {
+  return `<header class="dashboard-header report-builder-header"><div class="title-block"><h1>Report Builder</h1><p>Create, customize, and publish client patrol reports.</p></div><div class="report-builder-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-builder-search"><input type="search" placeholder="Search reports, clients, guards..." value="${esc(state.reportBuilderSearch || '')}" data-report-builder-search><b>⌕</b></label><button type="button" data-action="report-template-panel">▣ Templates</button><button type="button" data-action="report-settings-panel">⚙ Settings</button><button type="button" class="primary-button" data-action="new-report">＋ New Report</button></div></header>`;
+}
+function reportBuilderCommandCenterView() {
+  return `<div class="dashboard report-builder-shell">${reportBuilderHeader()}${reportBuilderKpiRow()}<section class="report-builder-layout"><main class="report-builder-main panel">${reportBuilderSteps()}${reportBuilderSelectJob()}${reportBuilderProofGrid()}</main>${reportPreviewPanel()}</section></div>`;
+}
+function resetReportBuilderState() {
+  state.reportBuilderSearch = '';
+  state.reportBuilderStep = 1;
+  state.selectedReportRequestId = '';
+  state.selectedReportProofIds = [];
+  state.reportBuilderTemplate = 'standard';
+  state.reportBuilderTitle = '';
+  state.reportBuilderIncludeGuardNotes = true;
+  state.reportBuilderIncludeSummary = true;
+  state.currentReportDraftId = '';
+  state.reportBuilderClientFilter = 'all';
+  state.reportBuilderPropertyFilter = 'all';
+  state.reportBuilderPage = 1;
+}
+function reportBuilderPayload(status = 'draft') {
+  const req = selectedReportRequest();
+  if (!req) return null;
+  const property = propertyById(req.property_id) || {};
+  return {
+    id: state.currentReportDraftId || createReportBuilderId('report'),
+    request_id: req.id,
+    client_id: req.client_id || property.client_id || '',
+    property_id: req.property_id || '',
+    guard_id: req.guard_id || req.assigned_guard_id || '',
+    title: state.reportBuilderTitle || defaultReportTitle(),
+    template: state.reportBuilderTemplate || 'standard',
+    selected_proof_ids: state.selectedReportProofIds || [],
+    include_guard_notes: state.reportBuilderIncludeGuardNotes !== false,
+    include_summary: state.reportBuilderIncludeSummary === true,
+    status,
+    report_number: reportNumber(req),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+}
+async function saveReportDraft() {
+  const draft = reportBuilderPayload('draft');
+  if (!draft) {
+    toast('Select a completed patrol first.', 'error');
+    return;
+  }
+  state.currentReportDraftId = draft.id;
+  saveLocalReportBuilderRecord(draft);
+  toast('Report saved as draft.', 'success');
+}
+async function publishClientReport() {
+  const report = reportBuilderPayload('published');
+  if (!report) {
+    toast('Select a completed patrol first.', 'error');
+    return;
+  }
+  if (!(state.selectedReportProofIds || []).length) {
+    const confirmed = confirm('No proof selected. Publish report without photos/videos?');
+    if (!confirmed) return;
+  }
+  report.released_at = new Date().toISOString();
+  report.released_by = state.profile?.email || 'Dispatch';
+  state.currentReportDraftId = report.id;
+  saveLocalReportBuilderRecord(report);
+  toast('Report published to client.', 'success');
+}
+function exportReportBuilderPreview() {
+  const report = reportBuilderPayload('preview');
+  if (!report) {
+    toast('Select a completed patrol first.', 'error');
+    return;
+  }
+  const req = selectedReportRequest();
+  const property = propertyById(req.property_id) || {};
+  const proofRows = selectedReportProofRows();
+  const text = [
+    `Report: ${report.title}`,
+    `Report ID: ${reportNumber(req)}`,
+    `Property: ${propertyDisplayName(property)}`,
+    `Address: ${propertyDisplayAddress(property)}`,
+    `Generated: ${fmtDateTimeStamp(new Date().toISOString())}`,
+    `Proof Selected: ${proofRows.length}`,
+    '',
+    reportSummaryText(req),
+    '',
+    'Guard Notes:',
+    reportGuardNotes(req)
+  ].join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${reportNumber(req)}-preview.txt`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -7858,7 +8281,7 @@ function renderRoleView() {
     if (state.view === 'clients') return adminClientsCommandCenterView();
     if (state.view === 'activity-log') return activityLogCommandCenterView();
     if (state.view === 'proof-review') return proofReviewCommandCenterView();
-    if (state.view === 'report-builder') return tableView('Report Builder', 'Completed patrols ready for reports.', completedRequests());
+    if (state.view === 'report-builder') return reportBuilderCommandCenterView();
     if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
   }
   if (state.role === 'guard') {
@@ -8652,6 +9075,68 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.reportStep) {
+      state.reportBuilderStep = Number(button.dataset.reportStep || 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'toggle-report-proof') {
+      toggleReportProofSelection(button.dataset.proofId);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'report-proof-page-prev') {
+      state.reportBuilderPage = Math.max(1, (state.reportBuilderPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'report-proof-page-next') {
+      const maxPage = Math.max(1, Math.ceil(reportBuilderProofRows().length / Number(state.reportBuilderPerPage || 8)));
+      state.reportBuilderPage = Math.min(maxPage, (state.reportBuilderPage || 1) + 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'change-proof-selection') {
+      state.reportBuilderStep = 2;
+      render();
+      return;
+    }
+    if (button.dataset.action === 'save-report-draft') {
+      await saveReportDraft();
+      render();
+      return;
+    }
+    if (button.dataset.action === 'review-and-publish-report') {
+      state.reportBuilderStep = 4;
+      await publishClientReport();
+      render();
+      return;
+    }
+    if (button.dataset.action === 'preview-full-report') {
+      exportReportBuilderPreview();
+      toast('Report preview exported.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'new-report') {
+      resetReportBuilderState();
+      render();
+      toast('New report builder started.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'refresh-report-builder') {
+      await loadData();
+      render();
+      toast('Report Builder refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'report-template-panel') {
+      toast('Template controls are available in Report Options.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'report-settings-panel') {
+      toast('Report settings are available in the right rail.', 'success');
+      return;
+    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -8939,6 +9424,18 @@ document.addEventListener('submit', async event => {
 
 document.addEventListener('input', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-report-builder-search')) {
+    state.reportBuilderSearch = input.value || '';
+    state.reportBuilderPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-title')) {
+    state.reportBuilderTitle = input.value || '';
+    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-proof-review-search')) {
     state.proofReviewSearch = input.value || '';
     state.proofReviewPage = 1;
@@ -9122,6 +9619,61 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-report-builder-search')) {
+    state.reportBuilderSearch = input.value || '';
+    state.reportBuilderPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-builder-filter')) {
+    const key = input.dataset.reportBuilderFilter;
+    if (key === 'client') state.reportBuilderClientFilter = input.value || 'all';
+    if (key === 'property') state.reportBuilderPropertyFilter = input.value || 'all';
+    state.selectedReportRequestId = '';
+    state.selectedReportProofIds = [];
+    state.reportBuilderPage = 1;
+    state.reportBuilderStep = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-builder-request')) {
+    state.selectedReportRequestId = input.value || '';
+    state.selectedReportProofIds = [];
+    state.reportBuilderPage = 1;
+    state.reportBuilderStep = 2;
+    state.reportBuilderTitle = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-template')) {
+    state.reportBuilderTemplate = input.value || 'standard';
+    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-include-guard-notes')) {
+    state.reportBuilderIncludeGuardNotes = input.checked;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-include-summary')) {
+    state.reportBuilderIncludeSummary = input.checked;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-proof-select-all')) {
+    const rows = reportBuilderProofRows();
+    state.selectedReportProofIds = input.checked ? rows.map(row => String(row.id)) : [];
+    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-proof-per-page')) {
+    state.reportBuilderPerPage = Number(input.value || 8);
+    state.reportBuilderPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-proof-review-search')) {
     state.proofReviewSearch = input.value || '';
     state.proofReviewPage = 1;

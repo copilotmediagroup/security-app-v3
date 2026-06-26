@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.60 Settings Page Redesign */
+/* v3.0.61 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.60 Dispatch map blueprint fix */
+/* v3.0.61 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.60 Dispatch online guard filter + default map button */
+/* v3.0.61 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.60 Dispatch Board Command Center */
+/* v3.0.61 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Dispatch Live GPS Command Center */
+/* v3.0.61 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Pending Dispatch Command Center */
+/* v3.0.61 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Dispatch route + distance/ETA fix */
+/* v3.0.61 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Scheduled Queue Command Center */
+/* v3.0.61 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.60 Scheduled Queue data + layout polish */
+/* v3.0.61 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Guards Data + Layout Fix */
+/* v3.0.61 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Guards data + layout fix */
+/* v3.0.61 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Guard Approvals Command Center */
+/* v3.0.61 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.60 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.61 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.60 Client login + Dispatch sidebar proportion fix */
+/* v3.0.61 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9472,7 +9472,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   font-size: 10px !important;
 }
 
-/* v3.0.60 Dispatch sidebar profile overlap fix */
+/* v3.0.61 Dispatch sidebar profile overlap fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   align-content: stretch !important;
@@ -9551,7 +9551,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 2 !important;
 }
 
-/* v3.0.60 Dispatch sidebar overlap fix - hard separation between profile and nav */
+/* v3.0.61 Dispatch sidebar overlap fix - hard separation between profile and nav */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -9636,7 +9636,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   flex-shrink: 0 !important;
 }
 
-/* v3.0.60 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
+/* v3.0.61 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   row-gap: 0 !important;
@@ -9728,7 +9728,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 3 !important;
 }
 
-/* v3.0.60 Sidebar profile/nav stack fix
+/* v3.0.61 Sidebar profile/nav stack fix
    The Dispatch profile now lives inside a fixed reserved zone, so Dashboard cannot render underneath it. */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   display: grid !important;
@@ -9835,7 +9835,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   display: contents;
 }
 
-/* v3.0.60 Clients Command Center */
+/* v3.0.61 Clients Command Center */
 .admin-clients-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10407,7 +10407,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Activity Log Command Center */
+/* v3.0.61 Activity Log Command Center */
 .activity-log-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10897,7 +10897,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.60 Proof Review Command Center */
+/* v3.0.61 Proof Review Command Center */
 .proof-review-shell { gap: 16px; padding-bottom: 110px; }
 .proof-review-header h1 { font-size: 27px; }
 .proof-review-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -11421,4 +11421,635 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .proof-search { min-width: 0; }
   .proof-review-kpis,
   .proof-review-filter-bar { grid-template-columns: 1fr; }
+}
+
+/* v3.0.61 Report Builder Command Center */
+.report-builder-shell { gap: 16px; padding-bottom: 110px; }
+.report-builder-header h1 { font-size: 27px; }
+.report-builder-header-actions { display: flex; align-items: center; gap: 10px; }
+.report-builder-search {
+  min-width: 330px;
+  height: 42px;
+  display: grid;
+  grid-template-columns: 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+}
+.report-builder-search input {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #edf7ff;
+  font-weight: 850;
+}
+.report-builder-search b { color: #7f96ae; }
+.report-builder-header-actions > button:not(.primary-button) {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 15px;
+  font-weight: 950;
+  cursor: pointer;
+}
+.report-builder-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.report-builder-kpi {
+  min-height: 110px;
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.report-builder-kpi-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 21px;
+  font-weight: 1000;
+}
+.report-builder-kpi span {
+  color: #a9bdd6;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 11px;
+  font-weight: 950;
+}
+.report-builder-kpi strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font-size: 25px;
+  line-height: 1;
+}
+.report-builder-kpi small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.report-builder-kpi.blue .report-builder-kpi-icon { color:#7fc4ff; background:rgba(46,125,255,.16); box-shadow:0 0 28px rgba(46,125,255,.12); }
+.report-builder-kpi.green .report-builder-kpi-icon { color:#87f0ad; background:rgba(55,220,114,.16); box-shadow:0 0 28px rgba(55,220,114,.12); }
+.report-builder-kpi.purple .report-builder-kpi-icon { color:#c59aff; background:rgba(176,92,255,.15); box-shadow:0 0 28px rgba(176,92,255,.10); }
+.report-builder-kpi.orange .report-builder-kpi-icon { color:#ffb66e; background:rgba(255,121,31,.14); box-shadow:0 0 28px rgba(255,121,31,.10); }
+.report-builder-kpi.cyan .report-builder-kpi-icon { color:#65e9ff; background:rgba(0,198,255,.13); box-shadow:0 0 28px rgba(0,198,255,.10); }
+.report-builder-kpi.red .report-builder-kpi-icon { color:#ff9aa8; background:rgba(190,55,69,.17); box-shadow:0 0 28px rgba(190,55,69,.10); }
+
+.report-builder-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 16px;
+  align-items: start;
+}
+.report-builder-main,
+.report-preview-card,
+.report-options-card {
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.report-builder-steps {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.report-builder-steps button {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(7,18,32,.56);
+  color: #9fb4cc;
+  padding: 8px 12px;
+  font-weight: 1000;
+  cursor: pointer;
+  text-align: left;
+}
+.report-builder-steps button.active {
+  color: #fff;
+  border-color: rgba(46,125,255,.48);
+  background: linear-gradient(180deg, rgba(46,125,255,.22), rgba(6,20,36,.86));
+  box-shadow: inset 0 0 0 1px rgba(46,125,255,.16), 0 0 28px rgba(46,125,255,.12);
+}
+.report-builder-steps b {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #9ecbff;
+  background: rgba(46,125,255,.15);
+}
+.report-builder-steps button.active b {
+  color: #fff;
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+}
+.report-builder-section {
+  padding: 16px;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.report-builder-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.report-builder-section h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  letter-spacing: -.02em;
+}
+.report-builder-section p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+.report-builder-route {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: #9ecbff;
+  background: rgba(46,125,255,.12);
+  border: 1px solid rgba(46,125,255,.25);
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.report-builder-select-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, .9fr) minmax(170px, .9fr) minmax(230px, 1.4fr) 46px;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.report-builder-select-grid label,
+.report-options-grid label {
+  display: grid;
+  gap: 7px;
+}
+.report-builder-select-grid span,
+.report-options-grid span {
+  color: #a9bdd6;
+  font-size: 12px;
+  font-weight: 950;
+}
+.report-builder-select-grid select,
+.report-builder-select-grid button,
+.report-options-grid select,
+.report-options-grid input {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #edf7ff;
+  padding: 0 12px;
+  font-weight: 900;
+}
+.report-builder-select-grid button {
+  align-self: end;
+  cursor: pointer;
+}
+.selected-report-job-card {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px;
+  border-radius: 15px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(7,18,32,.56);
+}
+.selected-report-job-card img {
+  width: 190px;
+  height: 132px;
+  border-radius: 13px;
+  object-fit: cover;
+  border: 1px solid rgba(113,169,232,.12);
+}
+.selected-report-job-card h3 {
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 19px;
+}
+.selected-report-job-card h3 span {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #71f0a2;
+  background: rgba(55,220,114,.14);
+  font-size: 11px;
+  font-weight: 1000;
+}
+.selected-report-job-card dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin: 0;
+}
+.selected-report-job-card dt {
+  color: #8fa4bb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.selected-report-job-card dd {
+  margin: 4px 0 0;
+  color: #edf7ff;
+  font-size: 12px;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-builder-empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px dashed rgba(113,169,232,.18);
+  border-radius: 14px;
+  background: rgba(7,18,32,.38);
+  text-align: center;
+  padding: 16px;
+}
+.select-all-proof {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #dcecff;
+  font-weight: 950;
+}
+.select-all-proof input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f83ff;
+}
+.report-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.report-proof-card {
+  position: relative;
+  min-height: 198px;
+  display: grid;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(7,18,32,.58);
+  padding: 10px;
+  color: #edf7ff;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.report-proof-card.selected {
+  border-color: rgba(46,125,255,.68);
+  box-shadow: 0 0 0 1px rgba(46,125,255,.20), 0 0 28px rgba(46,125,255,.14);
+  background: rgba(20,54,96,.44);
+}
+.report-proof-card .proof-checkmark {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(46,125,255,.86);
+  font-weight: 1000;
+}
+.report-proof-card .proof-thumb {
+  width: 100%;
+  height: 104px;
+}
+.report-proof-card strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 1000;
+  line-height: 1.25;
+}
+.report-proof-card small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.report-proof-footer {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.report-proof-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.report-proof-pagination button,
+.report-proof-pagination strong {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.report-proof-pagination button {
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+}
+.report-proof-pagination strong {
+  color: #fff;
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+}
+.report-proof-footer select {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #edf7ff;
+  padding: 0 10px;
+}
+.report-builder-preview-rail {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+.report-preview-card,
+.report-options-card {
+  padding: 16px;
+}
+.report-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.report-preview-head h2,
+.report-options-card h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 17px;
+}
+.report-preview-head button {
+  min-height: 34px;
+  border-radius: 9px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 10px;
+  font-weight: 900;
+}
+.report-paper-preview {
+  max-height: 630px;
+  overflow: auto;
+  border-radius: 14px;
+  background: rgba(227,236,246,.04);
+  padding: 12px;
+}
+.report-paper {
+  min-height: 560px;
+  border-radius: 10px;
+  background: #f7fbff;
+  color: #102030;
+  padding: 20px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.28);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+.report-paper header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #dce8f5;
+}
+.report-paper header strong {
+  display: block;
+  color: #0b1f38;
+  font-size: 18px;
+}
+.report-paper header span,
+.report-paper header small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.report-paper h3 {
+  margin: 18px 0 4px;
+  font-size: 21px;
+  color: #0b1f38;
+}
+.report-paper p {
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.report-paper table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.report-paper td {
+  border: 1px solid #dce8f5;
+  padding: 8px;
+  font-size: 11px;
+}
+.report-paper td:first-child {
+  width: 38%;
+  color: #64748b;
+  font-weight: 800;
+  background: #eff6ff;
+}
+.report-paper h4 {
+  margin: 14px 0 7px;
+  color: #0b1f38;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.report-paper-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  min-height: 58px;
+}
+.paper-proof-thumb {
+  height: 66px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 7px;
+  border: 1px solid #d7e2ef;
+  background: #edf5ff;
+  color: #2563eb;
+  position: relative;
+}
+.paper-proof-thumb img,
+.paper-proof-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.paper-proof-thumb span {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+}
+.report-paper footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid #dce8f5;
+  color: #64748b;
+  font-size: 11px;
+}
+.report-paper-empty {
+  min-height: 400px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.report-options-card {
+  display: grid;
+  gap: 14px;
+}
+.report-options-grid {
+  display: grid;
+  gap: 12px;
+}
+.report-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #dcecff;
+  font-weight: 900;
+}
+.report-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f83ff;
+}
+.report-selection-summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(113,169,232,.12);
+  border-radius: 12px;
+  background: rgba(7,18,32,.56);
+  padding: 0 12px;
+}
+.report-selection-summary span {
+  color: #a9bdd6;
+  font-size: 12px;
+  font-weight: 900;
+}
+.report-selection-summary button {
+  border: 0;
+  background: transparent;
+  color: #58a9ff;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.report-publish-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 10px;
+}
+.report-publish-actions button {
+  min-height: 44px;
+  border-radius: 11px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.report-publish-actions .publish {
+  border-color: rgba(46,125,255,.45);
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+  color: #fff;
+}
+@media (max-width: 1700px) {
+  .report-builder-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .report-builder-layout { grid-template-columns: 1fr; }
+  .report-builder-preview-rail { position: static; }
+}
+@media (max-width: 1250px) {
+  .report-builder-steps,
+  .report-proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-builder-select-grid { grid-template-columns: 1fr 1fr; }
+  .selected-report-job-card { grid-template-columns: 1fr; }
+  .selected-report-job-card img { width: 100%; }
+}
+@media (max-width: 850px) {
+  .report-builder-header-actions,
+  .report-proof-footer,
+  .report-builder-section-head,
+  .report-selection-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .report-builder-search { min-width: 0; }
+  .report-builder-kpis,
+  .report-builder-steps,
+  .report-proof-grid,
+  .report-builder-select-grid,
+  .selected-report-job-card dl,
+  .report-publish-actions {
+    grid-template-columns: 1fr;
+  }
 }

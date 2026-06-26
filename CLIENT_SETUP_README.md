@@ -1,62 +1,64 @@
-# Co Pilot Security v3.0.60 — Proof Review Command Center
+# Co Pilot Security v3.0.61 — Report Builder Command Center
 
 ## What changed
-The Dispatch/Admin `Proof Review` page was rebuilt into a modern command-center media evidence review system.
+The Dispatch/Admin `Report Builder` page was rebuilt into a modern command-center final report creation workflow.
 
-## New Proof Review sections
+## New Report Builder sections
 - Header:
   - System Operational
-  - Search proof, guard, property
-  - Filters
-  - Export
+  - Search reports, clients, guards
+  - Templates
+  - Settings
+  - New Report
 - KPI row:
-  - Pending Review
-  - Approved
-  - Rejected
-  - Included in Reports
-  - Total Media
-  - Expired Proofs
-- Tabs:
-  - All Proof
-  - Pending Review
-  - Approved
-  - Rejected
-  - Included in Reports
-- Filters:
-  - All Guards
-  - All Clients
-  - All Properties
-  - All Types
-  - All Dates
-  - Sort
-  - Clear Filters
-- Main proof list:
-  - Checkbox
-  - Thumbnail
-  - Details
-  - Uploaded
-  - Status
-  - Actions
-- Right detail rail:
-  - Selected proof preview
-  - File metadata
-  - Property / address
+  - Draft Reports
+  - Ready To Publish
+  - Published Reports
+  - Total Reports
+  - Photos Included
+  - Videos Included
+- Builder steps:
+  - Select Patrol
+  - Select Proof
+  - Build Report
+  - Review & Publish
+- Completed patrol selector:
+  - Client
+  - Property
+  - Patrol / Job
+  - Refresh
+- Selected job card:
+  - Property photo
+  - Completed badge
+  - Client
+  - Property
+  - Patrol Type
   - Guard
-  - Patrol
-  - Uploaded time
-  - Notes
-  - Approve
-  - Reject
-  - Include/remove from report
-  - Internal note save
+  - Date
+  - Time
+  - Duration
+- Proof selector:
+  - Guard-uploaded photo/video proof cards only
+  - Select All
+  - Pagination
+  - Items per page
+- Right rail:
+  - Live report preview
+  - Report paper layout
+  - Report options
+  - Template
+  - Report title
+  - Include guard notes
+  - Include patrol summary
+  - Save as Draft
+  - Review & Publish
 
 ## Functional behavior
-- Search filters proof records.
-- Tabs filter status/included records.
-- Dropdown filters update the list.
-- Selecting a proof updates the detail rail.
-- Approve / Reject / Include in Report update local review state.
-- Internal notes save locally.
-- Export downloads a CSV of the currently filtered proof review list.
-- No URL input was added. Proof comes from guard uploads only.
+- Selecting a completed patrol updates the job card and report preview.
+- Selecting proof updates the report preview and selected proof count.
+- Report title, template, and report options update live.
+- Save as Draft stores a local report record.
+- Review & Publish stores a published local report record.
+- If no proof is selected, Dispatch can still publish after confirmation.
+- No URL input was added anywhere.
 - No new SQL required.

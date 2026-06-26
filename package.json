@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-proof-review-command-center",
-  "version": "3.0.60",
+  "name": "co-pilot-security-report-builder-command-center",
+  "version": "3.0.61",
   "private": true,
-  "description": "Rebuilds the Dispatch/Admin Proof Review page into a command-center media evidence review system with approve, reject, include in report, notes, filters, and export.",
+  "description": "Rebuilds the Dispatch/Admin Report Builder page into a command-center final report creation workflow with completed patrol selection, proof selection, live preview, draft save, and publish.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
