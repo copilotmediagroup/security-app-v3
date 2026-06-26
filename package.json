@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-proof-upload-confirmation-e2e-qa",
-  "version": "3.0.67",
+  "name": "co-pilot-security-client-report-preview-download-fix",
+  "version": "3.0.68",
   "private": true,
-  "description": "Adds guard proof upload confirmation, upload feedback, complete-without-proof gating, Proof Review visibility fixes, and end-to-end workflow QA while preserving global action locks.",
+  "description": "Completes Client Reports view/download actions by adding a real report preview panel, generated report downloads, CSV export, and removing placeholder action messages.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

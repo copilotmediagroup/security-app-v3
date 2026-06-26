@@ -1,20 +1,21 @@
 Co Pilot Security
-Version: 3.0.67
-Build Name: PROOF UPLOAD CONFIRMATION + E2E QA
+Version: 3.0.68
+Build Name: CLIENT REPORT PREVIEW + DOWNLOAD FIX
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.66.
-- Added guard proof upload preview confirmation, file size/type validation, upload progress, success, and failure feedback.
-- Added completion gating so guards cannot complete while proof is uploading and must confirm when completing without proof.
-- Completed jobs with proof now direct proof into Dispatch Proof Review; completed jobs without proof remain report-ready for no-proof final reports.
-- Fixed Proof Review date behavior so uploaded proof is not hidden by stale Today filters or old request created dates.
-- Preserved v3.0.65 global action locks and v3.0.66 cleanup/button QA.
+- Built from v3.0.67.
+- Fixed Client Reports eye/view button so it opens a real selected report preview panel instead of a placeholder toast.
+- Fixed Client Reports download button so it downloads an existing report URL when available or generates a client-facing report text file when no PDF exists yet.
+- Added selected report details, summary, proof count, property, guard/officer, date/time, patrol type, duration, and request metadata to the Client Reports right rail.
+- Added working Client Reports CSV export.
+- Removed the unfinished client report placeholder messages.
+- Preserved proof upload confirmation, global action locks, Report Builder, and Report Archive behavior.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.67 PROOF UPLOAD CONFIRMATION + E2E QA
+v3.0.68 CLIENT REPORT PREVIEW + DOWNLOAD FIX
 
 SQL:
 No new SQL required.
