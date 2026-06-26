@@ -1,21 +1,22 @@
 Co Pilot Security
-Version: 3.0.65
-Build Name: GLOBAL ACTION LOCK + WORKFLOW QA
+Version: 3.0.66
+Build Name: DEAD CODE CLEANUP + BUTTON QA
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.64 SERVER VERSION QA FIX.
-- Added a global workflow action-lock layer for major Dispatch/Admin actions.
-- Guard approvals now lock after approval/rejection, remove repeat approve/reject controls, and move approved guards to the active Guards roster view.
-- Pending Dispatch assignments now move the request out of Pending Dispatch and route Dispatch to the Dispatch Board after assignment.
-- Proof Review now locks approved/rejected proof states, blocks rejected proof from report inclusion, and blocks proof changes after a report is published.
-- Report Builder now blocks duplicate publishing for the same completed patrol and routes published reports directly to Report Archive.
-- Report-ready counts now ignore completed patrols that already have a published local/system report.
-- Added busy/disabled button state for lockable async actions to prevent double-click duplicate processing.
-- Preserved v3.0.64 server version fix, v3.0.63 Report Archive, upload-only media requirements, and no-SQL setup.
+- Built from v3.0.65.
+- Preserved the Global Action Lock + Workflow QA system.
+- Added workflow state normalization so stale pending selections move out of old queues after data refresh.
+- Added button QA cleanup that marks visual-only placeholder buttons as disabled instead of leaving them looking active.
+- Added submit double-click protection so forms cannot be submitted twice while saving.
+- Removed duplicate input handlers for Guard Approvals and Guards search.
+- Removed unreachable dead-code branch from approval notes action.
+- Preserved Report Archive, Report Builder, Proof Review, Guard Approval, Pending Dispatch, maps, uploads, and no-URL media requirements.
+- No URL inputs were added.
+- No new SQL required.
 
 Badge:
-v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA
+v3.0.66 DEAD CODE CLEANUP + BUTTON QA
 
 SQL:
 No new SQL required.

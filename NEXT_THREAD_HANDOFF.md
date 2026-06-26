@@ -1,7 +1,7 @@
 # NEXT THREAD HANDOFF — CO PILOT SECURITY APP
 
 Latest package:
-v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA
+v3.0.66 DEAD CODE CLEANUP + BUTTON QA
 
 Important instruction:
 The user is building this app through GitHub ZIP uploads into Bolt. Do not suggest Bolt AI prompts because the user does not have Bolt tokens. All future changes should be made by creating complete GitHub-ready ZIP replacement packages.
@@ -12,28 +12,23 @@ Co Pilot Security — a security patrol web app with three portals:
 2. Guard
 3. Client
 
-Current status:
-We just completed a global workflow cleanup build after v3.0.64. The goal was to stop finished actions from staying in repeatable pending/action mode.
+Current latest build:
+v3.0.66 DEAD CODE CLEANUP + BUTTON QA
 
-Latest build completed:
-v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA
-
-What v3.0.65 changed:
-- Added global workflow action-lock helpers.
-- Added busy/disabled state for key async action buttons.
-- Guard approval actions now lock after approved/rejected status.
-- Approved guard applications route Dispatch to the active Guards roster and select the approved guard when available.
-- Rejected applications show locked/finished state instead of approve/reject buttons.
-- Pending Dispatch assignment now clears selected pending state, moves the request out of Pending Dispatch, and routes Dispatch to Dispatch Board.
-- Proof Review locks approved/rejected status decisions.
-- Rejected proof cannot be included in client-facing reports.
-- Proof changes are blocked after a final report for the patrol has been published.
-- Report Builder blocks duplicate publishing for the same completed patrol.
-- After publish, Report Builder routes directly to Report Archive and selects the published report.
-- Reports Ready count now excludes completed patrols that already have a published local/system report.
+What v3.0.66 changed:
+- Built from v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA.
+- Preserved global approve/reject/finalize/action-lock behavior.
+- Added workflow state normalization after app data loads.
+- Pending Dispatch now clears stale selected requests that no longer belong in Pending Dispatch.
+- Report Builder now routes already-published reports to Report Archive instead of keeping the report in a publishable state.
+- Visual-only placeholder icon buttons are marked disabled so they do not look like broken active controls.
+- Form submit buttons now show a busy state while saving to reduce double submission.
+- Removed duplicate Guard Approval search handler.
+- Removed duplicate Guards search handler.
+- Removed unreachable approval-notes dead code.
 - No new SQL required.
 
-Previously completed:
+Recently completed builds:
 - v3.0.58 CLIENTS COMMAND CENTER
 - v3.0.59 ACTIVITY LOG COMMAND CENTER
 - v3.0.60 PROOF REVIEW COMMAND CENTER
@@ -42,9 +37,10 @@ Previously completed:
 - v3.0.63 REPORT ARCHIVE COMMAND CENTER
 - v3.0.64 SERVER VERSION QA FIX
 - v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA
+- v3.0.66 DEAD CODE CLEANUP + BUTTON QA
 
 Major requirements to preserve:
-- Client, Guard, and Dispatch portals must keep the modern dark grid command-center design.
+- Client, Guard, and Dispatch portals must keep the modern dark command-center design.
 - Sidebar redesign must remain global and uncluttered.
 - Dispatch sidebar profile area must never overlap Dashboard button.
 - Guard, Client, and Dispatch maps should share the same real-map style/blueprint.
@@ -60,4 +56,4 @@ Workflow to preserve:
 Client request → Pending Dispatch → Assign Guard → Guard accepts → GPS route → Guard uploads proof → Proof Review → Report Builder → Report Archive.
 
 Where to go next:
-Test v3.0.65 end-to-end in Bolt. Specifically test approve/reject guard, assign pending dispatch, approve/reject/include proof, publish report, and confirm each action moves to a finished/locked state. Then continue with dead-code cleanup and global button QA as v3.0.66. Pricing/payment/subscription remains last.
+Upload and test v3.0.66 in Bolt. Test the full workflow end-to-end: client request, dispatch assignment, guard accept/GPS/proof upload, proof review, report builder publish, and report archive. Then continue with any remaining global QA and launch polish. Pricing/payment/subscription remains last.

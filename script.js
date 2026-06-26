@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T13-05-v3065';
+const CP_DEV_CACHE_BUST = '2026-06-26T13-25-v3066';
 const BUILD = {
-  version: '3.0.65',
-  label: 'v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA'
+  version: '3.0.66',
+  label: 'v3.0.66 DEAD CODE CLEANUP + BUTTON QA'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -533,7 +533,7 @@ function statusChip(status = 'pending_dispatch') {
 }
 
 
-/* v3.0.65 Global Action Lock + Workflow QA helpers */
+/* v3.0.66 Global Action Lock + Cleanup QA helpers */
 function workflowActionStorageKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_workflow_action_locks_${who}`;
@@ -605,6 +605,46 @@ function requestHasPublishedReport(requestId = '') { return Boolean(publishedRep
 function proofLockedByPublishedReport(row = {}) {
   const requestId = row.request?.id || proofRequestIdValue(row.proof || row) || row.request_id || '';
   return requestHasPublishedReport(requestId);
+}
+
+function requestIsPendingDispatch(req = {}) {
+  const s = String(req.status || '').toLowerCase();
+  return ['', 'pending', 'pending_dispatch', 'new', 'requested'].includes(s);
+}
+function normalizeWorkflowState() {
+  const pendingIds = new Set((state.patrolRequests || []).filter(requestIsPendingDispatch).map(r => String(r.id || '')));
+  state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(id => pendingIds.has(String(id)));
+  if (state.selectedPendingRequestId && !pendingIds.has(String(state.selectedPendingRequestId))) {
+    state.selectedPendingRequestId = '';
+    if (state.view === 'pending-dispatch') state.view = 'dispatch-board';
+  }
+  const reportRequestId = state.selectedReportRequestId || '';
+  const published = reportRequestId ? publishedReportForRequestId(reportRequestId) : null;
+  if (published && state.view === 'report-builder') {
+    state.selectedArchiveReportId = String(published.id || '');
+    resetReportBuilderState();
+    state.view = 'report-archive';
+  }
+  const selectedApproval = state.selectedGuardApprovalId ? guardApprovalRows().find(a => String(a.id) === String(state.selectedGuardApprovalId)) : null;
+  if (selectedApproval && approvalStatus(selectedApproval) === 'approved' && state.view === 'guard-approvals') {
+    const guard = (state.guards || []).find(g => String(g.id || '') === String(selectedApproval.id || '') || String(g.email || '').toLowerCase() === String(selectedApproval.email || '').toLowerCase());
+    if (guard) state.selectedGuardId = guard.id || '';
+  }
+}
+function cleanupInteractiveButtons() {
+  try {
+    const wiredDatasetKeys = new Set([
+      'action','view','publicView','completedFilter','messageFilter','notificationFilter','clientRequestType','clientRequestHistoryFilter','clientPropertyFilter','propertyView','propertyTab','settingsTab','approve','reject'
+    ]);
+    document.querySelectorAll('.app-shell button').forEach(button => {
+      const hasWiredDataset = Object.keys(button.dataset || {}).some(key => wiredDatasetKeys.has(key));
+      const isSubmit = Boolean(button.closest('form')) && String(button.type || '').toLowerCase() === 'submit';
+      if (hasWiredDataset || isSubmit || button.disabled) return;
+      button.classList.add('ui-disabled-placeholder');
+      button.setAttribute('aria-disabled', 'true');
+      button.title = button.title || 'Visual-only control: no live action wired in this cleanup build.';
+    });
+  } catch {}
 }
 
 function propertyById(id) { return state.properties.find(item => String(item.id) === String(id)) || {}; }
@@ -766,6 +806,7 @@ async function loadData() {
   state.messageThreads = data.messageThreads || [];
   state.messages = data.messages || [];
   syncDispatchGuardMessages();
+  normalizeWorkflowState();
   state.status = 'Connected';
   if (!state.view) state.view = 'dashboard';
 }
@@ -1543,6 +1584,7 @@ function renderLoading() {
   scheduleClientPropertyMapPrep();
   scheduleClientPropertyDetailMap();
   if (state.role === 'client' && state.view === 'patrol-requests') setTimeout(() => updateClientRequestSummaryFromForm(), 0);
+  setTimeout(() => cleanupInteractiveButtons(), 0);
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -9957,6 +9999,9 @@ document.addEventListener('submit', async event => {
   const form = event.target;
   if (!form.dataset.form) return;
   event.preventDefault();
+  const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+  if (submitButton?.dataset.busy === '1') return;
+  setActionButtonBusy(submitButton, 'Saving...');
   try {
     if (form.dataset.form === 'login') await login(form);
     if (form.dataset.form === 'owner-setup') await ownerSetup(form);
@@ -9979,6 +10024,8 @@ document.addEventListener('submit', async event => {
     }
   } catch (err) {
     toast(friendly(err));
+  } finally {
+    if (submitButton && document.body.contains(submitButton)) clearActionButtonBusy(submitButton);
   }
 });
 
@@ -10032,13 +10079,6 @@ document.addEventListener('input', event => {
     render();
     return;
   }
-  if (input && input.hasAttribute('data-guard-approval-search')) {
-    state.guardApprovalSearch = input.value || '';
-    state.guardApprovalPage = 1;
-    state.selectedGuardApprovalId = '';
-    render();
-    return;
-  }
   if (input && input.hasAttribute('data-approval-filter')) {
     const key = input.dataset.approvalFilter;
     state.guardApprovalFilters = { ...(state.guardApprovalFilters || {}), [key]: input.value || 'all' };
@@ -10057,13 +10097,6 @@ document.addEventListener('input', event => {
   if (input && input.hasAttribute('data-approval-per-page')) {
     state.guardApprovalPerPage = Number(input.value || 5);
     state.guardApprovalPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-guards-search')) {
-    state.guardsSearch = input.value || '';
-    state.guardsPage = 1;
-    state.selectedGuardId = '';
     render();
     return;
   }
@@ -10338,13 +10371,6 @@ document.addEventListener('change', event => {
   if (input && input.hasAttribute('data-admin-client-per-page')) {
     state.adminClientPerPage = Number(input.value || 10);
     state.adminClientPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-guards-search')) {
-    state.guardsSearch = input.value || '';
-    state.guardsPage = 1;
-    state.selectedGuardId = '';
     render();
     return;
   }

@@ -12506,7 +12506,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.65 Global Action Lock + Workflow QA */
+/* Workflow Action Lock + QA */
 button:disabled,
 button.is-busy {
   cursor: not-allowed !important;
@@ -12575,3 +12575,16 @@ button.is-busy {
 .report-options-card.locked .report-publish-actions {
   margin-top: 12px;
 }
+
+/* v3.0.66 Dead Code Cleanup + Button QA */
+.ui-disabled-placeholder {
+  cursor: not-allowed !important;
+  opacity: .48 !important;
+  filter: grayscale(.35);
+  pointer-events: none;
+}
+button.is-busy {
+  cursor: progress !important;
+  opacity: .72;
+}
+.workflow-finished-panel + .workflow-finished-panel { margin-top: 10px; }

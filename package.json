@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-global-action-lock-workflow-qa",
-  "version": "3.0.65",
+  "name": "co-pilot-security-dead-code-cleanup-button-qa",
+  "version": "3.0.66",
   "private": true,
-  "description": "Adds global workflow action locks and post-action routing so approvals, assignments, proof reviews, and report publishing move forward instead of staying in repeatable pending/action mode.",
+  "description": "Cleans duplicate handlers and stale UI paths, adds workflow state normalization, disables visual-only placeholder buttons, and adds submit double-click protection while preserving the global action locks.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

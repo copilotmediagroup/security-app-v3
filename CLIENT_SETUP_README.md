@@ -1,29 +1,33 @@
-# Co Pilot Security v3.0.65 — Global Action Lock + Workflow QA
+# Co Pilot Security v3.0.66 — Dead Code Cleanup + Button QA
 
 ## What changed
-This build cleans up the workflow behavior globally so completed actions do not stay in repeatable pending mode.
+This build is a cleanup and global QA pass built from v3.0.65.
+
+It preserves the workflow locks from v3.0.65 and adds cleanup around stale selections, duplicate handlers, visual-only buttons, and double-submit protection.
 
 ## Main fixes
-- Approve/reject actions now lock after completion.
-- Lockable buttons enter a busy/disabled state while processing to reduce double-click duplicate actions.
-- Approved guards move to the active Guards roster view.
-- Rejected guard applications show a locked/finished state instead of approve/reject buttons.
-- Assigned patrols move out of Pending Dispatch and route Dispatch to the Dispatch Board.
-- Proof Review locks approved/rejected proof decisions.
-- Rejected proof cannot be included in reports.
-- Proof cannot be changed after the report for that patrol is published.
-- Report Builder blocks duplicate publishing for the same completed patrol.
-- Published reports route directly into Report Archive.
+- Preserved approve/reject/finalize action locks.
+- Added workflow state normalization after app data loads.
+- Pending Dispatch now clears stale selected requests if the request has already moved forward.
+- Report Builder routes already-published reports into Report Archive instead of leaving the report in a publishable state.
+- Visual-only icon buttons with no live action are marked disabled so they no longer look like broken active buttons.
+- Submit buttons enter a busy state while saving to prevent double submissions.
+- Removed duplicate Guard Approval search input handler.
+- Removed duplicate Guards search input handler.
+- Removed unreachable dead code from the approval notes click path.
 
-## Preserved
-- v3.0.64 server version QA fix.
-- v3.0.63 Report Archive Command Center.
-- Upload-only photos/videos. No URL upload fields were added.
-- Admin can publish/finalize reports with no proof after confirmation.
-- No new SQL required.
-
-## Install
-Upload this ZIP to GitHub/Bolt as the full replacement package.
+## Preserved requirements
+- Modern dark command-center design.
+- Global uncluttered sidebar.
+- Dispatch/Admin, Guard, and Client portals.
+- Device upload only for photos/videos.
+- No URL entry fields for media.
+- Client property image upload flow.
+- Guard proof upload flow.
+- Proof Review → Report Builder → Report Archive flow.
+- Report finalization even with no proof.
 
 ## SQL
-No new SQL is required for v3.0.65.
+No new SQL is required for v3.0.66.
+
+Use the existing SQL files only if the database has not already been initialized.
