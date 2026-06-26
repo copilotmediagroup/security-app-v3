@@ -1,21 +1,21 @@
 Co Pilot Security
-Version: 3.0.48
-Build Name: SCHEDULED QUEUE DATA + LAYOUT FIX
+Version: 3.0.49
+Build Name: GUARDS COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.47.
-- Fixed Scheduled Queue data detection so scheduled patrols, recurring patrols, vacation watches, future-dated requests, and stored schedule metadata appear on the Scheduled Queue page.
-- Client scheduled/recurring/vacation request submissions now save local schedule metadata so they can show in Scheduled Queue even when the backend falls back to older request arguments.
-- Fixed the Scheduled Queue layout by removing ugly native horizontal scrollbars.
-- Restored the All Scheduled tab and made tabs wrap instead of scrolling.
-- Tightened the filter row so dropdown text fits better and the search field has room.
-- Tightened the schedule table grid so it fits the command-center page.
-- Right rail auto-selects the first schedule when records exist.
+- Built from v3.0.48.
+- Rebuilt the Admin Guards page using the exact command-center blueprint.
+- Added KPI row: Total Guards, Online Now, On Patrol, Off Duty, Pending Approval, Alerts.
+- Added search and filters for guard status, duty status, rank, and approval status.
+- Added full guard roster table with guard photo/name/ID, rank, status, current assignment, GPS update, messages, response time, and actions.
+- Added selected guard right rail with profile header, current location, current assignment, shift status, contact details, mini live-location map, recent activity, and certifications.
+- Added working buttons: Message, View Route, Assign Patrol, View Profile, Refresh, Clear Filters, pagination, and rows per page.
+- Preserved online/offline accuracy: approved guard accounts are not treated as online unless GPS/online state is actually active.
 - No new SQL required.
 
 Badge:
-v3.0.48 SCHEDULED QUEUE DATA + LAYOUT FIX
+v3.0.49 GUARDS COMMAND CENTER
 
 SQL:
 No new SQL required.

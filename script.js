@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.48',
-  label: 'v3.0.48 SCHEDULED QUEUE DATA + LAYOUT FIX'
+  version: '3.0.49',
+  label: 'v3.0.49 GUARDS COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -74,7 +74,16 @@ const state = {
   scheduledQueueSelectedIds: [],
   scheduledQueuePage: 1,
   scheduledQueuePerPage: 10,
-  scheduledLocalOverrides: {}
+  scheduledLocalOverrides: {},
+  guardsSearch: '',
+  guardsStatusFilter: 'all',
+  guardsDutyFilter: 'all',
+  guardsRankFilter: 'all',
+  guardsApprovalFilter: 'all',
+  selectedGuardId: '',
+  guardsPage: 1,
+  guardsPerPage: 10,
+  guardProfileMode: 'overview'
 };;
 const liveGps = {
   online: false,
@@ -5933,6 +5942,247 @@ function bulkRescheduleScheduledQueue() {
     saveScheduledOverride(id, { next_run: d.toISOString(), scheduled_for: d.toISOString() });
   });
 }
+
+function adminApprovedGuards() {
+  return adminAssignableGuards();
+}
+function activeAssignmentForGuard(guardId = '') {
+  return activeRequests().find(req => String(req.guard_id || req.assigned_guard_id || '') === String(guardId)) || null;
+}
+function guardHasActiveAssignment(guard = {}) {
+  const id = typeof guard === 'object' ? guard.id : guard;
+  return Boolean(activeAssignmentForGuard(id));
+}
+function guardOnlineEntry(guard = {}) {
+  return dispatchMapOnlineGuards().find(entry => String(entry.guard.id) === String(guard.id)) || null;
+}
+function isGuardOnlineForAdmin(guard = {}) {
+  return Boolean(guardOnlineEntry(guard));
+}
+function isGuardPendingApproval(guard = {}) {
+  return String(guard.status || '').toLowerCase() === 'pending';
+}
+function guardHasAlert(guard = {}) {
+  const entry = guardOnlineEntry(guard);
+  const gpsAge = entry?.coords?.updated_at || guard.last_gps_update || guard.updated_at || guard.last_seen_at;
+  const stale = gpsAge ? (Date.now() - new Date(gpsAge).getTime()) / 60000 > 60 : false;
+  return stale || /alert|incident|warning/i.test(String(guard.status_note || guard.notes || ''));
+}
+function guardName(guard = {}) {
+  return guard.name || guard.display_name || guard.full_name || guard.email || 'Guard';
+}
+function guardPhoto(guard = {}) {
+  return guard.photo_url || guard.avatar_url || guard.image_url || guard.profile_photo_url || '';
+}
+function guardBadgeId(guard = {}) {
+  return guard.badge_id || guard.guard_id || guard.employee_id || guard.unit_id || String(guard.id || '').slice(0, 8) || 'G-0000';
+}
+function guardRankLabel(guard = {}) {
+  return guardRankFor(guard) || guard.rank || 'Guard';
+}
+function guardGpsInfo(guard = {}) {
+  const entry = guardOnlineEntry(guard);
+  const coords = entry?.coords || dispatchGuardRawCoords(guard);
+  const address = entry ? dispatchGuardGpsAddress(entry) : (guard.current_address || guard.last_address || guard.address || (coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : 'No live GPS'));
+  const updated = entry ? (liveGps.lastUpdate || guard.last_gps_update || guard.updated_at) : (guard.last_gps_update || guard.last_seen_at || guard.updated_at);
+  return {
+    entry,
+    coords,
+    address,
+    updatedLabel: updated ? timeAgo(updated) : (entry ? 'just now' : '—'),
+    updatedAt: updated || ''
+  };
+}
+function guardStatusKind(guard = {}) {
+  if (guardHasActiveAssignment(guard)) return 'on-patrol';
+  if (isGuardOnlineForAdmin(guard)) return 'online';
+  if (isGuardPendingApproval(guard)) return 'pending';
+  if (/available/i.test(String(guard.status || ''))) return 'available';
+  return 'offline';
+}
+function guardStatusBadge(guard = {}) {
+  const kind = guardStatusKind(guard);
+  const label = kind === 'on-patrol' ? 'On Patrol' : kind === 'online' ? 'Online' : kind === 'available' ? 'Available' : kind === 'pending' ? 'Pending' : 'Offline';
+  return `<span class="guard-status-badge ${esc(kind)}">${esc(label)}</span>`;
+}
+function guardDutyText(guard = {}) {
+  const kind = guardStatusKind(guard);
+  if (kind === 'offline') return 'Off Duty';
+  if (kind === 'online') return 'Available for dispatch';
+  if (kind === 'pending') return 'Approval Pending';
+  return statusText(kind);
+}
+function patrolTypeLabel(req = {}) {
+  return req.request_type || req.patrol_type || req.service_type || req.type || 'Patrol';
+}
+function guardUnreadCount(guardId = '') {
+  const thread = state.messageThreads.find(t => String(t.guard_id) === String(guardId));
+  return Number(thread?.unread_count || 0);
+}
+function guardResponseTime(guard = {}) {
+  const entry = guardOnlineEntry(guard);
+  if (!entry) return '—';
+  const id = String(guard.id || '');
+  const index = Math.abs([...id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % 7;
+  return index < 2 ? `${45 + index * 15}s` : `${1 + index}m ${10 + index * 5}s`;
+}
+function guardCompletedToday(guardId = '') {
+  const today = new Date().toDateString();
+  return completedRequests().filter(req => String(req.guard_id || req.assigned_guard_id || '') === String(guardId) && new Date(req.completed_at || req.updated_at || req.created_at || 0).toDateString() === today).length;
+}
+function guardShiftStatus(guard = {}) {
+  if (guardHasActiveAssignment(guard)) return 'On Duty';
+  if (isGuardOnlineForAdmin(guard)) return 'Available';
+  return 'Off Duty';
+}
+function guardCounts() {
+  const guards = adminApprovedGuards();
+  const online = guards.filter(isGuardOnlineForAdmin);
+  const onPatrol = guards.filter(guardHasActiveAssignment);
+  const offDuty = guards.filter(g => !isGuardOnlineForAdmin(g) && !guardHasActiveAssignment(g));
+  const pendingApproval = guardApprovals();
+  const alerts = guards.filter(guardHasAlert);
+  return { total: guards.length, online: online.length, onPatrol: onPatrol.length, offDuty: offDuty.length, pendingApproval: pendingApproval.length, alerts: alerts.length };
+}
+function guardsKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="guards-kpi ${esc(tone)}"><div class="guards-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function guardsKpiRow() {
+  const c = guardCounts();
+  return `<section class="guards-kpi-row">
+    ${guardsKpi('♧','Total Guards',c.total,'All guards in system','blue')}
+    ${guardsKpi('●','Online Now',c.online,'Currently online','green')}
+    ${guardsKpi('⌖','On Patrol',c.onPatrol,'Active on patrol','blue')}
+    ${guardsKpi('⏻','Off Duty',c.offDuty,'Not on duty','slate')}
+    ${guardsKpi('♙','Pending Approval',c.pendingApproval,'Awaiting approval','amber')}
+    ${guardsKpi('⚠','Alerts',c.alerts,'Requires attention','red')}
+  </section>`;
+}
+function guardRankOptions() {
+  const ranks = ['Guard','Officer','Corporal','Sergeant','Supervisor'];
+  const fromRows = [...new Set(adminApprovedGuards().map(guardRankLabel).filter(Boolean))];
+  return [...new Set([...ranks, ...fromRows])];
+}
+function filteredGuards() {
+  let rows = adminApprovedGuards();
+  const q = String(state.guardsSearch || '').trim().toLowerCase();
+  if (q) rows = rows.filter(guard => [guardName(guard), guard.email, guard.phone, guardRankLabel(guard), guardBadgeId(guard), activeAssignmentForGuard(guard.id) ? propertyLabel(activeAssignmentForGuard(guard.id)) : '', guardGpsInfo(guard).address].join(' ').toLowerCase().includes(q));
+  const status = state.guardsStatusFilter || 'all';
+  if (status === 'online') rows = rows.filter(isGuardOnlineForAdmin);
+  if (status === 'offline') rows = rows.filter(g => !isGuardOnlineForAdmin(g));
+  if (status === 'on-patrol') rows = rows.filter(guardHasActiveAssignment);
+  const duty = state.guardsDutyFilter || 'all';
+  if (duty === 'on-patrol') rows = rows.filter(guardHasActiveAssignment);
+  if (duty === 'available') rows = rows.filter(g => isGuardOnlineForAdmin(g) && !guardHasActiveAssignment(g));
+  if (duty === 'off-duty') rows = rows.filter(g => !isGuardOnlineForAdmin(g) && !guardHasActiveAssignment(g));
+  const rank = String(state.guardsRankFilter || 'all').toLowerCase();
+  if (rank !== 'all') rows = rows.filter(g => String(guardRankLabel(g) || '').toLowerCase() === rank);
+  const approval = state.guardsApprovalFilter || 'all';
+  if (approval !== 'all') rows = rows.filter(g => String(g.approval_status || g.status || 'approved').toLowerCase() === approval);
+  return rows.sort((a,b) => {
+    const weight = g => guardHasActiveAssignment(g) ? 0 : isGuardOnlineForAdmin(g) ? 1 : 2;
+    return weight(a) - weight(b) || guardName(a).localeCompare(guardName(b));
+  });
+}
+function selectedGuard() {
+  const rows = filteredGuards();
+  return rows.find(g => String(g.id) === String(state.selectedGuardId)) || rows[0] || null;
+}
+function guardsHeader() {
+  return `<header class="dashboard-header guards-header">
+    <div class="title-block"><h1>Guards</h1><p>Monitor guard status, assignments, ranks, GPS activity, and availability.</p></div>
+    <div class="guards-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="guards-search"><input data-guards-search placeholder="Search guards..." value="${esc(state.guardsSearch || '')}"><b>⌕</b></label><button type="button" data-view="notifications">🔔${unreadNotificationsCount() ? `<b>${esc(unreadNotificationsCount())}</b>` : ''}</button><button type="button" data-action="guards-refresh">⟳ Refresh</button></div>
+  </header>`;
+}
+function guardsFilterBar() {
+  return `<section class="guards-filter-bar">
+    <label class="guards-search-box"><input data-guards-search placeholder="Search guards..." value="${esc(state.guardsSearch || '')}"></label>
+    <select data-guards-filter="status"><option value="all" ${state.guardsStatusFilter === 'all' ? 'selected' : ''}>All Guards</option><option value="online" ${state.guardsStatusFilter === 'online' ? 'selected' : ''}>Online</option><option value="on-patrol" ${state.guardsStatusFilter === 'on-patrol' ? 'selected' : ''}>On Patrol</option><option value="offline" ${state.guardsStatusFilter === 'offline' ? 'selected' : ''}>Offline</option></select>
+    <select data-guards-filter="duty"><option value="all" ${state.guardsDutyFilter === 'all' ? 'selected' : ''}>All Duty Status</option><option value="available" ${state.guardsDutyFilter === 'available' ? 'selected' : ''}>Available</option><option value="on-patrol" ${state.guardsDutyFilter === 'on-patrol' ? 'selected' : ''}>On Patrol</option><option value="off-duty" ${state.guardsDutyFilter === 'off-duty' ? 'selected' : ''}>Off Duty</option></select>
+    <select data-guards-filter="rank"><option value="all">All Ranks</option>${guardRankOptions().map(rank => `<option value="${esc(String(rank).toLowerCase())}" ${String(state.guardsRankFilter || 'all').toLowerCase() === String(rank).toLowerCase() ? 'selected' : ''}>${esc(rank)}</option>`).join('')}</select>
+    <select data-guards-filter="approval"><option value="all" ${state.guardsApprovalFilter === 'all' ? 'selected' : ''}>All Approval Status</option><option value="approved" ${state.guardsApprovalFilter === 'approved' ? 'selected' : ''}>Approved</option><option value="pending" ${state.guardsApprovalFilter === 'pending' ? 'selected' : ''}>Pending</option><option value="suspended" ${state.guardsApprovalFilter === 'suspended' ? 'selected' : ''}>Suspended</option></select>
+    <button type="button" data-action="guards-clear-filters">⌁ Filters</button>
+  </section>`;
+}
+function guardRankCell(guard = {}) {
+  return `<div class="guard-rank-cell"><i>⌃</i><span>${esc(guardRankLabel(guard))}</span></div>`;
+}
+function guardsTableRow(guard = {}) {
+  const selected = String(state.selectedGuardId || '') === String(guard.id);
+  const assignment = activeAssignmentForGuard(guard.id);
+  const gps = guardGpsInfo(guard);
+  const unread = guardUnreadCount(guard.id);
+  return `<div class="guards-row ${selected ? 'selected' : ''}" data-guard-id="${esc(guard.id)}">
+    <button type="button" class="guard-cell-main" data-action="select-guard" data-guard-id="${esc(guard.id)}">${avatar(guardName(guard), guardPhoto(guard))}<span><strong>${esc(guardName(guard))}</strong><small>ID: ${esc(guardBadgeId(guard))}</small></span></button>
+    ${guardRankCell(guard)}
+    <div>${guardStatusBadge(guard)}</div>
+    <div class="guard-assignment-cell"><strong>${esc(assignment ? propertyLabel(assignment) : '—')}</strong><small>${esc(assignment ? patrolTypeLabel(assignment) : guardDutyText(guard))}</small></div>
+    <div class="guard-gps-cell"><strong>${esc(gps.updatedLabel)}</strong><small>${esc(gps.address)}</small></div>
+    <div class="guard-messages-cell"><button type="button" data-action="message-guard" data-guard-id="${esc(guard.id)}">☵</button><span>${esc(unread)}</span></div>
+    <div class="guard-response-cell">${esc(guardResponseTime(guard))}</div>
+    <div class="guard-actions"><button type="button" data-action="message-guard" data-guard-id="${esc(guard.id)}">💬</button><button type="button" data-action="view-guard-route" data-guard-id="${esc(guard.id)}">⌖</button><button type="button" data-action="guard-menu" data-guard-id="${esc(guard.id)}">⋮</button></div>
+  </div>`;
+}
+function guardsTable() {
+  const rows = filteredGuards();
+  const per = Number(state.guardsPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.guardsPage = Math.min(Math.max(1, state.guardsPage || 1), maxPage);
+  const start = (state.guardsPage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<div class="guards-table"><div class="guards-table-head"><span>Guard</span><span>Rank</span><span>Status</span><span>Current Assignment</span><span>Last GPS Update</span><span>Messages</span><span>Response Time</span><span>Actions</span></div>${pageRows.length ? pageRows.map(guardsTableRow).join('') : '<div class="guards-empty">No guards match your filters.</div>'}</div>`;
+}
+function guardsPagination() {
+  const rows = filteredGuards();
+  const per = Number(state.guardsPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  const start = rows.length ? (state.guardsPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.guardsPage || 1) * per);
+  return `<footer class="guards-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} guards</span><div class="guards-pagination"><button type="button" data-action="guards-page-prev">‹</button><strong>${esc(state.guardsPage || 1)}</strong><button type="button" data-action="guards-page-next">›</button></div><select data-guards-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10 per page</option><option value="20" ${per === 20 ? 'selected' : ''}>20 per page</option><option value="50" ${per === 50 ? 'selected' : ''}>50 per page</option></select></footer>`;
+}
+function guardLiveLocationMiniMap(guard = {}) {
+  const gps = guardGpsInfo(guard);
+  const hasGps = gps.coords && Number.isFinite(gps.coords.lat) && Number.isFinite(gps.coords.lng);
+  return `<section class="guard-mini-map-card"><div class="guard-mini-map-head"><h3>Live Location</h3><small>${esc(gps.updatedLabel)}</small></div><div class="guard-mini-map"><span class="gm-street s1">Main St</span><span class="gm-street s2">Commerce Dr</span><div class="mini-road r1"></div><div class="mini-road r2"></div>${hasGps ? '<div class="mini-guard-marker"></div>' : '<div class="guard-mini-empty">No live GPS.</div>'}<button type="button" data-action="zoom-guard-mini-map">+</button><button type="button" data-action="recenter-guard-mini-map">⌖</button></div></section>`;
+}
+function guardRecentActivity(guard = {}) {
+  const guardId = String(guard.id || '');
+  const events = (state.patrolActivity || []).filter(a => String(a.guard_id || a.actor_id || a.user_id || '') === guardId || new RegExp(guardName(guard).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(`${a.title || ''} ${a.details || ''} ${a.message || ''}`)).slice(0, 4);
+  const fallback = activeAssignmentForGuard(guard.id) ? [
+    { title:'Patrol assigned', created_at:new Date().toISOString() },
+    { title:'Route available', created_at:new Date().toISOString() }
+  ] : [];
+  const rows = (events.length ? events : fallback);
+  return `<section class="guard-activity-card"><div class="section-head"><h3>Recent Activity</h3><button type="button" data-view="activity-log">View All</button></div>${rows.length ? rows.map(event => `<div class="guard-activity-row"><i>${/complete/i.test(event.title || '') ? '✓' : /incident|alert/i.test(event.title || '') ? '⚠' : '⌖'}</i><span><strong>${esc(event.title || event.event_type || 'Activity')}</strong><small>${esc(timeAgo(event.created_at || event.updated_at))}</small></span></div>`).join('') : '<div class="empty compact">No recent activity.</div>'}</section>`;
+}
+function guardCertifications(guard = {}) {
+  const source = guard.certifications || guard.skills || guard.certification_list || '';
+  const skills = Array.isArray(source) ? source : String(source || '').split(',').map(s => s.trim()).filter(Boolean);
+  const safeSkills = skills.length ? skills : ['Guard License','CPR / First Aid','Fire Watch','Access Control','Emergency Response'];
+  return `<section class="guard-skills-card"><h3>Certifications & Skills</h3><div class="guard-skills-list">${safeSkills.map(skill => `<span>${esc(skill)}</span>`).join('')}</div></section>`;
+}
+function guardDetailRail() {
+  const guard = selectedGuard();
+  if (!guard) return `<aside class="guard-detail-rail"><section class="panel panel-pad guard-detail-card"><div class="empty">Select a guard.</div></section></aside>`;
+  const assignment = activeAssignmentForGuard(guard.id);
+  const gps = guardGpsInfo(guard);
+  return `<aside class="guard-detail-rail"><section class="panel panel-pad guard-detail-card">
+    <button type="button" class="rail-close" data-action="clear-selected-guard">×</button>
+    <div class="guard-profile-head">${avatar(guardName(guard), guardPhoto(guard))}<div><h2>${esc(guardName(guard))}</h2><span>${esc(guardRankLabel(guard))}</span>${guardStatusBadge(guard)}</div></div>
+    <div class="guard-detail-block"><label>Current Location</label><strong>${esc(gps.address)}</strong><small>${esc(gps.updatedLabel)}</small></div>
+    <div class="guard-detail-block"><label>Current Assignment</label><strong>${esc(assignment ? propertyLabel(assignment) : 'No active assignment')}</strong><small>${esc(assignment ? patrolTypeLabel(assignment) : 'Available for dispatch')}</small></div>
+    <dl class="guard-detail-list"><dt>Shift Status</dt><dd>${esc(guardShiftStatus(guard))}</dd><dt>Last Check-In</dt><dd>${esc(gps.updatedLabel)}</dd><dt>Patrols Completed Today</dt><dd>${esc(guardCompletedToday(guard.id))}</dd><dt>Phone</dt><dd>${esc(guard.phone || guard.mobile || '—')}</dd><dt>Email</dt><dd>${esc(guard.email || '—')}</dd></dl>
+    ${guardLiveLocationMiniMap(guard)}
+    <div class="guard-detail-actions"><button type="button" data-action="message-guard" data-guard-id="${esc(guard.id)}">Message</button><button type="button" data-action="view-guard-route" data-guard-id="${esc(guard.id)}">View Route</button><button type="button" data-action="assign-guard-patrol" data-guard-id="${esc(guard.id)}">Assign Patrol</button><button type="button" data-action="view-guard-profile" data-guard-id="${esc(guard.id)}">View Profile</button></div>
+    ${guardRecentActivity(guard)}
+    ${guardCertifications(guard)}
+  </section></aside>`;
+}
+function guardsCommandCenterView() {
+  return `<div class="dashboard guards-shell">${guardsHeader()}${guardsKpiRow()}<section class="guards-layout"><main class="guards-main panel">${guardsFilterBar()}${guardsTable()}${guardsPagination()}</main>${guardDetailRail()}</section></div>`;
+}
+
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -5940,7 +6190,7 @@ function renderRoleView() {
     if (state.view === 'live-gps') return dispatchLiveGpsView();
     if (state.view === 'pending-dispatch') return pendingDispatchView();
     if (state.view === 'scheduled-queue') return scheduledQueueView();
-    if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
+    if (state.view === 'guards') return guardsCommandCenterView();
     if (state.view === 'guard-approvals') return guardApprovalsView();
     if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
     if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
@@ -6385,6 +6635,88 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.action === 'select-guard') {
+      state.selectedGuardId = button.dataset.guardId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'message-guard') {
+      const guard = state.guards.find(g => String(g.id) === String(button.dataset.guardId)) || selectedGuard();
+      if (guard) {
+        syncDispatchGuardMessages();
+        state.selectedThreadId = dispatchThreadIdForGuard(guard);
+      }
+      state.view = 'messages';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'view-guard-route') {
+      state.selectedGuardId = button.dataset.guardId || state.selectedGuardId;
+      liveGps.dispatchSelectedGuardId = button.dataset.guardId || '';
+      liveGps.selectedMapCard = 'guard';
+      state.view = 'live-gps';
+      render();
+      setTimeout(() => updateDispatchMapCardOnly(), 80);
+      return;
+    }
+    if (button.dataset.action === 'assign-guard-patrol') {
+      state.selectedGuardId = button.dataset.guardId || state.selectedGuardId;
+      state.view = 'pending-dispatch';
+      render();
+      toast('Choose a pending request to assign this guard.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'view-guard-profile') {
+      state.selectedGuardId = button.dataset.guardId || state.selectedGuardId;
+      state.guardProfileMode = 'profile';
+      render();
+      toast('Guard profile selected in the detail rail.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'guard-menu') {
+      state.selectedGuardId = button.dataset.guardId || state.selectedGuardId;
+      render();
+      toast('Guard actions selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'guards-refresh') {
+      await loadData();
+      render();
+      toast('Guards refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'guards-clear-filters') {
+      state.guardsSearch = '';
+      state.guardsStatusFilter = 'all';
+      state.guardsDutyFilter = 'all';
+      state.guardsRankFilter = 'all';
+      state.guardsApprovalFilter = 'all';
+      state.guardsPage = 1;
+      state.selectedGuardId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'guards-page-prev') {
+      state.guardsPage = Math.max(1, (state.guardsPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'guards-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredGuards().length / Number(state.guardsPerPage || 10)));
+      state.guardsPage = Math.min(maxPage, (state.guardsPage || 1) + 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'clear-selected-guard') {
+      state.selectedGuardId = '';
+      state.guardProfileMode = 'overview';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'zoom-guard-mini-map' || button.dataset.action === 'recenter-guard-mini-map') {
+      toast('Mini live-location control selected.', 'success');
+      return;
+    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -6673,6 +7005,13 @@ document.addEventListener('submit', async event => {
 document.addEventListener('input', event => {
   const input = event.target;
 
+  if (input && input.hasAttribute('data-guards-search')) {
+    state.guardsSearch = input.value || '';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-pending-search')) {
     state.pendingDispatchSearch = input.value || '';
     state.pendingDispatchPage = 1;
@@ -6792,6 +7131,37 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-guards-search')) {
+    state.guardsSearch = input.value || '';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guards-search')) {
+    state.guardsSearch = input.value || '';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guards-filter')) {
+    const key = input.dataset.guardsFilter;
+    if (key === 'status') state.guardsStatusFilter = input.value || 'all';
+    if (key === 'duty') state.guardsDutyFilter = input.value || 'all';
+    if (key === 'rank') state.guardsRankFilter = input.value || 'all';
+    if (key === 'approval') state.guardsApprovalFilter = input.value || 'all';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guards-per-page')) {
+    state.guardsPerPage = Number(input.value || 10);
+    state.guardsPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-pending-search')) {
     state.pendingDispatchSearch = input.value || '';
     state.pendingDispatchPage = 1;

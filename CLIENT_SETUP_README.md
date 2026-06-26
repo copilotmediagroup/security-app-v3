@@ -1,23 +1,51 @@
-# Co Pilot Security v3.0.48 — Scheduled Queue Data + Layout Fix
+# Co Pilot Security v3.0.49 — Guards Command Center
 
 ## What changed
-- Fixed Scheduled Queue data detection.
-- Scheduled Queue now pulls in:
-  - Scheduled Patrol
-  - Recurring Patrol
-  - Vacation Watch
-  - future-dated patrol requests
-  - schedule metadata saved locally when client submits a scheduled request
-- Fixed the visual layout problems from v3.0.47:
-  - removed white horizontal scrollbars
-  - restored visible All Scheduled tab
-  - wrapped tabs cleanly
-  - wrapped filters cleanly
-  - tightened table columns
-  - auto-selects first schedule when data exists
+The Admin `Guards` page has been rebuilt from a basic card/list page into a full guard-management command center.
+
+## New Guards page sections
+- Header:
+  - System Operational
+  - Search Guards
+  - Notifications
+  - Refresh
+- KPI row:
+  - Total Guards
+  - Online Now
+  - On Patrol
+  - Off Duty
+  - Pending Approval
+  - Alerts
+- Main guard table:
+  - Guard photo/name/ID
+  - Rank
+  - Status
+  - Current assignment
+  - Last GPS update
+  - Messages
+  - Response time
+  - Actions
+- Right detail rail:
+  - Guard profile header
+  - Current location
+  - Current assignment
+  - Shift status
+  - Last check-in
+  - Patrols completed today
+  - Phone/email
+  - Mini live-location map
+  - Message / View Route / Assign Patrol / View Profile
+  - Recent activity
+  - Certifications & skills
 
 ## Functional behavior
-- Client scheduled/recurring/vacation submissions are remembered locally after submit.
-- Scheduled Queue includes those requests without requiring new SQL.
-- Existing buttons from v3.0.47 are preserved.
+- Search filters the table.
+- Status/duty/rank/approval filters update the table.
+- Clicking a row opens the right rail.
+- Message opens the guard/dispatch message thread.
+- View Route opens Live GPS focused on the guard.
+- Assign Patrol routes to Pending Dispatch.
+- Refresh reloads data.
+- Clear Filters resets the guard table.
+- Pagination and rows per page work.
 - No new SQL required.

@@ -1,18 +1,17 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.48",
-  "buildName": "SCHEDULED QUEUE DATA + LAYOUT FIX",
-  "type": "scheduled-queue-data-layout-fix",
+  "version": "3.0.49",
+  "buildName": "GUARDS COMMAND CENTER",
+  "type": "guards-command-center",
   "sql_required": false,
   "features": [
-    "Scheduled Queue now recognizes scheduled patrol, recurring patrol, vacation watch, future-dated, and locally submitted schedule metadata",
-    "Client scheduled/recurring/vacation requests are remembered locally after submit so they appear in Scheduled Queue even if the backend RPC falls back to older arguments",
-    "Scheduled Queue date logic now uses next_run, scheduled_for, schedule_start_date, start_date, requested_for, scheduled_at, or created_at in order",
-    "All Scheduled tab is restored and remains visible by wrapping tabs instead of horizontal scrolling",
-    "Removed ugly white native horizontal scrollbars from tab/table areas",
-    "Filter row now wraps cleanly and prevents clipped dropdown text",
-    "Table grid was tightened to fit the command-center page without a horizontal scrollbar",
-    "Right rail auto-selects the first schedule when schedule data exists",
+    "Redesigned Admin Guards page into a full command-center layout",
+    "Added KPI row: Total Guards, Online Now, On Patrol, Off Duty, Pending Approval, Alerts",
+    "Added guard search and filters for status, duty status, rank, and approval status",
+    "Added guard roster table with guard identity, rank, status, current assignment, GPS update, message count, response time, and actions",
+    "Added selected guard right rail with profile header, current location, assignment, shift status, phone/email, mini live-location map, recent activity, and certifications",
+    "Added working actions for Message, View Route, Assign Patrol, View Profile, refresh, clear filters, pagination, and rows per page",
+    "Online/offline status uses existing GPS online logic and does not treat approved guard accounts as online by default",
     "No new SQL required"
   ]
 }

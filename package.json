@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-scheduled-queue-data-layout-fix",
-  "version": "3.0.48",
+  "name": "co-pilot-security-guards-command-center",
+  "version": "3.0.49",
   "private": true,
-  "description": "Fixes Scheduled Queue data sync from scheduled/recurring/vacation client requests and removes bad horizontal scrollbars while preserving command-center design.",
+  "description": "Redesigns the Admin Guards page into a guard-management command center with KPI cards, filters, roster table, detail rail, mini GPS map, and working actions.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
