@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T13-25-v3066';
+const CP_DEV_CACHE_BUST = '2026-06-26T13-35-v3067';
 const BUILD = {
-  version: '3.0.66',
-  label: 'v3.0.66 DEAD CODE CLEANUP + BUTTON QA'
+  version: '3.0.67',
+  label: 'v3.0.67 PROOF UPLOAD CONFIRMATION + E2E QA'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -629,6 +629,15 @@ function normalizeWorkflowState() {
   if (selectedApproval && approvalStatus(selectedApproval) === 'approved' && state.view === 'guard-approvals') {
     const guard = (state.guards || []).find(g => String(g.id || '') === String(selectedApproval.id || '') || String(g.email || '').toLowerCase() === String(selectedApproval.email || '').toLowerCase());
     if (guard) state.selectedGuardId = guard.id || '';
+  }
+  if (state.view === 'proof-review' && typeof proofReviewRows === 'function') {
+    state.proofReviewFilters = { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest', ...(state.proofReviewFilters || {}) };
+    const filters = state.proofReviewFilters || {};
+    const hasOnlyDateFilter = !state.proofReviewSearch && (state.proofReviewTab || 'all') === 'all' && ['guardId','clientId','propertyId','type'].every(k => !filters[k] || filters[k] === 'all');
+    if (hasOnlyDateFilter && filters.dateRange && filters.dateRange !== 'all' && proofReviewRows().length && !filteredProofReviewRows().length) {
+      state.proofReviewFilters.dateRange = 'all';
+      state.proofReviewPage = 1;
+    }
   }
 }
 function cleanupInteractiveButtons() {
@@ -1330,43 +1339,53 @@ async function rejectSignup(kind, id) {
 async function uploadProofFiles(requestId, files = [], note = '') {
   if (!requestId) throw new Error('Active job missing.');
   const list = Array.from(files || []);
-  if (!list.length) throw new Error('Choose at least one photo or video.');
+  const validation = validateProofFiles(list);
+  if (!validation.ok) throw new Error(validation.errors[0] || 'Proof upload validation failed.');
   const uploaded = [];
+  saveProofUploadStatus(requestId, { status: 'uploading', count: list.length, message: `Uploading ${list.length} proof file${list.length === 1 ? '' : 's'}…`, started_at: new Date().toISOString() });
 
   for (const file of list) {
-    const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : '';
-    if (!kind) throw new Error('Only photo or video files are allowed.');
-    const safe = String(file.name || 'proof').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90);
+    const kind = proofKindForFile(file);
+    const safe = String(file.name || 'proof').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90) || `${kind}-proof`;
     const objectPath = `${requestId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safe}`;
-    await supabase.uploadStorageObject('patrol-proof', objectPath, file, { upsert: false });
-    const publicUrl = supabase.getPublicUrl('patrol-proof', objectPath);
-    const result = await supabase.rpc('cp_guard_register_patrol_proof', {
-      p_request_id: requestId,
-      p_bucket_id: 'patrol-proof',
-      p_object_path: objectPath,
-      p_file_name: safe,
-      p_file_type: file.type || kind,
-      p_file_size: file.size || 0,
-      p_public_url: publicUrl,
-      p_note: note
-    });
-    const proof = result?.proof || {};
-    uploaded.push({
-      ...proof,
-      request_id: proof.request_id || requestId,
-      bucket_id: proof.bucket_id || 'patrol-proof',
-      object_path: proof.object_path || objectPath,
-      file_name: proof.file_name || safe,
-      file_type: proof.file_type || file.type || kind,
-      file_size: proof.file_size || file.size || 0,
-      public_url: proof.public_url || publicUrl,
-      note: proof.note || note,
-      uploaded_at: proof.uploaded_at || new Date().toISOString(),
-      created_at: proof.created_at || new Date().toISOString()
-    });
+    let publicUrl = '';
+    try {
+      await supabase.uploadStorageObject('patrol-proof', objectPath, file, { upsert: false });
+      publicUrl = supabase.getPublicUrl('patrol-proof', objectPath);
+      const result = await supabase.rpc('cp_guard_register_patrol_proof', {
+        p_request_id: requestId,
+        p_bucket_id: 'patrol-proof',
+        p_object_path: objectPath,
+        p_file_name: safe,
+        p_file_type: file.type || kind,
+        p_file_size: file.size || 0,
+        p_public_url: publicUrl,
+        p_note: note
+      });
+      const proof = result?.proof || {};
+      uploaded.push({
+        ...proof,
+        request_id: proof.request_id || requestId,
+        bucket_id: proof.bucket_id || 'patrol-proof',
+        object_path: proof.object_path || objectPath,
+        file_name: proof.file_name || safe,
+        file_type: proof.file_type || file.type || kind,
+        file_size: proof.file_size || file.size || 0,
+        public_url: proof.public_url || publicUrl,
+        note: proof.note || note,
+        uploaded_at: proof.uploaded_at || new Date().toISOString(),
+        created_at: proof.created_at || new Date().toISOString(),
+        review_status: proof.review_status || proof.status || 'pending'
+      });
+    } catch (err) {
+      const message = friendly(err);
+      saveProofUploadStatus(requestId, { status: 'failed', message, failed_at: new Date().toISOString() });
+      throw new Error(message || 'Proof upload failed.');
+    }
   }
 
   addLocalProofItems(requestId, uploaded);
+  saveProofUploadStatus(requestId, { status: 'success', count: uploaded.length, message: `${uploaded.length} proof file${uploaded.length === 1 ? '' : 's'} uploaded successfully.`, completed_at: new Date().toISOString() });
   return uploaded;
 }
 
@@ -1378,7 +1397,7 @@ async function uploadProof(form) {
   await loadData();
   state.view = state.role === 'guard' ? 'active-job' : 'proof-review';
   render();
-  toast('Proof uploaded.', 'success');
+  toast(`${files.length} proof file${files.length === 1 ? '' : 's'} uploaded and attached to this job.`, 'success');
 }
 
 
@@ -3076,7 +3095,7 @@ function guardDashboardMockup302() {
       ${kpiCard('▤', 'Open Assignments', open.length, open.length ? 'Current field jobs' : 'No pending assignments', '#2f83ff')}
       ${kpiCard('〽', 'In Progress', inProgress.length, inProgress.length ? 'Patrol active now' : 'Nothing in progress', '#15d1c4')}
       ${kpiCard('☵', 'Unread Messages', unreadMessagesCount(), unreadMessagesCount() ? 'Needs response' : 'All caught up', '#b05cff')}
-      ${kpiCard('⇧', 'Proof Uploaded', state.proofItems.length, 'Today', '#ff9b38')}
+      ${kpiCard('⇧', 'Proof Uploaded', state.proofItems.length, 'Available', '#ff9b38')}
     </section>
 
     <section class="guard302-body">
@@ -3088,6 +3107,130 @@ function guardDashboardMockup302() {
   </div>`;
 }
 
+
+const inlineProof = {
+  requestId: '',
+  files: [],
+  objectUrls: []
+};
+const CP_PROOF_UPLOAD_LIMITS = {
+  image: 15 * 1024 * 1024,
+  video: 100 * 1024 * 1024,
+  total: 150 * 1024 * 1024
+};
+function proofUploadStatusKey(requestId = '') {
+  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
+  return `cp_security_proof_upload_status_${who}_${String(requestId || 'none')}`;
+}
+function readProofUploadStatus(requestId = '') {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(proofUploadStatusKey(requestId)) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function saveProofUploadStatus(requestId = '', patch = {}) {
+  if (!requestId) return {};
+  const next = { ...readProofUploadStatus(requestId), ...patch, request_id: String(requestId), updated_at: new Date().toISOString() };
+  try { localStorage.setItem(proofUploadStatusKey(requestId), JSON.stringify(next)); } catch {}
+  return next;
+}
+function clearProofUploadStatus(requestId = '') {
+  try { localStorage.removeItem(proofUploadStatusKey(requestId)); } catch {}
+}
+function proofKindForFile(file = {}) {
+  const type = String(file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return 'image';
+  if (type.startsWith('video/')) return 'video';
+  const name = String(file.name || '').toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|heic|heif)$/i.test(name)) return 'image';
+  if (/\.(mp4|mov|webm|m4v|avi)$/i.test(name)) return 'video';
+  return '';
+}
+function humanFileSize(bytes = 0) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
+  return `${n} B`;
+}
+function validateProofFiles(files = []) {
+  const list = Array.from(files || []);
+  if (!list.length) return { ok: false, errors: ['Choose at least one photo or video.'], totalSize: 0, rows: [] };
+  const errors = [];
+  const rows = [];
+  let totalSize = 0;
+  list.forEach(file => {
+    const kind = proofKindForFile(file);
+    const size = Number(file.size || 0);
+    totalSize += size;
+    let error = '';
+    if (!kind) error = 'Unsupported file type. Use a photo or video.';
+    else if (kind === 'image' && size > CP_PROOF_UPLOAD_LIMITS.image) error = `Photo is too large. Max ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.image)}.`;
+    else if (kind === 'video' && size > CP_PROOF_UPLOAD_LIMITS.video) error = `Video is too large. Max ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.video)}.`;
+    if (error) errors.push(`${file.name || 'Proof file'}: ${error}`);
+    rows.push({ file, kind, size, error });
+  });
+  if (totalSize > CP_PROOF_UPLOAD_LIMITS.total) errors.push(`Selected files total ${humanFileSize(totalSize)}. Max total ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.total)}.`);
+  return { ok: errors.length === 0, errors, totalSize, rows };
+}
+function proofUploadStateLabel(requestId = '') {
+  const st = readProofUploadStatus(requestId);
+  if (st.status === 'uploading') return 'Proof is uploading…';
+  if (st.status === 'success') return `${Number(st.count || 0)} proof file${Number(st.count || 0) === 1 ? '' : 's'} uploaded`;
+  if (st.status === 'failed') return 'Last proof upload failed';
+  return 'No recent upload status';
+}
+function showCompleteWithoutProofModal(req) {
+  if (!req) return;
+  document.querySelectorAll('.complete-without-proof-modal').forEach(el => el.remove());
+  const status = readProofUploadStatus(req.id);
+  const failed = status.status === 'failed';
+  const modal = document.createElement('div');
+  modal.className = 'inline-proof-modal complete-without-proof-modal';
+  modal.innerHTML = `<div class="inline-proof-backdrop" data-action="cancel-complete-without-proof"></div>
+    <section class="inline-proof-dialog complete-without-proof-dialog" role="dialog" aria-modal="true" aria-label="Complete job without proof">
+      <div class="inline-proof-head"><div><p class="eyebrow">Complete Job</p><h2>${failed ? 'Proof upload failed' : 'No proof attached yet'}</h2><span>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</span></div><button type="button" data-action="cancel-complete-without-proof">×</button></div>
+      <div class="proof-upload-warning"><strong>${failed ? 'The last upload did not finish.' : 'This job has no photo or video proof attached.'}</strong><p>You can upload proof now, or complete the job without proof. Dispatch will still be able to build a no-proof report.</p>${status.message ? `<small>${esc(status.message)}</small>` : ''}</div>
+      <div class="inline-proof-actions"><button type="button" class="ghost-button" data-action="cancel-complete-without-proof">Cancel</button><button type="button" class="ghost-button" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">Upload Proof</button><button type="button" class="primary-button danger" data-action="complete-without-proof" data-request-id="${esc(req.id)}">Complete Without Proof</button></div>
+    </section>`;
+  document.body.appendChild(modal);
+}
+function closeCompleteWithoutProofModal() {
+  document.querySelectorAll('.complete-without-proof-modal').forEach(el => el.remove());
+}
+async function finishGuardJob(req, options = {}) {
+  if (!req) throw new Error('Active job not found.');
+  let latest = req;
+  const beforeStatus = String(latest.status || 'assigned');
+  if (beforeStatus === 'assigned') {
+    const updated = await callGuardStatusRpc(latest, 'accepted');
+    latest = updated || latest;
+  }
+  if (String(latest.status) === 'accepted') {
+    const updated = await callGuardStatusRpc(latest, 'in_progress');
+    latest = updated || latest;
+  }
+  if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
+  setGuardWorkflowLocalStage(req, 'complete');
+  addGuardWorkflowLocalLog(req, options.withoutProof ? 'Guard completed job without proof' : 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
+  clearProofUploadStatus(req.id);
+  liveGps.propertyLat = null;
+  liveGps.propertyLng = null;
+  liveGps.propertyAddress = '';
+  liveGps.routePoints = [];
+  liveGps.routeDistanceMiles = null;
+  liveGps.routeEtaMin = null;
+  liveGps.selectedMapCard = null;
+  await loadData();
+  state.view = 'completed';
+  state.selectedCompletedRequestId = req.id || '';
+  render();
+  const count = proofForRequest(req.id).length;
+  if (count) toast(`Job completed. ${count} proof file${count === 1 ? '' : 's'} sent to Dispatch Proof Review.`, 'success');
+  else toast('Job completed without proof. Dispatch can build a no-proof report.', 'success');
+}
 function guardWorkflowStorageKey(req) {
   return `cp_guard_workflow_stage_${String(req?.id || 'none')}`;
 }
@@ -3205,7 +3348,16 @@ function launchInlineProofPicker(req) {
   input.addEventListener('change', () => {
     const files = Array.from(input.files || []);
     input.remove();
-    if (!files.length) return;
+    if (!files.length) {
+      toast('No proof selected. You can upload proof or complete without proof.', 'success');
+      return;
+    }
+    const validation = validateProofFiles(files);
+    if (!validation.ok) {
+      saveProofUploadStatus(req.id, { status: 'failed', message: validation.errors[0], failed_at: new Date().toISOString() });
+      toast(validation.errors[0], 'error');
+      return;
+    }
     showInlineProofPreview(req, files);
   }, { once: true });
   document.body.appendChild(input);
@@ -3223,7 +3375,7 @@ function showInlineProofPreview(req, files = []) {
     const media = kind === 'video'
       ? `<video src="${esc(url)}" controls muted playsinline></video>`
       : `<img src="${esc(url)}" alt="Proof preview">`;
-    return `<div class="inline-proof-preview-item">${media}<span>${esc(file.name || 'Proof file')}</span></div>`;
+    return `<div class="inline-proof-preview-item">${media}<span>${esc(file.name || 'Proof file')} · ${esc(humanFileSize(file.size || 0))}</span></div>`;
   }).join('');
   const more = inlineProof.files.length > 6 ? `<p class="inline-proof-more">+${inlineProof.files.length - 6} more selected</p>` : '';
   const modal = document.createElement('div');
@@ -3231,7 +3383,7 @@ function showInlineProofPreview(req, files = []) {
   modal.innerHTML = `<div class="inline-proof-backdrop" data-action="cancel-inline-proof"></div>
     <section class="inline-proof-dialog" role="dialog" aria-modal="true" aria-label="Confirm proof upload">
       <div class="inline-proof-head"><div><p class="eyebrow">Proof Upload</p><h2>Confirm this upload</h2><span>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</span></div><button type="button" data-action="cancel-inline-proof">×</button></div>
-      <div class="inline-proof-grid">${previews}${more}</div>
+      <div class="inline-proof-grid">${previews}${more}</div><div class="inline-proof-upload-state"><strong>Ready to upload</strong><span>${esc(inlineProof.files.length)} file${inlineProof.files.length === 1 ? '' : 's'} selected · ${esc(humanFileSize(inlineProof.files.reduce((sum, file) => sum + Number(file.size || 0), 0)))}</span></div>
       <label class="inline-proof-note">Guard note<textarea name="inline_proof_note" placeholder="Optional note for Dispatch and final report"></textarea></label>
       <div class="inline-proof-actions"><button type="button" class="ghost-button" data-action="cancel-inline-proof">Cancel</button><button type="button" class="primary-button" data-action="confirm-inline-proof">Confirm Upload</button></div>
     </section>`;
@@ -3247,16 +3399,34 @@ async function confirmInlineProofUpload() {
   const note = modal?.querySelector('textarea[name="inline_proof_note"]')?.value?.trim() || '';
   const files = inlineProof.files.slice();
   const btn = modal?.querySelector('[data-action="confirm-inline-proof"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
-  await uploadProofFiles(req.id, files, note);
-  setGuardWorkflowLocalStage(req, 'upload_proof');
-  addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${files.length} proof item${files.length === 1 ? '' : 's'} uploaded`);
-  closeInlineProofModal();
-  await loadData();
-  state.view = 'active-job';
-  render();
-  toast('Proof uploaded and saved to this job. You can now complete the job.', 'success');
+  const stateBox = modal?.querySelector('.inline-proof-upload-state');
+  const validation = validateProofFiles(files);
+  if (!validation.ok) {
+    saveProofUploadStatus(req.id, { status: 'failed', message: validation.errors[0], failed_at: new Date().toISOString() });
+    toast(validation.errors[0], 'error');
+    return;
+  }
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+    if (stateBox) stateBox.innerHTML = '<strong>Uploading proof…</strong><span>Please wait. Do not complete the job yet.</span>';
+    saveProofUploadStatus(req.id, { status: 'uploading', count: files.length, message: 'Uploading proof…', started_at: new Date().toISOString() });
+    const uploaded = await uploadProofFiles(req.id, files, note);
+    setGuardWorkflowLocalStage(req, 'upload_proof');
+    addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${uploaded.length} proof item${uploaded.length === 1 ? '' : 's'} uploaded`);
+    closeInlineProofModal();
+    await loadData();
+    state.view = 'active-job';
+    render();
+    toast(`${uploaded.length} proof file${uploaded.length === 1 ? '' : 's'} uploaded successfully. You can now complete the job.`, 'success');
+  } catch (err) {
+    const message = friendly(err);
+    saveProofUploadStatus(req.id, { status: 'failed', message, failed_at: new Date().toISOString() });
+    if (btn) { btn.disabled = false; btn.textContent = 'Try Upload Again'; }
+    if (stateBox) stateBox.innerHTML = `<strong>Upload failed</strong><span>${esc(message)}</span>`;
+    toast(message || 'Proof upload failed.', 'error');
+  }
 }
+
 function guardWorkflowProofProgress(req) {
   const count = req ? proofForRequest(req.id).length : 0;
   const target = 4;
@@ -3281,6 +3451,7 @@ async function updateGuardWorkflowStep(requestId, step) {
   }
 
   if (step === 'upload_proof') {
+    closeCompleteWithoutProofModal();
     setGuardWorkflowLocalStage(req, 'upload_proof');
     addGuardWorkflowLocalLog(req, 'Opened Inline Proof Upload', `${propertyLabel(req)} proof upload opened inside Active Job`);
     syncGuardWorkflowDom(req, 'upload_proof');
@@ -3305,25 +3476,18 @@ async function updateGuardWorkflowStep(requestId, step) {
     setGuardWorkflowLocalStage(req, 'checking');
     addGuardWorkflowLocalLog(req, 'Started Property Check', `${propertyLabel(req)} · checking property`);
   } else if (step === 'complete') {
-    let latest = req;
-    if (String(latest.status) === 'assigned') {
-      const updated = await callGuardStatusRpc(latest, 'accepted');
-      latest = updated || latest;
+    const uploadState = readProofUploadStatus(req.id);
+    if (uploadState.status === 'uploading') {
+      toast('Proof is still uploading. Please wait before completing the job.', 'error');
+      return;
     }
-    if (String(latest.status) === 'accepted') {
-      const updated = await callGuardStatusRpc(latest, 'in_progress');
-      latest = updated || latest;
+    const proofCount = proofForRequest(req.id).length;
+    if (!proofCount) {
+      showCompleteWithoutProofModal(req);
+      return;
     }
-    if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
-    setGuardWorkflowLocalStage(req, 'complete');
-    addGuardWorkflowLocalLog(req, 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
-    liveGps.propertyLat = null;
-    liveGps.propertyLng = null;
-    liveGps.propertyAddress = '';
-    liveGps.routePoints = [];
-    liveGps.routeDistanceMiles = null;
-    liveGps.routeEtaMin = null;
-    liveGps.selectedMapCard = null;
+    await finishGuardJob(req, { withoutProof: false });
+    return;
   }
 
   await loadData();
@@ -3447,6 +3611,7 @@ function activeJobProofNotesCard(req) {
     <div class="active-rail-head"><h2>Proof / Notes</h2><button class="ghost-button ${proofLocked ? 'locked-stage' : ''}" ${proofLocked ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">${proofLocked ? 'Proof Locked' : 'Upload Proof'}</button></div>
     <div class="active-proof-row"><span>Proof Progress</span><b>${esc(proof.count)} / ${esc(proof.target)} uploaded</b></div>
     <div class="active-proof-bar"><i style="width:${esc(proof.pct)}%"></i></div>
+    <div class="active-proof-upload-state ${esc(readProofUploadStatus(req.id).status || 'idle')}">${esc(proofUploadStateLabel(req.id))}</div>
     <div class="active-note-box"><small>Notes from Guard</small><p>${esc(local?.details || req.instructions || 'No guard notes yet.')}</p><em>— ${esc(activeGuardName())}</em></div>
   </section>`;
 }
@@ -7666,7 +7831,7 @@ function proofReviewRows() {
     const property = proofReviewPropertyForProof(proof, request);
     const guard = proofReviewGuardForProof(proof, request);
     const client = proofReviewClientForProof(proof, request, property);
-    const uploadedAt = proof.created_at || proof.uploaded_at || proof.updated_at || proof.inserted_at || request.updated_at || request.created_at || new Date().toISOString();
+    const uploadedAt = proof.uploaded_at || proof.created_at || proof.updated_at || proof.inserted_at || request.completed_at || request.updated_at || request.created_at || new Date().toISOString();
     const id = String(proof.id || proof.object_path || proof.public_url || proof.file_url || `proof-${index}`);
     const row = {
       id,
@@ -7883,7 +8048,7 @@ function proofReviewTable() {
   state.proofReviewPage = Math.min(Math.max(1, state.proofReviewPage || 1), maxPage);
   const start = (state.proofReviewPage - 1) * per;
   const pageRows = rows.slice(start, start + per);
-  return `<section class="proof-review-table-wrap"><div class="proof-review-head"><span></span><span>Proof</span><span>Details</span><span>Uploaded</span><span>Status</span><span>Actions</span></div><div class="proof-review-rows">${pageRows.length ? pageRows.map(proofReviewRow).join('') : '<div class="proof-review-empty">No proof items match your filters.</div>'}</div></section>`;
+  return `<section class="proof-review-table-wrap"><div class="proof-review-head"><span></span><span>Proof</span><span>Details</span><span>Uploaded</span><span>Status</span><span>Actions</span></div><div class="proof-review-rows">${pageRows.length ? pageRows.map(proofReviewRow).join('') : `<div class="proof-review-empty"><strong>No proof items match your filters.</strong><span>${proofReviewRows().length ? 'Proof exists, but current filters are hiding it.' : 'No proof has been uploaded yet.'}</span><button type="button" data-action="proof-review-clear-filters">Clear Filters</button></div>`}</div></section>`;
 }
 function proofReviewPagination() {
   const rows = filteredProofReviewRows();
@@ -9928,6 +10093,16 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'confirm-inline-proof') {
       await confirmInlineProofUpload();
+      return;
+    }
+    if (button.dataset.action === 'complete-without-proof') {
+      const req = state.patrolRequests.find(r => String(r.id) === String(button.dataset.requestId));
+      closeCompleteWithoutProofModal();
+      await finishGuardJob(req, { withoutProof: true });
+      return;
+    }
+    if (button.dataset.action === 'cancel-complete-without-proof') {
+      closeCompleteWithoutProofModal();
       return;
     }
     if (button.dataset.action === 'select-client-property') {

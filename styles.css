@@ -12588,3 +12588,73 @@ button.is-busy {
   opacity: .72;
 }
 .workflow-finished-panel + .workflow-finished-panel { margin-top: 10px; }
+
+/* v3.0.67 Proof Upload Confirmation + E2E QA */
+.inline-proof-upload-state {
+  margin-top: 12px;
+  border: 1px solid rgba(114,171,233,.16);
+  border-radius: 10px;
+  background: rgba(8,22,38,.64);
+  padding: 11px 12px;
+  display: grid;
+  gap: 3px;
+}
+.inline-proof-upload-state strong {
+  color: #edf7ff;
+  font-weight: 1000;
+}
+.inline-proof-upload-state span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+.active-proof-upload-state {
+  margin-top: 10px;
+  border: 1px solid rgba(114,171,233,.14);
+  border-radius: 8px;
+  background: rgba(5,16,29,.72);
+  color: var(--muted);
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.active-proof-upload-state.uploading { color: #8fd0ff; border-color: rgba(49,200,255,.28); }
+.active-proof-upload-state.success { color: #7cf2a7; border-color: rgba(55,220,114,.28); }
+.active-proof-upload-state.failed { color: #ff8aa0; border-color: rgba(255,89,115,.34); }
+.proof-upload-warning {
+  border: 1px solid rgba(255,181,61,.26);
+  border-radius: 12px;
+  background: rgba(255,181,61,.08);
+  padding: 14px;
+  display: grid;
+  gap: 7px;
+}
+.proof-upload-warning strong { color: #ffd58b; font-size: 16px; }
+.proof-upload-warning p { margin: 0; color: var(--muted); line-height: 1.5; }
+.proof-upload-warning small { color: #ff8aa0; font-weight: 900; }
+.inline-proof-actions .danger {
+  background: linear-gradient(180deg, #ff5973, #b82d45);
+}
+.proof-review-empty {
+  gap: 8px;
+  text-align: center;
+}
+.proof-review-empty strong {
+  color: #edf7ff;
+  font-weight: 1000;
+}
+.proof-review-empty span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.proof-review-empty button {
+  height: 34px;
+  width: max-content;
+  justify-self: center;
+  border-radius: 8px;
+  border: 1px solid rgba(114,171,233,.18);
+  background: rgba(8,22,38,.84);
+  color: #dcecff;
+  padding: 0 12px;
+  font-weight: 900;
+}

@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.66 dead code cleanup button QA build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.67 proof upload confirmation E2E QA build complete. Copied ${count} files to dist/.`);

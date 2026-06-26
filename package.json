@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dead-code-cleanup-button-qa",
-  "version": "3.0.66",
+  "name": "co-pilot-security-proof-upload-confirmation-e2e-qa",
+  "version": "3.0.67",
   "private": true,
-  "description": "Cleans duplicate handlers and stale UI paths, adds workflow state normalization, disables visual-only placeholder buttons, and adds submit double-click protection while preserving the global action locks.",
+  "description": "Adds guard proof upload confirmation, upload feedback, complete-without-proof gating, Proof Review visibility fixes, and end-to-end workflow QA while preserving global action locks.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
