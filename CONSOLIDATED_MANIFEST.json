@@ -1,16 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.38",
-  "buildName": "SETTINGS PAGE REDESIGN",
-  "type": "settings-page-redesign",
+  "version": "3.0.59",
+  "buildName": "ACTIVITY LOG COMMAND CENTER",
+  "type": "activity-log-command-center",
   "sql_required": false,
   "features": [
-    "Rebuilt Settings page to match selected image 2 design direction",
-    "Added top settings tabs: Profile, Company, Notifications, Security, Billing, Integrations",
-    "Added Profile Information form, profile photo device upload, Change Password panel, and Communication Preferences",
-    "Added right rail: Account Summary, Company Information, Preferences, and Quick Actions",
-    "Profile photo is device-upload only with no URL field",
-    "Preserved v3.0.37 Client Messages redesign",
+    "Rebuilt Dispatch/Admin Activity Log page using the generated command-center blueprint",
+    "Added KPI row for total activities, today, this week, critical events, users active, and success rate",
+    "Combined activity records from patrol activity, patrol requests, proof items, reports, notifications, messages, signups, and properties",
+    "Added tabs: All Activities, User Actions, System Events, Security Events, Data Changes",
+    "Added filters: user, action, module, severity, date range",
+    "Added searchable audit trail table with time, user, action, module, details, IP address, severity, and actions",
+    "Added selected activity details rail with user, email, time, IP address, user agent, session ID, location, severity, and status",
+    "Added quick filters for My Activities, Failed Activities, Critical Events, Data Changes, and Login Activities",
+    "Added pagination, rows per page, clear filters, and working CSV export",
+    "Preserved Clients Command Center and sidebar fixes",
     "No new SQL required"
   ]
 }

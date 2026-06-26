@@ -1,20 +1,24 @@
 Co Pilot Security
-Version: 3.0.38
-Build Name: SETTINGS PAGE REDESIGN
+Version: 3.0.59
+Build Name: ACTIVITY LOG COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.37.
-- Rebuilt the Settings page to match the selected image 2 design direction.
-- Added top settings tabs: Profile, Company, Notifications, Security, Billing, and Integrations.
-- Added Profile Information, profile photo device upload, Change Password, and Communication Preferences sections.
-- Added right rail with Account Summary, Company Information, Preferences, and Quick Actions.
-- Profile photo is device-upload only. No URL field is shown.
-- Preserved v3.0.37 Client Messages redesign.
+- Built from v3.0.58.
+- Rebuilt Dispatch/Admin Activity Log into a full command-center audit trail page.
+- Added KPI row: Total Activities, Today, This Week, Critical Events, Users Active, Success Rate.
+- Activity Log now combines system activity from patrol activity, patrol requests, proof uploads, reports, notifications, messages, guard/client signups, and properties.
+- Added tabs: All Activities, User Actions, System Events, Security Events, Data Changes.
+- Added filters: User, Action, Module, Severity, Date Range.
+- Added searchable audit log table with Time, User, Action, Module, Details, IP Address, Severity, and Actions.
+- Added selected activity detail rail with user/email/time/IP/user agent/session/location/severity/status.
+- Added quick filters: My Activities, Failed Activities, Critical Events, Data Changes, Login Activities.
+- Added pagination, rows per page, clear filters, and CSV export.
+- Preserved v3.0.58 Clients Command Center.
 - No new SQL required.
 
 Badge:
-v3.0.38 SETTINGS PAGE REDESIGN
+v3.0.59 ACTIVITY LOG COMMAND CENTER
 
 SQL:
 No new SQL required.

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-settings-page-redesign",
-  "version": "3.0.38",
+  "name": "co-pilot-security-activity-log-command-center",
+  "version": "3.0.59",
   "private": true,
-  "description": "Redesigns the Settings page into a premium command-center profile, account, notification, security, billing, and integrations layout.",
+  "description": "Rebuilds the Dispatch/Admin Activity Log into a command-center audit trail with KPIs, filters, table, detail rail, quick filters, and CSV export.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
