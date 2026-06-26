@@ -1,20 +1,22 @@
 Co Pilot Security
-Version: 3.0.42
-Build Name: DISPATCH ONLINE GUARDS + MAP DEFAULT
+Version: 3.0.43
+Build Name: DISPATCH BOARD COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.41.
-- Fixed Dispatch map online guard filtering so generic active/approved guards are not treated as online.
-- Dispatch now uses the persisted guard GPS identity to show the actual online guard, e.g. Tony, instead of showing an offline guard named Guard.
-- Offline guards are hidden from Dispatch map visibility.
-- Guard GPS persistence now saves guard identity: guard id, email, and name.
-- Added a Default button on the Dispatch map so users can reset zoom/pan back to the default map view.
-- Preserved compact in-place map cards from v3.0.41.
+- Built from v3.0.42.
+- Redesigned the Dispatch Board page exactly from the command-center blueprint.
+- Added KPI row: Pending Dispatch, Online Guards, Active Patrols, Guard Approvals, Reports Ready.
+- Added Assign Now queue with functional guard assignment shortcut.
+- Added Scheduled Queue and Proof Waiting Review panels.
+- Added Dispatch Command Map panel using the upgraded dispatch live map behavior and Default control.
+- Added Recent Activity table.
+- Added right rail with Messages, Notifications, System Status, and Quick Actions.
+- Preserved v3.0.42 Dispatch online guard visibility and map default fix.
 - No new SQL required.
 
 Badge:
-v3.0.42 DISPATCH ONLINE GUARDS + MAP DEFAULT
+v3.0.43 DISPATCH BOARD COMMAND CENTER
 
 SQL:
 No new SQL required.

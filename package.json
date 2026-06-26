@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-online-guards-map-default",
-  "version": "3.0.42",
+  "name": "co-pilot-security-dispatch-board-command-center",
+  "version": "3.0.43",
   "private": true,
-  "description": "Fixes Dispatch online guard filtering and adds a default map reset button.",
+  "description": "Redesigns Dispatch Board into the premium command-center blueprint with live map, assign queue, scheduled/proof queues, right rail, and quick actions.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

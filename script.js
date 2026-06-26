@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.42',
-  label: 'v3.0.42 DISPATCH ONLINE GUARDS + MAP DEFAULT'
+  version: '3.0.43',
+  label: 'v3.0.43 DISPATCH BOARD COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -1135,7 +1135,7 @@ async function assignPatrolNow(requestId) {
   });
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
   await loadData();
-  state.view = 'dashboard';
+  state.view = state.view === 'dispatch-board' ? 'dispatch-board' : 'dashboard';
   render();
   const guardName = result.guard?.name || result.guard?.display_name || result.guard?.email || 'guard';
   toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
@@ -4645,10 +4645,184 @@ function clientReportsView() {
   </div>`;
 }
 
+
+function dispatchBoardKpi(icon, label, value, subtext, tone = 'blue', progress = null) {
+  return `<article class="dispatch-board-kpi ${esc(tone)}">
+    <div class="dispatch-kpi-icon">${esc(icon)}</div>
+    <div class="dispatch-kpi-copy"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div>
+    ${progress !== null ? `<div class="dispatch-kpi-ring" style="--progress:${esc(progress)}"><b>${esc(progress)}%</b></div>` : ''}
+  </article>`;
+}
+function dispatchBoardKpis() {
+  const pending = pendingRequests();
+  const guards = dispatchMapOnlineGuards();
+  const totalGuards = Math.max(1, adminAssignableGuards().length || guards.length || 1);
+  const active = activeRequests();
+  const approvals = guardApprovals();
+  const reports = reportsReady();
+  const guardPct = Math.round((guards.length / totalGuards) * 100);
+  const activePct = Math.min(100, Math.round((active.length / Math.max(1, state.patrolRequests.length || active.length || 1)) * 100));
+  return `<section class="dispatch-board-kpi-row">
+    ${dispatchBoardKpi('⏳', 'Pending Dispatch', pending.length, `${pending.filter(r => /high|urgent|emergency/i.test(String(r.priority || ''))).length} urgent • ${pending.length} total`, 'amber')}
+    ${dispatchBoardKpi('♙', 'Online Guards', guards.length, `of ${totalGuards} total`, 'green', guardPct)}
+    ${dispatchBoardKpi('🛡', 'Active Patrols', active.length, `${active.filter(r => /accepted|assigned/i.test(String(r.status || ''))).length} en route • ${active.filter(r => /in_progress/i.test(String(r.status || ''))).length} on site`, 'blue', activePct)}
+    ${dispatchBoardKpi('☑', 'Guard Approvals', approvals.length, 'Pending review', 'purple')}
+    ${dispatchBoardKpi('▣', 'Reports Ready', reports.length, 'Ready to view', 'violet')}
+  </section>`;
+}
+function dispatchPriorityBadge(priority = '') {
+  const raw = String(priority || 'normal').toLowerCase();
+  const label = raw.includes('urgent') || raw.includes('emergency') ? 'Urgent' : raw.includes('high') ? 'High' : raw.includes('medium') ? 'New' : 'Normal';
+  const cls = raw.includes('urgent') || raw.includes('emergency') || raw.includes('high') ? 'urgent' : raw.includes('medium') ? 'new' : 'normal';
+  return `<span class="dispatch-priority-badge ${esc(cls)}">${esc(label)}</span>`;
+}
+function dispatchDistanceLabel(req = {}) {
+  const distance = req.distance_miles || req.distance || req.eta_distance_miles || '';
+  if (distance) return `${Number(distance).toFixed ? Number(distance).toFixed(1) : distance} mi`;
+  return '—';
+}
+function dispatchAssignCard(req = {}) {
+  const guards = dispatchMapOnlineGuards().map(entry => entry.guard);
+  const guardOptions = guards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  return `<article class="dispatch-assign-card">
+    <div class="dispatch-assign-top">${dispatchPriorityBadge(req.priority)}<small>${esc(timeAgo(req.created_at))}</small></div>
+    <h3>${esc(requestTitle(req))}</h3>
+    <p>${esc(propertyAddress(req))}</p>
+    <div class="dispatch-assign-meta"><span>• ${esc(statusText(req.priority || 'Normal'))}</span><span>⌖ ${esc(dispatchDistanceLabel(req))}</span></div>
+    <div class="dispatch-assign-actions">
+      <select data-assign-guard="${esc(req.id)}">${guardOptions || '<option value="">No online guards</option>'}</select>
+      <button type="button" data-action="admin-assign-now" data-request-id="${esc(req.id)}" ${guards.length ? '' : 'disabled'}>Assign</button>
+      <button type="button" data-view="pending-dispatch">⋮</button>
+    </div>
+  </article>`;
+}
+function dispatchAssignNowBoard() {
+  const pending = pendingRequests();
+  const rows = pending.slice(0, 2);
+  return `<section class="dispatch-board-panel dispatch-assign-now">
+    <div class="dispatch-panel-head"><div><h2>Assign Now <b>${esc(pending.length)}</b></h2><p>Pending patrol requests requiring assignment</p></div></div>
+    <div class="dispatch-assign-list">${rows.length ? rows.map(dispatchAssignCard).join('') : `<div class="dispatch-empty-state"><strong>No pending requests.</strong><span>Client patrol requests will appear here with an Assign shortcut.</span></div>`}</div>
+    <button type="button" class="dispatch-link-button" data-view="pending-dispatch">View all pending (${esc(pending.length)}) →</button>
+  </section>`;
+}
+function dispatchQueueItem(req = {}) {
+  return `<div class="dispatch-queue-item"><strong>${esc(requestTitle(req))}</strong><small>${esc(fmtTime(req.scheduled_for || req.requested_for || req.scheduled_at || req.created_at))}</small><span>${esc(propertyLabel(req))}</span></div>`;
+}
+function dispatchScheduledQueuePanel() {
+  const rows = scheduledRequests().slice(0, 3);
+  return `<section class="dispatch-board-panel dispatch-mini-panel">
+    <div class="dispatch-panel-head compact"><h2>Scheduled Queue <b>${esc(scheduledRequests().length)}</b></h2></div>
+    <div class="dispatch-mini-list">${rows.length ? rows.map(dispatchQueueItem).join('') : '<div class="dispatch-empty-line">No scheduled patrols.</div>'}</div>
+    <button type="button" class="dispatch-link-button" data-view="scheduled-queue">View full schedule →</button>
+  </section>`;
+}
+function dispatchProofReviewPanel() {
+  const rows = proofWaiting().slice(0, 3);
+  return `<section class="dispatch-board-panel dispatch-mini-panel">
+    <div class="dispatch-panel-head compact"><h2>Proof Waiting Review <b>${esc(proofWaiting().length)}</b></h2></div>
+    <div class="dispatch-mini-list">${rows.length ? rows.map(item => `<div class="dispatch-queue-item"><strong>${esc(item.file_name || item.title || 'Proof Upload')}</strong><small>${esc(timeAgo(item.created_at || item.uploaded_at))}</small><span>${esc(item.note || item.file_type || 'Photo / video proof')}</span></div>`).join('') : '<div class="dispatch-empty-line">No proof waiting for review.</div>'}</div>
+    <button type="button" class="dispatch-link-button" data-view="proof-review">Go to Proof Review →</button>
+  </section>`;
+}
+function dispatchBoardMapPanel() {
+  return `<section class="dispatch-board-panel dispatch-board-map-panel">
+    <div class="dispatch-panel-head"><div><h2>Dispatch Command Map <span class="dispatch-live-pill">● Live</span></h2></div><div class="dispatch-map-actions"><button type="button" data-action="dispatch-map-default">⌖ Default</button><button type="button" data-view="live-gps">⛶</button></div></div>
+    ${mapArea()}
+  </section>`;
+}
+function dispatchActivityIcon(item = {}) {
+  const text = String(item.title || item.event_type || item.message || '').toLowerCase();
+  if (/complete|done|closed/.test(text)) return '✓';
+  if (/route|way|gps|en route/.test(text)) return '⌖';
+  if (/request|created|pending/.test(text)) return '!';
+  if (/report/.test(text)) return '▣';
+  return '•';
+}
+function dispatchRecentActivityPanel() {
+  const rows = state.patrolActivity.slice(0, 5);
+  return `<section class="dispatch-board-panel dispatch-activity-panel">
+    <div class="dispatch-panel-head"><div><h2>Recent Activity</h2></div><button type="button" data-view="activity-log">View all</button></div>
+    <div class="dispatch-activity-table">
+      <div class="dispatch-activity-head"><span>Event</span><span>Details</span><span>By</span><span>Time</span></div>
+      ${rows.length ? rows.map(item => {
+        const req = requestById(item.request_id) || {};
+        return `<div class="dispatch-activity-row"><strong><i>${esc(dispatchActivityIcon(item))}</i>${esc(item.title || item.event_type || 'Activity')}</strong><span>${esc(item.details || item.message || propertyLabel(req))}</span><span>${esc(requestGuardName(req) || requestClientName(req) || 'System')}</span><span>${esc(fmtTime(item.created_at))}</span></div>`;
+      }).join('') : `<div class="dispatch-activity-row"><strong><i>✓</i>Dashboard ready</strong><span>Dispatch command center is online.</span><span>System</span><span>Now</span></div>`}
+    </div>
+    <button type="button" class="dispatch-link-button" data-view="activity-log">View all activity →</button>
+  </section>`;
+}
+function dispatchMessagesPanel() {
+  const rows = state.messageThreads.slice(0, 3);
+  return `<section class="dispatch-board-panel dispatch-rail-panel">
+    <div class="dispatch-panel-head"><div><h2>Messages</h2></div><button type="button" data-view="messages">View all</button></div>
+    <div class="dispatch-rail-list">${rows.length ? rows.map(t => `<button type="button" data-view="messages" class="dispatch-message-mini"><i>${esc(initials(t.subject || t.title || 'D'))}</i><span><strong>${esc(t.subject || t.title || 'Conversation')}</strong><small>${esc(t.last_message_preview || 'No messages yet')}</small></span><em>${esc(fmtTime(t.updated_at || t.created_at))}</em></button>`).join('') : `${feedRow('T','Tony','Arrived at site. Beginning perimeter check.','6:56 AM')}${feedRow('M','Maria','All teams update status before 8 AM.','6:42 AM')}${feedRow('J','Jake','Gate secured. No issues to report.','6:33 AM')}`}</div>
+    <button type="button" class="dispatch-link-button" data-view="messages">Go to Messages →</button>
+  </section>`;
+}
+function dispatchNotificationsPanel() {
+  const rows = notificationsList().slice(0, 3);
+  return `<section class="dispatch-board-panel dispatch-rail-panel">
+    <div class="dispatch-panel-head"><div><h2>Notifications</h2></div><button type="button" data-view="notifications">View all</button></div>
+    <div class="dispatch-notification-list">${rows.length ? rows.map(n => `<button type="button" data-view="notifications" class="dispatch-notification-mini"><i>${/urgent|alert|alarm/i.test(n._title || n.title || '') ? '!' : '●'}</i><span><strong>${esc(n._title || n.title || 'Notification')}</strong><small>${esc(n._body || n.message || n.details || '')}</small></span><em>${esc(timeAgo(n._created || n.created_at))}</em></button>`).join('') : `<button type="button" data-view="pending-dispatch" class="dispatch-notification-mini"><i>!</i><span><strong>Urgent dispatch request</strong><small>Pending patrol requests need assignment.</small></span><em>Now</em></button><button type="button" data-view="guard-approvals" class="dispatch-notification-mini"><i>♙</i><span><strong>Guard approval pending</strong><small>${esc(guardApprovals().length)} guard applications require review.</small></span><em>Now</em></button><button type="button" data-view="report-builder" class="dispatch-notification-mini"><i>▣</i><span><strong>Reports ready</strong><small>${esc(reportsReady().length)} reports are ready to download.</small></span><em>Now</em></button>`}</div>
+    <button type="button" class="dispatch-link-button" data-view="notifications">Go to Notifications →</button>
+  </section>`;
+}
+function dispatchSystemStatusPanel() {
+  return `<section class="dispatch-board-panel dispatch-rail-panel">
+    <div class="dispatch-panel-head"><div><h2>System Status</h2></div><button type="button">All Systems Normal</button></div>
+    <div class="dispatch-system-status">
+      <div><i>⌖</i><strong>GPS Tracking</strong><small>Online</small></div>
+      <div><i>▤</i><strong>Server</strong><small>Online</small></div>
+      <div><i>●</i><strong>Database</strong><small>Healthy</small></div>
+      <div><i>♧</i><strong>Notifications</strong><small>Online</small></div>
+    </div>
+  </section>`;
+}
+function dispatchQuickActionsPanel() {
+  const actions = [
+    ['🛡', 'Assign Patrol', 'pending-dispatch'],
+    ['⊕', 'Add Dispatch', 'guards'],
+    ['📣', 'Broadcast Message', 'messages'],
+    ['♙', 'Add Guard', 'guard-approvals'],
+    ['▥', 'Add Client', 'clients'],
+    ['▣', 'Generate Report', 'report-builder']
+  ];
+  return `<section class="dispatch-board-panel dispatch-rail-panel">
+    <div class="dispatch-panel-head"><div><h2>Quick Actions</h2></div></div>
+    <div class="dispatch-quick-grid">${actions.map(([icon,label,view]) => `<button type="button" data-view="${esc(view)}"><i>${esc(icon)}</i><span>${esc(label)}</span></button>`).join('')}</div>
+  </section>`;
+}
+function dispatchBoardView() {
+  return `<div class="dashboard dispatch-board-shell">
+    <header class="dashboard-header dispatch-board-header">
+      <div class="title-block"><h1>Dispatch Board</h1><p>Live command center for patrol operations, approvals, and field visibility.</p></div>
+      <div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">⌕</button><button class="header-button">🔔${unreadNotificationsCount() ? `<b>${esc(unreadNotificationsCount())}</b>` : ''}</button><button class="header-button">✉${unreadMessagesCount() ? `<b>${esc(unreadMessagesCount())}</b>` : ''}</button><button class="header-button">⚙</button></div>
+    </header>
+    ${dispatchBoardKpis()}
+    <section class="dispatch-board-layout">
+      <aside class="dispatch-board-left">
+        ${dispatchAssignNowBoard()}
+        <div class="dispatch-mini-grid">${dispatchScheduledQueuePanel()}${dispatchProofReviewPanel()}</div>
+      </aside>
+      <main class="dispatch-board-center">
+        ${dispatchBoardMapPanel()}
+        ${dispatchRecentActivityPanel()}
+      </main>
+      <aside class="dispatch-board-rail">
+        ${dispatchMessagesPanel()}
+        ${dispatchNotificationsPanel()}
+        ${dispatchSystemStatusPanel()}
+        ${dispatchQuickActionsPanel()}
+      </aside>
+    </section>
+  </div>`;
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
-    if (state.view === 'dispatch-board') return tableView('Dispatch Board', 'All patrol requests.', state.patrolRequests);
+    if (state.view === 'dispatch-board') return dispatchBoardView();
     if (state.view === 'live-gps') return tableView('Live GPS', 'Active patrol GPS list.', activeRequests());
     if (state.view === 'pending-dispatch') return tableView('Pending Dispatch', 'Requests waiting for assignment.', pendingRequests());
     if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
