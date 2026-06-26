@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T22-55-v3059';
+const CP_DEV_CACHE_BUST = '2026-06-25T23-15-v3060';
 const BUILD = {
-  version: '3.0.59',
-  label: 'v3.0.59 ACTIVITY LOG COMMAND CENTER'
+  version: '3.0.60',
+  label: 'v3.0.60 PROOF REVIEW COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -102,7 +102,14 @@ const state = {
   activityLogFilters: { user: 'all', action: 'all', module: 'all', severity: 'all', dateRange: 'all' },
   selectedActivityId: '',
   activityLogPage: 1,
-  activityLogPerPage: 10
+  activityLogPerPage: 10,
+  proofReviewSearch: '',
+  proofReviewTab: 'all',
+  proofReviewFilters: { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest' },
+  selectedProofId: '',
+  proofReviewCheckedIds: [],
+  proofReviewPage: 1,
+  proofReviewPerPage: 10
 };;
 const liveGps = {
   online: false,
@@ -6571,7 +6578,7 @@ async function scheduleGuardInterview(id) {
 }
 
 
-/* v3.0.59 Admin Clients Command Center */
+/* v3.0.60 Admin Clients Command Center */
 function adminClientSourceRows() {
   const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
   const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
@@ -6944,7 +6951,7 @@ async function adminClientRefresh() {
 }
 
 
-/* v3.0.59 Activity Log Command Center */
+/* v3.0.60 Activity Log Command Center */
 function activitySafeId(prefix, item = {}, idx = 0) {
   return `${prefix}-${item.id || item.request_id || item.thread_id || item.created_at || item.updated_at || idx}`;
 }
@@ -7451,6 +7458,394 @@ function exportActivityLogCsv() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+
+/* v3.0.60 Proof Review Command Center */
+function proofReviewStateKey() {
+  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
+  return `cp_security_proof_review_state_${who}`;
+}
+function readProofReviewState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(proofReviewStateKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeProofReviewState(map = {}) {
+  try { localStorage.setItem(proofReviewStateKey(), JSON.stringify(map)); } catch {}
+}
+function saveLocalProofReviewState(id, patch = {}) {
+  if (!id) return;
+  const map = readProofReviewState();
+  map[String(id)] = { ...(map[String(id)] || {}), ...patch };
+  writeProofReviewState(map);
+}
+function proofReviewApplyLocalState(row = {}) {
+  const id = String(row.id || '');
+  const local = readProofReviewState()[id] || {};
+  if (!Object.keys(local).length) return row;
+  return {
+    ...row,
+    status: local.status || local.review_status || row.status,
+    included: typeof local.include_in_report === 'boolean' ? local.include_in_report : typeof local.included_in_report === 'boolean' ? local.included_in_report : typeof local.selected_for_report === 'boolean' ? local.selected_for_report : row.included,
+    internalNote: local.internal_note || local.review_note || row.internalNote || '',
+    reviewedAt: local.reviewed_at || row.reviewedAt || '',
+    reviewedBy: local.reviewed_by || row.reviewedBy || ''
+  };
+}
+function proofReviewAllProofItems() {
+  const combined = [...(state.proofItems || []), ...readLocalProofItems()];
+  const seen = new Set();
+  return combined.filter(item => {
+    const key = proofIdentity(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function proofReviewGuardName(guard = {}) {
+  return guard.name || guard.display_name || guard.full_name || guard.email || 'Guard';
+}
+function proofReviewClientName(client = {}) {
+  return client.business_name || client.company_name || client.name || client.display_name || client.email || 'Client';
+}
+function proofReviewRequestForProof(proof = {}) {
+  const id = proofRequestIdValue(proof);
+  return requestById(id) || {};
+}
+function proofReviewPropertyForProof(proof = {}, request = {}) {
+  return propertyById(request.property_id || proof.property_id || proof.propertyId || proof.property?.id) || {};
+}
+function proofReviewGuardForProof(proof = {}, request = {}) {
+  return guardById(proof.guard_id || proof.uploaded_by || proof.guardId || request.guard_id || request.assigned_guard_id) || {};
+}
+function proofReviewClientForProof(proof = {}, request = {}, property = {}) {
+  return clientById(request.client_id || proof.client_id || property.client_id || property.owner_id) || {};
+}
+function proofReviewRows() {
+  return proofReviewAllProofItems().map((proof, index) => {
+    const request = proofReviewRequestForProof(proof);
+    const property = proofReviewPropertyForProof(proof, request);
+    const guard = proofReviewGuardForProof(proof, request);
+    const client = proofReviewClientForProof(proof, request, property);
+    const uploadedAt = proof.created_at || proof.uploaded_at || proof.updated_at || proof.inserted_at || request.updated_at || request.created_at || new Date().toISOString();
+    const id = String(proof.id || proof.object_path || proof.public_url || proof.file_url || `proof-${index}`);
+    const row = {
+      id,
+      proof,
+      request,
+      property,
+      guard,
+      client,
+      title: proof.title || proof.caption || proof.file_name || proof.name || proof.object_path || 'Proof item',
+      fileName: proof.file_name || proof.name || proof.object_path || proof.storage_path || 'proof-item',
+      fileType: proof.file_type || proof.mime_type || proof.type || '',
+      mediaUrl: proofUrlValue(proof),
+      uploadedAt,
+      status: proof.review_status || proof.status || 'pending',
+      included: proof.include_in_report === true || proof.included_in_report === true || proof.selected_for_report === true,
+      note: proof.note || proof.notes || proof.guard_note || proof.description || '',
+      internalNote: proof.internal_note || proof.review_note || '',
+      reviewedAt: proof.reviewed_at || '',
+      reviewedBy: proof.reviewed_by || '',
+      fileSize: proof.file_size || proof.size || 0,
+      duration: proof.duration || proof.video_duration || proof.duration_seconds || ''
+    };
+    return proofReviewApplyLocalState(row);
+  }).sort((a,b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+}
+function proofMediaType(row = {}) {
+  const raw = `${row.fileType || ''} ${row.fileName || ''} ${row.mediaUrl || ''}`.toLowerCase();
+  if (raw.includes('video') || raw.endsWith('.mp4') || raw.endsWith('.mov') || raw.endsWith('.webm') || raw.endsWith('.m4v')) return 'video';
+  return 'photo';
+}
+function proofStatus(row = {}) {
+  return String(row.status || 'pending').toLowerCase();
+}
+function proofIncludedInReport(row = {}) {
+  return row.included === true || row.proof?.include_in_report === true || row.proof?.included_in_report === true || row.proof?.selected_for_report === true;
+}
+function proofIsExpired(row = {}) {
+  const t = new Date(row.uploadedAt || 0).getTime();
+  if (!Number.isFinite(t)) return false;
+  return (Date.now() - t) > (30 * 24 * 60 * 60 * 1000);
+}
+function proofDuration(row = {}) {
+  const raw = row.duration || row.proof?.duration || row.proof?.duration_seconds || '';
+  const num = Number(raw);
+  if (Number.isFinite(num) && num > 0) {
+    const m = Math.floor(num / 60);
+    const s = Math.round(num % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return proofMediaType(row) === 'video' ? '00:15' : '—';
+}
+function proofFileSize(row = {}) {
+  const size = Number(row.fileSize || row.proof?.file_size || row.proof?.size || 0);
+  if (!Number.isFinite(size) || size <= 0) return '—';
+  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+  return `${size} B`;
+}
+function proofReviewCounts() {
+  const rows = proofReviewRows();
+  const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  return {
+    pending: rows.filter(row => proofStatus(row) === 'pending').length,
+    approved: rows.filter(row => proofStatus(row) === 'approved' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
+    rejected: rows.filter(row => proofStatus(row) === 'rejected' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
+    included: rows.filter(proofIncludedInReport).length,
+    totalMedia: rows.length,
+    expired: rows.filter(proofIsExpired).length
+  };
+}
+function proofReviewKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="proof-review-kpi ${esc(tone)}"><div class="proof-review-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function proofReviewKpiRow() {
+  const c = proofReviewCounts();
+  return `<section class="proof-review-kpis">
+    ${proofReviewKpi('🖼','Pending Review',c.pending,'Unreviewed items','blue')}
+    ${proofReviewKpi('✓','Approved',c.approved,'This week','green')}
+    ${proofReviewKpi('×','Rejected',c.rejected,'This week','purple')}
+    ${proofReviewKpi('▣','Included in Reports',c.included,'Selected proof','orange')}
+    ${proofReviewKpi('🎥','Total Media',c.totalMedia,'All time','cyan')}
+    ${proofReviewKpi('⚠','Expired Proofs',c.expired,'Older than 30 days','red')}
+  </section>`;
+}
+function proofReviewTabButton(key, label, count) {
+  const active = (state.proofReviewTab || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-proof-review-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function proofReviewTabs() {
+  const rows = proofReviewRows();
+  const counts = {
+    all: rows.length,
+    pending: rows.filter(row => proofStatus(row) === 'pending').length,
+    approved: rows.filter(row => proofStatus(row) === 'approved').length,
+    rejected: rows.filter(row => proofStatus(row) === 'rejected').length,
+    included: rows.filter(proofIncludedInReport).length
+  };
+  return `<nav class="proof-review-tabs">
+    ${proofReviewTabButton('all','All Proof',counts.all)}
+    ${proofReviewTabButton('pending','Pending Review',counts.pending)}
+    ${proofReviewTabButton('approved','Approved',counts.approved)}
+    ${proofReviewTabButton('rejected','Rejected',counts.rejected)}
+    ${proofReviewTabButton('included','Included in Reports',counts.included)}
+  </nav>`;
+}
+function proofGuardOptions() {
+  const guards = [...new Map(proofReviewRows().map(row => [String(row.guard?.id || ''), row.guard]).filter(([id]) => id)).values()];
+  return guards.map(g => `<option value="${esc(g.id)}" ${state.proofReviewFilters?.guardId === String(g.id) ? 'selected' : ''}>${esc(proofReviewGuardName(g))}</option>`).join('');
+}
+function proofClientOptions() {
+  const clients = [...new Map(proofReviewRows().map(row => [String(row.client?.id || ''), row.client]).filter(([id]) => id)).values()];
+  return clients.map(c => `<option value="${esc(c.id)}" ${state.proofReviewFilters?.clientId === String(c.id) ? 'selected' : ''}>${esc(proofReviewClientName(c))}</option>`).join('');
+}
+function proofPropertyOptions() {
+  const props = [...new Map(proofReviewRows().map(row => [String(row.property?.id || ''), row.property]).filter(([id]) => id)).values()];
+  return props.map(p => `<option value="${esc(p.id)}" ${state.proofReviewFilters?.propertyId === String(p.id) ? 'selected' : ''}>${esc(propertyDisplayName(p))}</option>`).join('');
+}
+function proofReviewFilterBar() {
+  const filters = state.proofReviewFilters || {};
+  return `<section class="proof-review-filter-bar">
+    <select data-proof-filter="guardId"><option value="all">All Guards</option>${proofGuardOptions()}</select>
+    <select data-proof-filter="clientId"><option value="all">All Clients</option>${proofClientOptions()}</select>
+    <select data-proof-filter="propertyId"><option value="all">All Properties</option>${proofPropertyOptions()}</select>
+    <select data-proof-filter="type"><option value="all">All Types</option><option value="photo" ${filters.type === 'photo' ? 'selected' : ''}>Photo</option><option value="video" ${filters.type === 'video' ? 'selected' : ''}>Video</option></select>
+    <select data-proof-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option></select>
+    <select data-proof-filter="sort"><option value="newest" ${filters.sort === 'newest' ? 'selected' : ''}>Sort: Newest First</option><option value="oldest" ${filters.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option><option value="status" ${filters.sort === 'status' ? 'selected' : ''}>Sort: Status</option></select>
+    <button type="button" data-action="proof-review-clear-filters">× Clear Filters</button>
+  </section>`;
+}
+function proofTypeBadge(row = {}) {
+  const type = proofMediaType(row);
+  return `<span class="proof-type-badge ${esc(type)}">${type === 'video' ? 'Video' : 'Photo'}</span>`;
+}
+function proofStatusBadge(row = {}) {
+  const status = proofStatus(row);
+  if (status === 'approved') return `<span class="proof-status approved"><i></i>Approved</span>`;
+  if (status === 'rejected') return `<span class="proof-status rejected"><i></i>Rejected</span>`;
+  return `<span class="proof-status pending"><i></i>Pending Review</span>`;
+}
+function proofThumbnail(row = {}) {
+  const type = proofMediaType(row);
+  const url = row.mediaUrl || '';
+  if (!url) return `<div class="proof-thumb empty"><span>${type === 'video' ? '🎥' : '🖼'}</span></div>`;
+  if (type === 'video') return `<div class="proof-thumb video"><video src="${esc(url)}" muted playsinline></video><span class="proof-play">▶</span><b>${esc(proofDuration(row))}</b></div>`;
+  return `<div class="proof-thumb photo"><img src="${esc(url)}" alt="${esc(row.title)}"><span class="proof-image-icon">🖼</span></div>`;
+}
+function proofLargePreview(row = {}) {
+  const type = proofMediaType(row);
+  const url = row.mediaUrl || '';
+  if (!url) return `<div class="proof-large-preview empty"><span>${type === 'video' ? '🎥' : '🖼'}</span><p>No media preview available.</p></div>`;
+  if (type === 'video') return `<div class="proof-large-preview"><video src="${esc(url)}" controls playsinline></video></div>`;
+  return `<div class="proof-large-preview"><img src="${esc(url)}" alt="${esc(row.title)}"></div>`;
+}
+function filteredProofReviewRows() {
+  let rows = proofReviewRows();
+  const q = String(state.proofReviewSearch || '').trim().toLowerCase();
+  const tab = state.proofReviewTab || 'all';
+  const filters = state.proofReviewFilters || {};
+  if (tab === 'pending') rows = rows.filter(row => proofStatus(row) === 'pending');
+  if (tab === 'approved') rows = rows.filter(row => proofStatus(row) === 'approved');
+  if (tab === 'rejected') rows = rows.filter(row => proofStatus(row) === 'rejected');
+  if (tab === 'included') rows = rows.filter(proofIncludedInReport);
+  if (q) rows = rows.filter(row => [
+    row.title, row.fileName, propertyDisplayName(row.property), propertyDisplayAddress(row.property),
+    proofReviewGuardName(row.guard), proofReviewClientName(row.client), requestTitle(row.request), row.note
+  ].join(' ').toLowerCase().includes(q));
+  if (filters.guardId && filters.guardId !== 'all') rows = rows.filter(row => String(row.guard?.id || '') === String(filters.guardId));
+  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(row => String(row.client?.id || '') === String(filters.clientId));
+  if (filters.propertyId && filters.propertyId !== 'all') rows = rows.filter(row => String(row.property?.id || '') === String(filters.propertyId));
+  if (filters.type && filters.type !== 'all') rows = rows.filter(row => proofMediaType(row) === filters.type);
+  const now = new Date();
+  if (filters.dateRange === 'today') rows = rows.filter(row => new Date(row.uploadedAt).toDateString() === now.toDateString());
+  if (filters.dateRange === 'week') {
+    const d = new Date(); d.setDate(now.getDate() - 7);
+    rows = rows.filter(row => new Date(row.uploadedAt) >= d);
+  }
+  if (filters.dateRange === 'month') {
+    const d = new Date(now.getFullYear(), now.getMonth(), 1);
+    rows = rows.filter(row => new Date(row.uploadedAt) >= d);
+  }
+  if (filters.sort === 'oldest') rows.sort((a,b) => new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0));
+  else if (filters.sort === 'status') rows.sort((a,b) => proofStatus(a).localeCompare(proofStatus(b)) || (new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0)));
+  else rows.sort((a,b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+  return rows;
+}
+function selectedProofReviewRow() {
+  const rows = filteredProofReviewRows();
+  return rows.find(row => String(row.id) === String(state.selectedProofId)) || rows[0] || null;
+}
+function isProofChecked(id) {
+  return (state.proofReviewCheckedIds || []).map(String).includes(String(id));
+}
+function proofReviewRow(row = {}) {
+  const selected = String(state.selectedProofId || '') === String(row.id);
+  return `<div class="proof-review-row ${selected ? 'selected' : ''}">
+    <label class="proof-check"><input type="checkbox" data-proof-check="${esc(row.id)}" ${isProofChecked(row.id) ? 'checked' : ''}></label>
+    <button type="button" class="proof-media-cell" data-action="select-proof" data-proof-id="${esc(row.id)}">${proofThumbnail(row)}</button>
+    <button type="button" class="proof-details-cell" data-action="select-proof" data-proof-id="${esc(row.id)}">
+      <strong>${esc(row.title)} ${proofTypeBadge(row)}</strong>
+      <span>${esc(propertyDisplayName(row.property))} • ${esc(propertyDisplayAddress(row.property))}</span>
+      <small>Guard: ${esc(proofReviewGuardName(row.guard))}</small>
+      <small>Patrol: ${esc(requestTitle(row.request))}</small>
+      <small>Patrol Time: ${esc(fmtDateTimeStamp(row.request?.started_at || row.request?.created_at || row.uploadedAt))}</small>
+    </button>
+    <div class="proof-uploaded-cell"><strong>${esc(fmtDate(row.uploadedAt))}</strong><small>${esc(fmtTime(row.uploadedAt))}</small></div>
+    <div class="proof-status-cell">${proofStatusBadge(row)}${proofIncludedInReport(row) ? '<small>Included</small>' : ''}</div>
+    <div class="proof-row-actions"><button type="button" data-action="view-proof" data-proof-id="${esc(row.id)}">👁</button><button type="button" data-action="proof-menu" data-proof-id="${esc(row.id)}">⋯</button></div>
+  </div>`;
+}
+function proofReviewTable() {
+  const rows = filteredProofReviewRows();
+  const per = Number(state.proofReviewPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.proofReviewPage = Math.min(Math.max(1, state.proofReviewPage || 1), maxPage);
+  const start = (state.proofReviewPage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<section class="proof-review-table-wrap"><div class="proof-review-head"><span></span><span>Proof</span><span>Details</span><span>Uploaded</span><span>Status</span><span>Actions</span></div><div class="proof-review-rows">${pageRows.length ? pageRows.map(proofReviewRow).join('') : '<div class="proof-review-empty">No proof items match your filters.</div>'}</div></section>`;
+}
+function proofReviewPagination() {
+  const rows = filteredProofReviewRows();
+  const per = Number(state.proofReviewPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.proofReviewPage = Math.min(Math.max(1, state.proofReviewPage || 1), maxPage);
+  const start = rows.length ? (state.proofReviewPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.proofReviewPage || 1) * per);
+  return `<footer class="proof-review-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} proof items</span><div class="proof-review-pagination"><button type="button" data-action="proof-review-page-prev">‹</button><strong>${esc(state.proofReviewPage || 1)}</strong><button type="button" data-action="proof-review-page-next">›</button></div><label>Rows per page:<select data-proof-review-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
+}
+function proofReviewActions(row = {}) {
+  return `<section class="proof-review-actions"><h3>Review Actions</h3><div class="proof-review-action-grid"><button class="approve" type="button" data-action="approve-proof" data-proof-id="${esc(row.id)}">✓ Approve</button><button class="reject" type="button" data-action="reject-proof" data-proof-id="${esc(row.id)}">× Reject</button></div><button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
+}
+function proofInternalNoteBox(row = {}) {
+  return `<section class="proof-internal-note"><label>Add Internal Note <span>(optional)</span></label><textarea data-proof-internal-note="${esc(row.id)}" placeholder="Add a note about this proof...">${esc(row.internalNote || '')}</textarea><button type="button" data-action="save-proof-note" data-proof-id="${esc(row.id)}">Save Note</button></section>`;
+}
+function proofReviewDetailRail() {
+  const row = selectedProofReviewRow();
+  if (!row) return `<aside class="proof-review-detail-rail"><section class="panel panel-pad proof-detail-card"><div class="empty">Select a proof item.</div></section></aside>`;
+  return `<aside class="proof-review-detail-rail"><section class="panel panel-pad proof-detail-card">
+    <button class="rail-close" type="button" data-action="clear-selected-proof">×</button>
+    <h2>Selected Proof</h2>
+    ${proofLargePreview(row)}
+    <div class="proof-detail-title">${proofTypeBadge(row)}<strong>${esc(row.title)}</strong></div>
+    <dl class="proof-detail-list">
+      <dt>Property</dt><dd>${esc(propertyDisplayName(row.property))}</dd>
+      <dt>Address</dt><dd>${esc(propertyDisplayAddress(row.property))}</dd>
+      <dt>Guard</dt><dd>${esc(proofReviewGuardName(row.guard))}</dd>
+      <dt>Patrol</dt><dd>${esc(requestTitle(row.request))}</dd>
+      <dt>Patrol Time</dt><dd>${esc(fmtDateTimeStamp(row.request?.started_at || row.request?.created_at || row.uploadedAt))}</dd>
+      <dt>Uploaded</dt><dd>${esc(fmtDateTimeStamp(row.uploadedAt))}</dd>
+      <dt>File</dt><dd>${esc(row.fileName)}</dd>
+      <dt>File Size</dt><dd>${esc(proofFileSize(row))}</dd>
+      <dt>Duration</dt><dd>${esc(proofDuration(row))}</dd>
+      <dt>Type</dt><dd>${esc(statusText(proofMediaType(row)))}</dd>
+      <dt>Notes</dt><dd>${esc(row.note || 'No notes submitted.')}</dd>
+    </dl>
+    ${proofReviewActions(row)}
+    ${proofInternalNoteBox(row)}
+  </section></aside>`;
+}
+function proofReviewHeader() {
+  return `<header class="dashboard-header proof-review-header"><div class="title-block"><h1>Proof Review</h1><p>Review, approve, and manage proof submitted by guards for client reports.</p></div><div class="proof-review-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="proof-search"><input type="search" placeholder="Search proof, guard, property..." value="${esc(state.proofReviewSearch || '')}" data-proof-review-search><b>⌕</b></label><button type="button" data-action="proof-review-filters">⌁ Filters</button><button type="button" data-action="proof-review-export">⇩ Export</button></div></header>`;
+}
+function proofReviewCommandCenterView() {
+  return `<div class="dashboard proof-review-shell">${proofReviewHeader()}${proofReviewKpiRow()}<section class="proof-review-layout"><main class="proof-review-main panel">${proofReviewTabs()}${proofReviewFilterBar()}${proofReviewTable()}${proofReviewPagination()}</main>${proofReviewDetailRail()}</section></div>`;
+}
+async function updateProofReviewStatus(id, status) {
+  const now = new Date().toISOString();
+  const patch = { status, review_status: status, reviewed_at: now, reviewed_by: state.profile?.email || 'Dispatch' };
+  saveLocalProofReviewState(id, patch);
+  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
+  if (item) Object.assign(item, patch);
+}
+async function toggleProofReportInclusion(id) {
+  const row = proofReviewRows().find(p => String(p.id) === String(id));
+  const next = !proofIncludedInReport(row || {});
+  saveLocalProofReviewState(id, { include_in_report: next, included_in_report: next, selected_for_report: next });
+  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
+  if (item) {
+    item.include_in_report = next;
+    item.included_in_report = next;
+    item.selected_for_report = next;
+  }
+}
+async function saveProofInternalNote(id, note = '') {
+  saveLocalProofReviewState(id, { internal_note: note, review_note: note, note_saved_at: new Date().toISOString() });
+  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
+  if (item) {
+    item.internal_note = note;
+    item.review_note = note;
+  }
+}
+function exportProofReviewCsv() {
+  const rows = filteredProofReviewRows();
+  const cols = ['uploadedAt','title','fileName','type','status','included','property','address','guard','client','request','note'];
+  const csv = [cols.join(',')].concat(rows.map(row => [
+    row.uploadedAt,
+    row.title,
+    row.fileName,
+    proofMediaType(row),
+    proofStatus(row),
+    proofIncludedInReport(row) ? 'yes' : 'no',
+    propertyDisplayName(row.property),
+    propertyDisplayAddress(row.property),
+    proofReviewGuardName(row.guard),
+    proofReviewClientName(row.client),
+    requestTitle(row.request),
+    row.note || ''
+  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `co-pilot-proof-review-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -7462,7 +7857,7 @@ function renderRoleView() {
     if (state.view === 'guard-approvals') return guardApprovalsCommandCenterView();
     if (state.view === 'clients') return adminClientsCommandCenterView();
     if (state.view === 'activity-log') return activityLogCommandCenterView();
-    if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
+    if (state.view === 'proof-review') return proofReviewCommandCenterView();
     if (state.view === 'report-builder') return tableView('Report Builder', 'Completed patrols ready for reports.', completedRequests());
     if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
   }
@@ -8179,6 +8574,84 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
+    if (button.dataset.proofReviewTab) {
+      state.proofReviewTab = button.dataset.proofReviewTab || 'all';
+      state.proofReviewPage = 1;
+      state.selectedProofId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-proof' || button.dataset.action === 'view-proof') {
+      state.selectedProofId = button.dataset.proofId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'clear-selected-proof') {
+      state.selectedProofId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'approve-proof') {
+      await updateProofReviewStatus(button.dataset.proofId, 'approved');
+      render();
+      toast('Proof approved.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'reject-proof') {
+      await updateProofReviewStatus(button.dataset.proofId, 'rejected');
+      render();
+      toast('Proof rejected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'toggle-proof-include') {
+      await toggleProofReportInclusion(button.dataset.proofId);
+      render();
+      toast('Report inclusion updated.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'save-proof-note') {
+      const selector = `[data-proof-internal-note="${String(button.dataset.proofId || '').replace(/"/g, '\\"')}"]`;
+      const textarea = document.querySelector(selector);
+      await saveProofInternalNote(button.dataset.proofId, textarea?.value || '');
+      render();
+      toast('Proof note saved.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'proof-review-clear-filters') {
+      state.proofReviewSearch = '';
+      state.proofReviewTab = 'all';
+      state.proofReviewFilters = { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest' };
+      state.proofReviewPage = 1;
+      state.selectedProofId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'proof-review-filters') {
+      toast('Proof filters are visible below the tabs.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'proof-review-export') {
+      exportProofReviewCsv();
+      toast('Proof review exported.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'proof-menu') {
+      state.selectedProofId = button.dataset.proofId || state.selectedProofId;
+      render();
+      toast('Proof action menu selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'proof-review-page-prev') {
+      state.proofReviewPage = Math.max(1, (state.proofReviewPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'proof-review-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredProofReviewRows().length / Number(state.proofReviewPerPage || 10)));
+      state.proofReviewPage = Math.min(maxPage, (state.proofReviewPage || 1) + 1);
+      render();
+      return;
+    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -8466,6 +8939,13 @@ document.addEventListener('submit', async event => {
 
 document.addEventListener('input', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-proof-review-search')) {
+    state.proofReviewSearch = input.value || '';
+    state.proofReviewPage = 1;
+    state.selectedProofId = '';
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-activity-search')) {
     state.activityLogSearch = input.value || '';
     state.activityLogPage = 1;
@@ -8642,6 +9122,35 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-proof-review-search')) {
+    state.proofReviewSearch = input.value || '';
+    state.proofReviewPage = 1;
+    state.selectedProofId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-proof-filter')) {
+    const key = input.dataset.proofFilter;
+    state.proofReviewFilters = { ...(state.proofReviewFilters || {}), [key]: input.value || 'all' };
+    state.proofReviewPage = 1;
+    state.selectedProofId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-proof-review-per-page')) {
+    state.proofReviewPerPage = Number(input.value || 10);
+    state.proofReviewPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-proof-check')) {
+    const id = String(input.dataset.proofCheck || '');
+    const set = new Set((state.proofReviewCheckedIds || []).map(String));
+    if (input.checked) set.add(id);
+    else set.delete(id);
+    state.proofReviewCheckedIds = [...set];
+    return;
+  }
   if (input && input.hasAttribute('data-activity-search')) {
     state.activityLogSearch = input.value || '';
     state.activityLogPage = 1;

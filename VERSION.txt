@@ -1,24 +1,23 @@
 Co Pilot Security
-Version: 3.0.59
-Build Name: ACTIVITY LOG COMMAND CENTER
+Version: 3.0.60
+Build Name: PROOF REVIEW COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.58.
-- Rebuilt Dispatch/Admin Activity Log into a full command-center audit trail page.
-- Added KPI row: Total Activities, Today, This Week, Critical Events, Users Active, Success Rate.
-- Activity Log now combines system activity from patrol activity, patrol requests, proof uploads, reports, notifications, messages, guard/client signups, and properties.
-- Added tabs: All Activities, User Actions, System Events, Security Events, Data Changes.
-- Added filters: User, Action, Module, Severity, Date Range.
-- Added searchable audit log table with Time, User, Action, Module, Details, IP Address, Severity, and Actions.
-- Added selected activity detail rail with user/email/time/IP/user agent/session/location/severity/status.
-- Added quick filters: My Activities, Failed Activities, Critical Events, Data Changes, Login Activities.
+- Built from v3.0.59.
+- Rebuilt Dispatch/Admin Proof Review into a full command-center media evidence review page.
+- Added KPI row: Pending Review, Approved, Rejected, Included in Reports, Total Media, Expired Proofs.
+- Added tabs: All Proof, Pending Review, Approved, Rejected, Included in Reports.
+- Added filters: Guard, Client, Property, Type, Date Range, Sort.
+- Added searchable proof media list with thumbnails, photo/video badges, guard, property, patrol, uploaded time, status, and actions.
+- Added selected proof detail rail with preview, proof metadata, property/guard/patrol details, notes, approve/reject/include actions, and internal note save.
 - Added pagination, rows per page, clear filters, and CSV export.
-- Preserved v3.0.58 Clients Command Center.
+- Proof Review uses guard-uploaded media only. No URL inputs were added anywhere.
+- Review status and report inclusion are stored locally if permanent Supabase review fields are not available.
 - No new SQL required.
 
 Badge:
-v3.0.59 ACTIVITY LOG COMMAND CENTER
+v3.0.60 PROOF REVIEW COMMAND CENTER
 
 SQL:
 No new SQL required.

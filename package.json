@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-activity-log-command-center",
-  "version": "3.0.59",
+  "name": "co-pilot-security-proof-review-command-center",
+  "version": "3.0.60",
   "private": true,
-  "description": "Rebuilds the Dispatch/Admin Activity Log into a command-center audit trail with KPIs, filters, table, detail rail, quick filters, and CSV export.",
+  "description": "Rebuilds the Dispatch/Admin Proof Review page into a command-center media evidence review system with approve, reject, include in report, notes, filters, and export.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

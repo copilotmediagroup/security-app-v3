@@ -1,68 +1,62 @@
-# Co Pilot Security v3.0.59 — Activity Log Command Center
+# Co Pilot Security v3.0.60 — Proof Review Command Center
 
 ## What changed
-The Dispatch/Admin `Activity Log` page was rebuilt into a modern command-center audit trail.
+The Dispatch/Admin `Proof Review` page was rebuilt into a modern command-center media evidence review system.
 
-## New Activity Log sections
+## New Proof Review sections
 - Header:
   - System Operational
-  - Search activity
+  - Search proof, guard, property
   - Filters
   - Export
 - KPI row:
-  - Total Activities
-  - Today
-  - This Week
-  - Critical Events
-  - Users Active
-  - Success Rate
+  - Pending Review
+  - Approved
+  - Rejected
+  - Included in Reports
+  - Total Media
+  - Expired Proofs
 - Tabs:
-  - All Activities
-  - User Actions
-  - System Events
-  - Security Events
-  - Data Changes
+  - All Proof
+  - Pending Review
+  - Approved
+  - Rejected
+  - Included in Reports
 - Filters:
-  - All Users
-  - All Actions
-  - All Modules
-  - All Severity
-  - Date Range
+  - All Guards
+  - All Clients
+  - All Properties
+  - All Types
+  - All Dates
+  - Sort
   - Clear Filters
-- Main audit table:
-  - Time
-  - User
-  - Action
-  - Module
+- Main proof list:
+  - Checkbox
+  - Thumbnail
   - Details
-  - IP Address
-  - Severity
+  - Uploaded
+  - Status
   - Actions
 - Right detail rail:
-  - Activity Details
-  - User
-  - Email
-  - Time
-  - IP Address
-  - User Agent
-  - Session ID
-  - Location
-  - Severity
-  - Status
-- Quick filters:
-  - My Activities
-  - Failed Activities
-  - Critical Events
-  - Data Changes
-  - Login Activities
-  - Save Current Filter
+  - Selected proof preview
+  - File metadata
+  - Property / address
+  - Guard
+  - Patrol
+  - Uploaded time
+  - Notes
+  - Approve
+  - Reject
+  - Include/remove from report
+  - Internal note save
 
 ## Functional behavior
-- Search filters the audit table.
-- Tabs filter activity categories.
-- Dropdown filters update the table.
-- Clear Filters resets everything.
-- Selecting a row updates the right detail rail.
-- Pagination and rows per page are wired.
-- Export downloads a CSV of the currently filtered activity log.
+- Search filters proof records.
+- Tabs filter status/included records.
+- Dropdown filters update the list.
+- Selecting a proof updates the detail rail.
+- Approve / Reject / Include in Report update local review state.
+- Internal notes save locally.
+- Export downloads a CSV of the currently filtered proof review list.
+- No URL input was added. Proof comes from guard uploads only.
 - No new SQL required.
