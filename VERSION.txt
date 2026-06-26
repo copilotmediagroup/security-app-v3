@@ -1,23 +1,20 @@
 Co Pilot Security
-Version: 3.0.44
-Build Name: DISPATCH LIVE GPS COMMAND CENTER
+Version: 3.0.45
+Build Name: PENDING DISPATCH COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.43.
-- Rebuilt the Dispatch Live GPS page using the exact command-center blueprint.
-- Added KPI row: Online Guards, Active Patrols, Active Properties, Alerts.
-- Added full live map panel using the existing dispatch map engine.
-- Added working Live Sync refresh, Default map reset, view mode selector, Layers popover, and Fullscreen action.
-- Added clickable Online Guard Roster.
-- Added Selected Property right rail card.
-- Added Live GPS Feed.
-- Added Recent Route Events table.
-- Preserved online-only guard visibility behavior.
+- Built from v3.0.44 Dispatch Live GPS Command Center.
+- Redesigned the Pending Dispatch page exactly from the developer blueprint.
+- Added KPI row: Total Pending, High Priority, Average Response, Assigned Today, SLA At Risk.
+- Added priority tabs, search, filter dropdowns, clear filters, refresh, Auto Assign, Assign Selected.
+- Added request table with selectable rows, priority, request, property/client, requested-for, age, distance, status, and assignment actions.
+- Added selected request right detail rail with property photo, client/property information, special instructions, mini route map, and Assign Guard.
+- Assignment uses the existing patrol assignment RPC/flow.
 - No new SQL required.
 
 Badge:
-v3.0.44 DISPATCH LIVE GPS COMMAND CENTER
+v3.0.45 PENDING DISPATCH COMMAND CENTER
 
 SQL:
 No new SQL required.

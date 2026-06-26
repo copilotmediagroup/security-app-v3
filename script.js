@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.44',
-  label: 'v3.0.44 DISPATCH LIVE GPS COMMAND CENTER'
+  version: '3.0.45',
+  label: 'v3.0.45 PENDING DISPATCH COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -56,7 +56,15 @@ const state = {
   settingsTab: 'profile',
   liveGpsViewMode: 'default',
   liveGpsLayersOpen: false,
-  liveGpsSelectedEventId: ''
+  liveGpsSelectedEventId: '',
+  pendingDispatchPriorityFilter: 'all',
+  pendingDispatchSearch: '',
+  pendingDispatchFiltersOpen: true,
+  pendingDispatchFilters: { priority: 'all', propertyType: 'all', clientId: 'all', requestedTime: 'all', status: 'all' },
+  selectedPendingRequestId: '',
+  pendingDispatchSelectedIds: [],
+  pendingDispatchPage: 1,
+  pendingDispatchPerPage: 6
 };;
 const liveGps = {
   online: false,
@@ -1138,7 +1146,7 @@ async function assignPatrolNow(requestId) {
   });
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
   await loadData();
-  state.view = state.view === 'dispatch-board' ? 'dispatch-board' : 'dashboard';
+  state.view = ['dispatch-board','pending-dispatch'].includes(state.view) ? state.view : 'dashboard';
   render();
   const guardName = result.guard?.name || result.guard?.display_name || result.guard?.email || 'guard';
   toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
@@ -5023,12 +5031,312 @@ function dispatchLiveGpsView() {
   </div>`;
 }
 
+
+function pendingDispatchRequests() {
+  return (state.patrolRequests || []).filter(req => {
+    const status = String(req.status || '').toLowerCase();
+    return ['pending', 'pending_dispatch', 'requested', 'new', 'unassigned', 'open'].includes(status);
+  });
+}
+function pendingDispatchPriorityValue(req = {}) {
+  const raw = String(req.priority || req.priority_level || 'normal').toLowerCase();
+  if (/urgent|emergency|high/.test(raw)) return 'high';
+  if (/medium|normal/.test(raw)) return raw.includes('medium') ? 'medium' : 'medium';
+  if (/low/.test(raw)) return 'low';
+  return 'medium';
+}
+function pendingDispatchPriorityLabel(req = {}) {
+  const raw = String(req.priority || req.priority_level || '').toLowerCase();
+  if (/urgent|emergency/.test(raw)) return 'Emergency';
+  if (/high/.test(raw)) return 'High';
+  if (/low/.test(raw)) return 'Low';
+  return raw ? statusText(raw) : 'Medium';
+}
+function pendingPriorityBadge(req = {}) {
+  const key = pendingDispatchPriorityValue(req);
+  const label = pendingDispatchPriorityLabel(req);
+  return `<span class="pending-priority-badge ${esc(key)}">${esc(label)}</span>`;
+}
+function pendingStatusBadge(req = {}) {
+  const raw = String(req.status || 'pending').toLowerCase();
+  const label = raw === 'pending_dispatch' ? 'Pending' : statusText(raw || 'Pending');
+  return `<span class="pending-status-badge ${esc(raw.replace(/_/g,'-') || 'pending')}">${esc(label)}</span>`;
+}
+function shortRequestId(id = '') {
+  return String(id || '').replace(/^req[_-]?/i, '').slice(0, 10) || 'request';
+}
+function requestAgeMinutes(req = {}) {
+  const base = req.created_at || req.requested_at || req.submitted_at || new Date();
+  const created = new Date(base).getTime();
+  if (!Number.isFinite(created)) return 0;
+  return Math.max(0, Math.floor((Date.now() - created) / 60000));
+}
+function requestAgeLabel(req = {}) {
+  const mins = requestAgeMinutes(req);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return `${hours}h ${rem}m`;
+}
+function requestedForLabel(req = {}) {
+  const date = req.requested_for || req.scheduled_for || req.scheduled_at || req.created_at;
+  if (!date) return 'ASAP';
+  const timeText = fmtTime(date);
+  const day = new Date(date).toDateString() === new Date().toDateString() ? 'Today' : fmtDate(date);
+  return `${day}, ${timeText}`;
+}
+function pendingDistance(req = {}) {
+  const raw = req.distance_miles || req.distance || req.eta_distance_miles || req.route_distance_miles;
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) return `${n.toFixed(1)} mi`;
+  const coords = getPropertyCoords(req);
+  const guard = dispatchMapOnlineGuards()[0]?.coords;
+  if (coords && guard && Number.isFinite(coords.lat) && Number.isFinite(guard.lat)) {
+    const miles = Math.hypot((coords.lat - guard.lat) * 69, (coords.lng - guard.lng) * 55);
+    return `${miles.toFixed(1)} mi`;
+  }
+  return '—';
+}
+function assignedTodayCount() {
+  const today = new Date().toDateString();
+  return (state.patrolRequests || []).filter(req => {
+    const assigned = req.assigned_at || req.updated_at;
+    return assigned && new Date(assigned).toDateString() === today && ['assigned','accepted','in_progress','completed'].includes(String(req.status || ''));
+  }).length;
+}
+function pendingDispatchCounts() {
+  const rows = pendingDispatchRequests();
+  const highPriority = rows.filter(req => pendingDispatchPriorityValue(req) === 'high');
+  const slaAtRisk = rows.filter(req => requestAgeMinutes(req) >= 30);
+  return {
+    totalPending: rows.length,
+    highPriority: highPriority.length,
+    averageResponse: '18m',
+    assignedToday: assignedTodayCount(),
+    slaAtRisk: slaAtRisk.length
+  };
+}
+function pendingDispatchKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="pending-dispatch-kpi ${esc(tone)}"><div class="pending-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function pendingDispatchKpiRow() {
+  const c = pendingDispatchCounts();
+  return `<section class="pending-dispatch-kpis">
+    ${pendingDispatchKpi('♧','Total Pending',c.totalPending,'Needs assignment','blue')}
+    ${pendingDispatchKpi('⚠','High Priority',c.highPriority,'Needs fast response','red')}
+    ${pendingDispatchKpi('⌁','Average Response',c.averageResponse,'8m improvement','green')}
+    ${pendingDispatchKpi('◎','Assigned Today',c.assignedToday,'Today','purple')}
+    ${pendingDispatchKpi('☂','SLA At Risk',c.slaAtRisk,'Requires attention','orange')}
+  </section>`;
+}
+function pendingDispatchTab(key, label, count) {
+  const active = (state.pendingDispatchPriorityFilter || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-pending-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function pendingPriorityTabs() {
+  const rows = pendingDispatchRequests();
+  const counts = {
+    all: rows.length,
+    high: rows.filter(r => pendingDispatchPriorityValue(r) === 'high').length,
+    medium: rows.filter(r => pendingDispatchPriorityValue(r) === 'medium').length,
+    low: rows.filter(r => pendingDispatchPriorityValue(r) === 'low').length
+  };
+  return `<div class="pending-priority-tabs">
+    ${pendingDispatchTab('all','All Requests',counts.all)}
+    ${pendingDispatchTab('high','High Priority',counts.high)}
+    ${pendingDispatchTab('medium','Medium Priority',counts.medium)}
+    ${pendingDispatchTab('low','Low Priority',counts.low)}
+  </div>`;
+}
+function pendingDispatchClientOptions() {
+  const ids = new Set(pendingDispatchRequests().map(req => String(req.client_id || '')).filter(Boolean));
+  const rows = (state.clients || []).filter(c => ids.has(String(c.id)));
+  return `<option value="all">All Clients</option>${rows.map(c => `<option value="${esc(c.id)}" ${String(state.pendingDispatchFilters.clientId) === String(c.id) ? 'selected' : ''}>${esc(c.name || c.display_name || c.email || 'Client')}</option>`).join('')}`;
+}
+function pendingDispatchPropertyTypeOptions() {
+  const types = [...new Set(pendingDispatchRequests().map(req => propertyTypeLabel(propertyById(req.property_id))).filter(Boolean))];
+  return `<option value="all">All Property Types</option>${types.map(type => `<option value="${esc(type)}" ${state.pendingDispatchFilters.propertyType === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}`;
+}
+function filteredPendingDispatchRequests() {
+  let rows = pendingDispatchRequests();
+  const q = String(state.pendingDispatchSearch || '').trim().toLowerCase();
+  const filters = state.pendingDispatchFilters || {};
+  const tab = state.pendingDispatchPriorityFilter || 'all';
+  if (tab !== 'all') rows = rows.filter(req => pendingDispatchPriorityValue(req) === tab);
+  if (q) {
+    rows = rows.filter(req => [requestTitle(req), propertyLabel(req), propertyAddress(req), requestClientName(req), req.id, req.request_number].join(' ').toLowerCase().includes(q));
+  }
+  if (filters.priority && filters.priority !== 'all') rows = rows.filter(req => pendingDispatchPriorityValue(req) === filters.priority);
+  if (filters.propertyType && filters.propertyType !== 'all') rows = rows.filter(req => propertyTypeLabel(propertyById(req.property_id)) === filters.propertyType);
+  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(req => String(req.client_id) === String(filters.clientId));
+  if (filters.status && filters.status !== 'all') rows = rows.filter(req => String(req.status || '').toLowerCase() === filters.status);
+  if (filters.requestedTime && filters.requestedTime !== 'all') {
+    const now = Date.now();
+    rows = rows.filter(req => {
+      const when = new Date(req.requested_for || req.scheduled_for || req.scheduled_at || req.created_at || now).getTime();
+      if (!Number.isFinite(when)) return true;
+      if (filters.requestedTime === 'asap') return !req.requested_for && !req.scheduled_for && !req.scheduled_at;
+      if (filters.requestedTime === 'today') return new Date(when).toDateString() === new Date().toDateString();
+      if (filters.requestedTime === 'week') return when <= now + 7 * 86400000;
+      return true;
+    });
+  }
+  return rows.sort((a,b) => {
+    const pa = pendingDispatchPriorityValue(a) === 'high' ? 0 : pendingDispatchPriorityValue(a) === 'medium' ? 1 : 2;
+    const pb = pendingDispatchPriorityValue(b) === 'high' ? 0 : pendingDispatchPriorityValue(b) === 'medium' ? 1 : 2;
+    if (pa !== pb) return pa - pb;
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  });
+}
+function selectedPendingRequest() {
+  const rows = filteredPendingDispatchRequests();
+  return rows.find(req => String(req.id) === String(state.selectedPendingRequestId)) || rows[0] || null;
+}
+function pendingPropertyIcon(req = {}) {
+  const type = propertyTypeLabel(propertyById(req.property_id)).toLowerCase();
+  if (/school/.test(type)) return '🎓';
+  if (/warehouse|industrial/.test(type)) return '🏭';
+  if (/retail|store/.test(type)) return '🏬';
+  if (/garage|parking/.test(type)) return 'Ⓟ';
+  if (/office/.test(type)) return '▥';
+  return '⌂';
+}
+function pendingDispatchToolbar() {
+  return `<div class="pending-dispatch-toolbar">
+    ${pendingPriorityTabs()}
+    <div class="pending-toolbar-actions">
+      <button type="button" class="ghost-button" data-action="pending-auto-assign">Auto Assign</button>
+      <button type="button" class="primary-button" data-action="pending-assign-selected">Assign Selected</button>
+    </div>
+  </div>`;
+}
+function pendingDispatchFilterBar() {
+  return `<div class="pending-filter-bar ${state.pendingDispatchFiltersOpen ? '' : 'collapsed'}">
+    <select data-pending-filter="priority"><option value="all">All Priorities</option><option value="high" ${state.pendingDispatchFilters.priority === 'high' ? 'selected' : ''}>High Priority</option><option value="medium" ${state.pendingDispatchFilters.priority === 'medium' ? 'selected' : ''}>Medium Priority</option><option value="low" ${state.pendingDispatchFilters.priority === 'low' ? 'selected' : ''}>Low Priority</option></select>
+    <select data-pending-filter="propertyType">${pendingDispatchPropertyTypeOptions()}</select>
+    <select data-pending-filter="clientId">${pendingDispatchClientOptions()}</select>
+    <select data-pending-filter="requestedTime"><option value="all">All Requested Times</option><option value="asap" ${state.pendingDispatchFilters.requestedTime === 'asap' ? 'selected' : ''}>ASAP</option><option value="today" ${state.pendingDispatchFilters.requestedTime === 'today' ? 'selected' : ''}>Today</option><option value="week" ${state.pendingDispatchFilters.requestedTime === 'week' ? 'selected' : ''}>Next 7 Days</option></select>
+    <select data-pending-filter="status"><option value="all">All Status</option><option value="pending_dispatch" ${state.pendingDispatchFilters.status === 'pending_dispatch' ? 'selected' : ''}>Pending</option><option value="requested" ${state.pendingDispatchFilters.status === 'requested' ? 'selected' : ''}>Requested</option><option value="new" ${state.pendingDispatchFilters.status === 'new' ? 'selected' : ''}>New</option></select>
+    <button type="button" data-action="pending-clear-filters">× Clear Filters</button>
+  </div>`;
+}
+function pendingDispatchRow(req = {}) {
+  const selected = String(state.selectedPendingRequestId || '') === String(req.id);
+  const checked = (state.pendingDispatchSelectedIds || []).map(String).includes(String(req.id));
+  const property = propertyById(req.property_id);
+  const onlineGuards = dispatchMapOnlineGuards().map(e => e.guard);
+  const guardOptions = onlineGuards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  return `<div class="pending-dispatch-row ${selected ? 'selected' : ''}" data-request-id="${esc(req.id)}">
+    <label class="pending-check"><input type="checkbox" ${checked ? 'checked' : ''} data-pending-request-check="${esc(req.id)}"></label>
+    <div>${pendingPriorityBadge(req)}</div>
+    <button type="button" class="pending-request-main" data-action="select-pending-request" data-request-id="${esc(req.id)}"><strong>${esc(requestTitle(req))}</strong><small>#${esc(shortRequestId(req.id))}</small></button>
+    <div class="pending-property-cell"><i>${esc(pendingPropertyIcon(req))}</i><span><strong>${esc(propertyLabel(req))}</strong><small>${esc(requestClientName(req))}</small></span></div>
+    <div class="pending-requested-cell"><strong>${esc(requestedForLabel(req))}</strong><small>${esc(fmtDate(req.requested_for || req.scheduled_for || req.created_at))}</small></div>
+    <div class="pending-age ${requestAgeMinutes(req) >= 30 ? 'risk' : ''}">${esc(requestAgeLabel(req))}</div>
+    <div class="pending-distance">${esc(pendingDistance(req))}</div>
+    <div>${pendingStatusBadge(req)}</div>
+    <div class="pending-actions"><select data-assign-guard="${esc(req.id)}">${guardOptions || '<option value="">No online guards</option>'}</select><button type="button" data-action="assign-pending-request" data-request-id="${esc(req.id)}" ${onlineGuards.length ? '' : 'disabled'}>Assign</button><button type="button" data-action="pending-request-menu" data-request-id="${esc(req.id)}">⋮</button></div>
+  </div>`;
+}
+function pendingDispatchTable() {
+  const rows = filteredPendingDispatchRequests();
+  const per = Number(state.pendingDispatchPerPage || 6);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.pendingDispatchPage = Math.min(Math.max(1, state.pendingDispatchPage || 1), maxPage);
+  const start = (state.pendingDispatchPage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<div class="pending-dispatch-table">
+    <div class="pending-dispatch-head"><span></span><span>Priority</span><span>Request</span><span>Property / Client</span><span>Requested For</span><span>Age</span><span>Distance</span><span>Status</span><span>Actions</span></div>
+    ${pageRows.length ? pageRows.map(pendingDispatchRow).join('') : '<div class="pending-empty-results">No pending dispatch requests match your filters.</div>'}
+  </div>`;
+}
+function pendingDispatchPagination() {
+  const rows = filteredPendingDispatchRequests();
+  const per = Number(state.pendingDispatchPerPage || 6);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  const start = rows.length ? (state.pendingDispatchPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.pendingDispatchPage || 1) * per);
+  return `<footer class="pending-dispatch-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} requests</span><div class="pending-pagination"><button type="button" data-action="pending-page-prev">‹</button><strong>${esc(state.pendingDispatchPage || 1)}</strong><button type="button" data-action="pending-page-next">›</button></div><label><select data-pending-per-page><option value="6" ${per === 6 ? 'selected' : ''}>6 per page</option><option value="10" ${per === 10 ? 'selected' : ''}>10 per page</option><option value="20" ${per === 20 ? 'selected' : ''}>20 per page</option></select></label></footer>`;
+}
+function pendingRequestMiniMap(req = {}) {
+  return `<div class="pending-mini-map"><div class="mini-road r1"></div><div class="mini-road r2"></div><div class="mini-marker property"></div><div class="mini-marker guard"></div><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M20 70 C40 45,55 76,80 32"></path></svg><span>Est. Travel Time: ${esc(liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : '8 min')}</span></div>`;
+}
+function pendingRequestDetailsRail() {
+  const req = selectedPendingRequest();
+  if (!req) return `<aside class="pending-detail-rail"><section class="panel panel-pad pending-request-details"><div class="empty">No pending request selected.</div></section></aside>`;
+  const property = propertyById(req.property_id);
+  const photo = propertyImageValue(property);
+  const onlineGuards = dispatchMapOnlineGuards().map(e => e.guard);
+  const guardOptions = onlineGuards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  return `<aside class="pending-detail-rail"><section class="panel panel-pad pending-request-details">
+    <button type="button" class="pending-rail-close" data-action="clear-selected-pending">×</button>
+    ${pendingPriorityBadge(req)}
+    <h2>${esc(requestTitle(req))}</h2><p class="pending-request-code">#${esc(shortRequestId(req.id))}</p>
+    <div class="pending-detail-photo">${photo ? `<img src="${esc(photo)}" alt="${esc(propertyLabel(req))}">` : `<span>${esc(initials(propertyLabel(req)))}</span>`}</div>
+    <div class="pending-address-box"><i>⌖</i><strong>${esc(propertyAddress(req))}</strong><small>${esc(pendingDistance(req))} from nearest online guard</small></div>
+    <dl class="pending-detail-list"><dt>Client</dt><dd>${esc(requestClientName(req))}</dd><dt>Property Type</dt><dd>${esc(propertyTypeLabel(property))}</dd><dt>Requested By</dt><dd>${esc(req.requested_by_name || req.contact_name || requestClientName(req))}</dd><dt>Phone</dt><dd>${esc(req.phone || req.contact_phone || property.phone || '—')}</dd><dt>Requested For</dt><dd>${esc(requestedForLabel(req))}</dd><dt>Special Instructions</dt><dd>${esc(req.instructions || req.special_instructions || 'No special instructions.')}</dd></dl>
+    ${pendingRequestMiniMap(req)}
+    <select class="pending-rail-guard-select" data-assign-guard="${esc(req.id)}">${guardOptions || '<option value="">No online guards</option>'}</select>
+    <button type="button" class="primary-button wide" data-action="assign-pending-request" data-request-id="${esc(req.id)}" ${onlineGuards.length ? '' : 'disabled'}>Assign Guard</button>
+    <button type="button" class="ghost-button wide" data-action="view-pending-request-details" data-request-id="${esc(req.id)}">View Full Details ↗</button>
+  </section></aside>`;
+}
+function pendingDispatchHeader() {
+  return `<header class="dashboard-header pending-dispatch-header"><div class="title-block"><h1>Pending Dispatch</h1><p>Review and assign incoming patrol requests that need immediate dispatch.</p></div><div class="pending-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="pending-search"><input type="search" placeholder="Search requests..." value="${esc(state.pendingDispatchSearch || '')}" data-pending-search><b>⌕</b></label><button type="button" data-action="pending-toggle-filters">⌁</button><button type="button" data-action="pending-refresh">⟳ Refresh</button></div></header>`;
+}
+function pendingDispatchView() {
+  return `<div class="dashboard pending-dispatch-shell">
+    ${pendingDispatchHeader()}
+    ${pendingDispatchKpiRow()}
+    <section class="pending-dispatch-layout">
+      <main class="pending-dispatch-main panel">
+        ${pendingDispatchToolbar()}
+        ${pendingDispatchFilterBar()}
+        ${pendingDispatchTable()}
+        ${pendingDispatchPagination()}
+      </main>
+      ${pendingRequestDetailsRail()}
+    </section>
+  </div>`;
+}
+async function assignPendingDispatchRequest(requestId, guardId = '') {
+  const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
+  if (!req) throw new Error('Pending request not found.');
+  let select = document.querySelector(`select[data-assign-guard="${String(requestId).replace(/"/g, '&quot;')}"]`);
+  if (select && guardId) select.value = guardId;
+  if (!select && guardId) {
+    const temp = document.createElement('select');
+    temp.dataset.assignGuard = requestId;
+    temp.style.display = 'none';
+    temp.innerHTML = `<option value="${esc(guardId)}">${esc(guardId)}</option>`;
+    document.body.appendChild(temp);
+    select = temp;
+  }
+  await assignPatrolNow(requestId);
+  state.selectedPendingRequestId = '';
+  state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(id => String(id) !== String(requestId));
+}
+async function autoAssignPendingDispatch() {
+  const rows = filteredPendingDispatchRequests();
+  const guards = dispatchMapOnlineGuards().map(e => e.guard);
+  if (!rows.length) throw new Error('No pending dispatch requests to auto assign.');
+  if (!guards.length) throw new Error('No online guards available for auto assignment.');
+  await assignPendingDispatchRequest(rows[0].id, guards[0].id);
+}
+async function assignSelectedPendingDispatch() {
+  const selected = state.pendingDispatchSelectedIds || [];
+  const rows = selected.length ? filteredPendingDispatchRequests().filter(req => selected.map(String).includes(String(req.id))) : [selectedPendingRequest()].filter(Boolean);
+  const guards = dispatchMapOnlineGuards().map(e => e.guard);
+  if (!rows.length) throw new Error('Select at least one pending request.');
+  if (!guards.length) throw new Error('No online guards available for assignment.');
+  for (let i = 0; i < rows.length; i++) await assignPendingDispatchRequest(rows[i].id, guards[i % guards.length].id);
+}
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
     if (state.view === 'dispatch-board') return dispatchBoardView();
     if (state.view === 'live-gps') return dispatchLiveGpsView();
-    if (state.view === 'pending-dispatch') return tableView('Pending Dispatch', 'Requests waiting for assignment.', pendingRequests());
+    if (state.view === 'pending-dispatch') return pendingDispatchView();
     if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
     if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
     if (state.view === 'guard-approvals') return guardApprovalsView();
@@ -5302,6 +5610,80 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.settingsTab) {
       state.settingsTab = button.dataset.settingsTab;
+      render();
+      return;
+    }
+    if (button.dataset.pendingTab) {
+      state.pendingDispatchPriorityFilter = button.dataset.pendingTab || 'all';
+      state.pendingDispatchPage = 1;
+      state.selectedPendingRequestId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-pending-request') {
+      state.selectedPendingRequestId = button.dataset.requestId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'assign-pending-request') {
+      await assignPendingDispatchRequest(button.dataset.requestId);
+      toast('Patrol assigned.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'pending-auto-assign') {
+      await autoAssignPendingDispatch();
+      toast('Auto assignment complete.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'pending-assign-selected') {
+      await assignSelectedPendingDispatch();
+      toast('Selected pending request(s) assigned.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'pending-clear-filters') {
+      state.pendingDispatchPriorityFilter = 'all';
+      state.pendingDispatchSearch = '';
+      state.pendingDispatchFilters = { priority: 'all', propertyType: 'all', clientId: 'all', requestedTime: 'all', status: 'all' };
+      state.pendingDispatchPage = 1;
+      state.selectedPendingRequestId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'pending-toggle-filters') {
+      state.pendingDispatchFiltersOpen = !state.pendingDispatchFiltersOpen;
+      render();
+      return;
+    }
+    if (button.dataset.action === 'pending-refresh') {
+      await loadData();
+      render();
+      toast('Pending dispatch refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'pending-page-prev') {
+      state.pendingDispatchPage = Math.max(1, (state.pendingDispatchPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'pending-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredPendingDispatchRequests().length / Number(state.pendingDispatchPerPage || 6)));
+      state.pendingDispatchPage = Math.min(maxPage, (state.pendingDispatchPage || 1) + 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'pending-request-menu') {
+      state.selectedPendingRequestId = button.dataset.requestId || state.selectedPendingRequestId;
+      render();
+      toast('Request action menu selected for review.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'view-pending-request-details') {
+      state.selectedPendingRequestId = button.dataset.requestId || state.selectedPendingRequestId;
+      toast('Full request details panel is selected for the next detail build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'clear-selected-pending') {
+      state.selectedPendingRequestId = '';
       render();
       return;
     }
@@ -5593,6 +5975,33 @@ document.addEventListener('submit', async event => {
 document.addEventListener('input', event => {
   const input = event.target;
 
+  if (input && input.hasAttribute('data-pending-search')) {
+    state.pendingDispatchSearch = input.value || '';
+    state.pendingDispatchPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-filter')) {
+    const key = input.dataset.pendingFilter;
+    state.pendingDispatchFilters = { ...(state.pendingDispatchFilters || {}), [key]: input.value || 'all' };
+    state.pendingDispatchPage = 1;
+    state.selectedPendingRequestId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-per-page')) {
+    state.pendingDispatchPerPage = Number(input.value || 6);
+    state.pendingDispatchPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-request-check')) {
+    const id = input.dataset.pendingRequestCheck;
+    const set = new Set((state.pendingDispatchSelectedIds || []).map(String));
+    if (input.checked) set.add(String(id)); else set.delete(String(id));
+    state.pendingDispatchSelectedIds = [...set];
+    return;
+  }
   if (input && input.hasAttribute('data-live-gps-view-mode')) {
     state.liveGpsViewMode = input.value || 'default';
     liveGps.selectedMapCard = null;
@@ -5646,6 +6055,33 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-pending-search')) {
+    state.pendingDispatchSearch = input.value || '';
+    state.pendingDispatchPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-filter')) {
+    const key = input.dataset.pendingFilter;
+    state.pendingDispatchFilters = { ...(state.pendingDispatchFilters || {}), [key]: input.value || 'all' };
+    state.pendingDispatchPage = 1;
+    state.selectedPendingRequestId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-per-page')) {
+    state.pendingDispatchPerPage = Number(input.value || 6);
+    state.pendingDispatchPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-pending-request-check')) {
+    const id = input.dataset.pendingRequestCheck;
+    const set = new Set((state.pendingDispatchSelectedIds || []).map(String));
+    if (input.checked) set.add(String(id)); else set.delete(String(id));
+    state.pendingDispatchSelectedIds = [...set];
+    return;
+  }
   if (input && input.hasAttribute('data-live-gps-view-mode')) {
     state.liveGpsViewMode = input.value || 'default';
     liveGps.selectedMapCard = null;

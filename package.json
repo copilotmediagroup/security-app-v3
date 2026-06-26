@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-live-gps-command-center",
-  "version": "3.0.44",
+  "name": "co-pilot-security-pending-dispatch-command-center",
+  "version": "3.0.45",
   "private": true,
-  "description": "Redesigns Dispatch Live GPS into a full command-center screen with KPI row, live map, online guard roster, selected property panel, GPS feed, route events, default map reset, layers, and fullscreen action.",
+  "description": "Redesigns Pending Dispatch into a command-center work queue with KPI cards, priority tabs, filters, request table, detail rail, mini map, and assignment actions.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

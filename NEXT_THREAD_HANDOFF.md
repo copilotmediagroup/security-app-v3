@@ -1,18 +1,10 @@
-# Next Thread Handoff — Co Pilot Security v3.0.44
+# Next Thread Handoff — Co Pilot Security v3.0.45
 
-Latest build: v3.0.44 DISPATCH LIVE GPS COMMAND CENTER
+Latest build: v3.0.45 PENDING DISPATCH COMMAND CENTER
 
 ## What changed
-- Built from v3.0.43.
-- Rebuilt Dispatch Live GPS page from a simple table into a full command-center screen.
-- Added KPI cards, live map controls, guard roster, selected property panel, live GPS feed, and route events table.
-- Buttons wired:
-  - Live Sync reloads data
-  - Default resets map view
-  - Layers toggles popover
-  - view mode selector filters markers
-  - Fullscreen requests fullscreen
-  - guard roster rows select/open guard card
-  - selected property opens property card
-- Preserved v3.0.42 online-only guard visibility logic.
+- Built from v3.0.44.
+- Rebuilt Admin Pending Dispatch page from basic table into the exact command-center blueprint.
+- Added KPI row, priority tabs, search, filters, request table, right detail rail, mini route map, assignment controls, pagination, Auto Assign, Assign Selected, Refresh, and Clear Filters.
+- Assignment actions use existing `cp_admin_assign_patrol_request` flow.
 - No new SQL required.
