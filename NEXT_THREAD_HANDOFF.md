@@ -1,10 +1,13 @@
-# Next Thread Handoff — Co Pilot Security v3.0.45
+# Next Thread Handoff — Co Pilot Security v3.0.46
 
-Latest build: v3.0.45 PENDING DISPATCH COMMAND CENTER
+Latest build: v3.0.46 DISPATCH ROUTE DISTANCE ETA FIX
 
 ## What changed
-- Built from v3.0.44.
-- Rebuilt Admin Pending Dispatch page from basic table into the exact command-center blueprint.
-- Added KPI row, priority tabs, search, filters, request table, right detail rail, mini route map, assignment controls, pagination, Auto Assign, Assign Selected, Refresh, and Clear Filters.
-- Assignment actions use existing `cp_admin_assign_patrol_request` flow.
+- Built from v3.0.45.
+- Fixed Dispatch route line behavior.
+- Assigned Dispatch patrols now use route geometry instead of a straight line when available.
+- Route fallback is now route-shaped, not a straight line.
+- Dispatch Command Map shows route distance and ETA.
+- Pending Dispatch mini map shows selected/nearest online guard to property route preview.
+- Pending Dispatch distances and guard dropdown options show route-aware distance/ETA.
 - No new SQL required.

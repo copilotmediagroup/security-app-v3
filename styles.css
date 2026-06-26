@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.45 Settings Page Redesign */
+/* v3.0.46 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.45 Dispatch map blueprint fix */
+/* v3.0.46 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.45 Dispatch online guard filter + default map button */
+/* v3.0.46 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.45 Dispatch Board Command Center */
+/* v3.0.46 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.45 Dispatch Live GPS Command Center */
+/* v3.0.46 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.45 Pending Dispatch Command Center */
+/* v3.0.46 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6776,5 +6776,62 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
   .pending-filter-bar {
     grid-template-columns: 1fr;
+  }
+}
+
+/* v3.0.46 Dispatch route + distance/ETA fix */
+.guard302-map-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.guard302-map-metrics > div {
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid rgba(113,169,232,.10);
+  border-radius: 10px;
+  background: rgba(7,18,32,.52);
+}
+.guard302-map-metrics small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.guard302-map-metrics strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.guard302-fallback-route.dispatch-multi-route path,
+.guard302-fallback-route path {
+  fill: none;
+  stroke: #2f83ff;
+  stroke-width: 3.6;
+  stroke-dasharray: 6 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px rgba(46,136,255,.85));
+}
+.pending-mini-map.route-aware .mini-marker {
+  transform: translate(-50%, -50%);
+}
+.pending-mini-map .pending-mini-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+.pending-actions select,
+.pending-rail-guard-select {
+  min-width: 140px;
+}
+@media (max-width: 900px) {
+  .guard302-map-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

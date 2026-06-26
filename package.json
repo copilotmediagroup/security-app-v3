@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-pending-dispatch-command-center",
-  "version": "3.0.45",
+  "name": "co-pilot-security-dispatch-route-distance-eta-fix",
+  "version": "3.0.46",
   "private": true,
-  "description": "Redesigns Pending Dispatch into a command-center work queue with KPI cards, priority tabs, filters, request table, detail rail, mini map, and assignment actions.",
+  "description": "Fixes Dispatch route lines and distance/ETA calculations for assigned patrols and pending dispatch requests.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

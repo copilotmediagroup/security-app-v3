@@ -1,42 +1,19 @@
-# Co Pilot Security v3.0.45 — Pending Dispatch Command Center
+# Co Pilot Security v3.0.46 — Dispatch Route Distance ETA Fix
 
 ## What changed
-The Admin `Pending Dispatch` page has been rebuilt from a basic table into a full assignment command-center page.
+- Dispatch assigned patrol routes no longer use a simple straight line.
+- Dispatch maps now request road-route geometry and cache it in browser session storage.
+- If the route service is unavailable, the app uses a bent route-style fallback path instead of a straight connector.
+- Dispatch Command Map now shows:
+  - Route Distance
+  - ETA
+- Pending Dispatch now shows route-aware distance from the selected/nearest online guard to the destination.
+- Pending Dispatch mini map now draws a route preview between the selected/nearest guard and the property.
+- Guard dropdown options show estimated distance and ETA.
+- Changing the selected guard refreshes the mini map and distance/ETA.
 
-## New Pending Dispatch sections
-- Header:
-  - System Operational
-  - Search requests
-  - Filter toggle
-  - Refresh
-- KPI row:
-  - Total Pending
-  - High Priority
-  - Average Response
-  - Assigned Today
-  - SLA At Risk
-- Main queue:
-  - Priority tabs
-  - Filter dropdowns
-  - Request table
-  - Pagination
-  - Rows per page
-- Right rail:
-  - Selected request details
-  - Property image
-  - Address/client/property details
-  - Special instructions
-  - Mini route map
-  - Assign Guard button
-
-## Functional behavior
-- Search filters the pending request table.
-- Priority tabs filter All / High / Medium / Low.
-- Dropdown filters update the table.
-- Clear Filters resets everything.
-- Refresh reloads data.
-- Clicking a row selects it and updates the right rail.
-- Assign buttons use the existing assignment flow.
-- Auto Assign assigns the first pending request to the first online guard.
-- Assign Selected assigns checked requests to online guards.
+## Preserved
+- v3.0.45 Pending Dispatch page design.
+- Existing assignment flow.
+- Online-only guard visibility.
 - No new SQL required.

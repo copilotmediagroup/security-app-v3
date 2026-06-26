@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.45',
-  label: 'v3.0.45 PENDING DISPATCH COMMAND CENTER'
+  version: '3.0.46',
+  label: 'v3.0.46 DISPATCH ROUTE DISTANCE ETA FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -64,7 +64,8 @@ const state = {
   selectedPendingRequestId: '',
   pendingDispatchSelectedIds: [],
   pendingDispatchPage: 1,
-  pendingDispatchPerPage: 6
+  pendingDispatchPerPage: 6,
+  pendingDispatchGuardSelections: {}
 };;
 const liveGps = {
   online: false,
@@ -94,7 +95,9 @@ const liveGps = {
   restoredFromStorage: false,
   clientSelectedPropertyId: '',
   dispatchSelectedPropertyId: '',
-  dispatchSelectedGuardId: ''
+  dispatchSelectedGuardId: '',
+  dispatchRouteCache: {},
+  dispatchRouteFetching: {}
 }
 
 const NAV = {
@@ -1303,6 +1306,7 @@ function renderLoading() {
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
   scheduleDispatchLeafletMap();
+  scheduleDispatchRoutePrep();
   scheduleClientMapPrep();
   scheduleClientLeafletMap();
   scheduleClientPropertyMapPrep();
@@ -1663,7 +1667,7 @@ function dispatchMapGuardCard(entry = {}) {
       <strong>${esc(name)}</strong>
       <small>${esc(subline)}</small>
       <p>${esc(gpsAddress)}</p>
-      <span>${esc(req ? `Assigned: ${propertyLabel(req)}` : 'Online · Live GPS')}${accuracy ? ' · Accuracy ±' + esc(String(Math.round(Number(accuracy)) || accuracy)) + ' ft' : ''}</span>
+      <span>${esc(req ? `Assigned: ${propertyLabel(req)} · ${(() => { const r = dispatchRouteForRequestAndGuard(req, entry); return r ? `${r.distanceMiles?.toFixed(1) || '—'} mi · ETA ${r.etaMin || '—'} min` : 'route pending'; })()}` : 'Online · Live GPS')}${accuracy ? ' · Accuracy ±' + esc(String(Math.round(Number(accuracy)) || accuracy)) + ' ft' : ''}</span>
     </div>
   </div>`;
 }
@@ -1671,6 +1675,20 @@ function dispatchMapOverlay() {
   if (liveGps.selectedMapCard === 'guard') return dispatchMapGuardCard(dispatchSelectedGuardEntry());
   if (liveGps.selectedMapCard === 'property') return dispatchMapPropertyCard(dispatchSelectedProperty());
   return '';
+}
+function dispatchPrimaryRouteSummary() {
+  const activeEntry = dispatchMapOnlineGuards().find(entry => entry.request && entry.coords);
+  if (activeEntry?.request) {
+    const route = dispatchRouteForRequestAndGuard(activeEntry.request, activeEntry);
+    if (route) return { route, label: 'Assigned route' };
+  }
+  const req = selectedPendingRequest ? selectedPendingRequest() : null;
+  if (req) {
+    const entry = dispatchNearestOnlineGuardEntry(req);
+    const route = dispatchRouteForRequestAndGuard(req, entry);
+    if (route) return { route, label: 'Nearest guard' };
+  }
+  return null;
 }
 function mapArea() {
   let properties = dispatchMapPropertyEntries();
@@ -1686,7 +1704,14 @@ function mapArea() {
     }
   }
   const bounds = dispatchMapBounds(properties, guards);
-  const routePath = liveGps.routePoints && liveGps.routePoints.length ? routeSvgPath(bounds) : '';
+  const dispatchRoutePaths = guards.map(entry => {
+    if (!entry.request || !entry.coords) return '';
+    const end = getPropertyCoords(entry.request);
+    if (!end) return '';
+    const route = dispatchRouteForPoints(entry.coords, end);
+    const path = route?.points?.length ? dispatchRouteSvgPath(route.points, bounds) : '';
+    return path ? `<path d="${esc(path)}"></path>` : '';
+  }).join('');
   const propertyMarkers = properties.map(entry => {
     const pct = mapPercentForPoint(entry.coords.lat, entry.coords.lng, bounds);
     return `<button type="button" class="guard302-fallback-property" data-action="map-card" data-card="property" data-property-id="${esc(entry.property.id)}" style="left:${pct.x.toFixed(2)}%;top:${pct.y.toFixed(2)}%" aria-label="Open property card"><span></span></button>`;
@@ -1696,6 +1721,7 @@ function mapArea() {
     return `<button type="button" class="guard302-fallback-guard" data-action="map-card" data-card="guard" data-property-id="${esc(entry.guard.id)}" style="left:${pct.x.toFixed(2)}%;top:${pct.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>`;
   }).join('');
   const overlay = dispatchMapOverlay();
+  const routeSummary = dispatchPrimaryRouteSummary();
   return `
     <div class="guard302-leaflet-wrap dispatch-leaflet-wrap">
       <button type="button" class="dispatch-map-default-btn" data-action="dispatch-map-default">Default</button>
@@ -1703,7 +1729,7 @@ function mapArea() {
       <div class="guard302-map-fallback" id="dispatch-live-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Decatur Blvd</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        ${dispatchRoutePaths ? `<svg class="guard302-fallback-route dispatch-multi-route" viewBox="0 0 100 100" preserveAspectRatio="none">${dispatchRoutePaths}</svg>` : ''}
         ${propertyMarkers}
         ${guardMarkers}
         <div class="guard302-map-legend">
@@ -1718,6 +1744,8 @@ function mapArea() {
       <div><small>Online Guards</small><strong>${esc(String(guards.length))}</strong></div>
       <div><small>Saved Properties</small><strong>${esc(String(properties.length))}</strong></div>
       <div><small>Active Patrols</small><strong>${esc(String(active.length))}</strong></div>
+      <div><small>Route Distance</small><strong>${esc(routeSummary?.route?.distanceMiles ? routeSummary.route.distanceMiles.toFixed(1) + ' mi' : '—')}</strong></div>
+      <div><small>ETA</small><strong>${esc(routeSummary?.route?.etaMin ? routeSummary.route.etaMin + ' min' : '—')}</strong></div>
     </div>
   `;
 }
@@ -1785,9 +1813,8 @@ function initDispatchLeafletMap() {
       guardMarker.on('click', () => openMapCard('guard', entry.guard.id));
       const linkedCoords = entry.request ? getPropertyCoords(entry.request) : null;
       if (linkedCoords && entry.positionSource !== 'city-seed' && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '')) {
-        const routeCoords = (entry.positionSource === 'live-gps' && liveGps.online && Number.isFinite(liveGps.guardLat) && Number.isFinite(liveGps.guardLng) && String(entry.request?.guard_id || entry.request?.assigned_guard_id || '') === String(entry.guard.id || '') && liveGps.routePoints && liveGps.routePoints.length)
-          ? liveGps.routePoints.map(pt => [pt.lat, pt.lng])
-          : [[lat, lng], [linkedCoords.lat, linkedCoords.lng]];
+        const route = dispatchRouteForPoints({ lat, lng }, linkedCoords);
+        const routeCoords = route?.points?.length >= 2 ? route.points.map(pt => [pt.lat, pt.lng]) : dispatchRouteFallbackPoints({ lat, lng }, linkedCoords).map(pt => [pt.lat, pt.lng]);
         L.polyline(routeCoords, { color:'#2e88ff', weight:5, opacity:.88, dashArray:'10 8', lineCap:'round', lineJoin:'round' }).addTo(markerGroup);
       }
     });
@@ -2275,6 +2302,144 @@ async function fetchRouteIfPossible() {
     liveGps.routeBusy = false;
   }
 }
+
+function dispatchRouteKey(start = {}, end = {}) {
+  if (!start || !end || !Number.isFinite(start.lat) || !Number.isFinite(start.lng) || !Number.isFinite(end.lat) || !Number.isFinite(end.lng)) return '';
+  return `${start.lat.toFixed(5)},${start.lng.toFixed(5)}_${end.lat.toFixed(5)},${end.lng.toFixed(5)}`;
+}
+function dispatchRouteFallbackPoints(start = {}, end = {}) {
+  if (!start || !end || !Number.isFinite(start.lat) || !Number.isFinite(start.lng) || !Number.isFinite(end.lat) || !Number.isFinite(end.lng)) return [];
+  const dLat = end.lat - start.lat;
+  const dLng = end.lng - start.lng;
+  const bendLat = dLng * 0.18;
+  const bendLng = -dLat * 0.18;
+  return [
+    { lat: start.lat, lng: start.lng },
+    { lat: start.lat + dLat * 0.22 + bendLat, lng: start.lng + dLng * 0.20 + bendLng },
+    { lat: start.lat + dLat * 0.46 - bendLat * 0.35, lng: start.lng + dLng * 0.52 - bendLng * 0.35 },
+    { lat: start.lat + dLat * 0.72 + bendLat * 0.25, lng: start.lng + dLng * 0.74 + bendLng * 0.25 },
+    { lat: end.lat, lng: end.lng }
+  ];
+}
+function dispatchRouteEstimate(start = {}, end = {}) {
+  const direct = milesBetween(start.lat, start.lng, end.lat, end.lng);
+  const roadMiles = Number.isFinite(direct) ? direct * 1.22 : null;
+  return {
+    points: dispatchRouteFallbackPoints(start, end),
+    distanceMiles: roadMiles,
+    etaMin: estimateEtaMinutes(roadMiles),
+    source: 'estimated-road'
+  };
+}
+function readCachedDispatchRoute(start = {}, end = {}) {
+  const key = dispatchRouteKey(start, end);
+  if (!key) return null;
+  if (liveGps.dispatchRouteCache?.[key]) return liveGps.dispatchRouteCache[key];
+  try {
+    const raw = sessionStorage.getItem(`cp_dispatch_route_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.points?.length >= 2) {
+        liveGps.dispatchRouteCache = liveGps.dispatchRouteCache || {};
+        liveGps.dispatchRouteCache[key] = parsed;
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+}
+function dispatchRouteForPoints(start = {}, end = {}, options = {}) {
+  if (!start || !end || !Number.isFinite(start.lat) || !Number.isFinite(start.lng) || !Number.isFinite(end.lat) || !Number.isFinite(end.lng)) return null;
+  const cached = readCachedDispatchRoute(start, end);
+  if (cached) return cached;
+  if (options.fetch !== false) ensureDispatchRoute(start, end);
+  return dispatchRouteEstimate(start, end);
+}
+function dispatchRouteSvgPath(points = [], bounds) {
+  if (!points || points.length < 2) return '';
+  return points.map((pt, idx) => {
+    const p = mapPercentForPoint(pt.lat, pt.lng, bounds);
+    return `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  }).join(' ');
+}
+async function ensureDispatchRoute(start = {}, end = {}) {
+  const key = dispatchRouteKey(start, end);
+  if (!key) return null;
+  const cached = readCachedDispatchRoute(start, end);
+  if (cached) return cached;
+  liveGps.dispatchRouteFetching = liveGps.dispatchRouteFetching || {};
+  if (liveGps.dispatchRouteFetching[key]) return null;
+  liveGps.dispatchRouteFetching[key] = true;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=false`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Dispatch route service failed');
+    const data = await res.json();
+    const route = data?.routes?.[0];
+    const coords = route?.geometry?.coordinates || [];
+    if (!coords.length) throw new Error('No route geometry');
+    const result = {
+      points: coords.map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng)),
+      distanceMiles: route.distance ? route.distance / 1609.344 : milesBetween(start.lat, start.lng, end.lat, end.lng),
+      etaMin: route.duration ? Math.max(1, Math.round(route.duration / 60)) : estimateEtaMinutes(route.distance ? route.distance / 1609.344 : milesBetween(start.lat, start.lng, end.lat, end.lng)),
+      source: 'osrm-road'
+    };
+    if (result.points.length >= 2) {
+      liveGps.dispatchRouteCache = liveGps.dispatchRouteCache || {};
+      liveGps.dispatchRouteCache[key] = result;
+      try { sessionStorage.setItem(`cp_dispatch_route_${key}`, JSON.stringify(result)); } catch {}
+      if (state.role === 'admin' && ['dashboard','dispatch-board','live-gps','pending-dispatch'].includes(state.view)) {
+        setTimeout(() => { try { render(); } catch {} }, 60);
+      }
+      return result;
+    }
+  } catch (err) {
+    const fallback = dispatchRouteEstimate(start, end);
+    liveGps.dispatchRouteCache = liveGps.dispatchRouteCache || {};
+    liveGps.dispatchRouteCache[key] = fallback;
+    try { sessionStorage.setItem(`cp_dispatch_route_${key}`, JSON.stringify(fallback)); } catch {}
+    return fallback;
+  } finally {
+    delete liveGps.dispatchRouteFetching[key];
+  }
+  return null;
+}
+function dispatchNearestOnlineGuardEntry(req = {}) {
+  const coords = getPropertyCoords(req);
+  const entries = dispatchMapOnlineGuards().filter(entry => entry.coords);
+  if (!coords || !entries.length) return entries[0] || null;
+  const selectedId = state.pendingDispatchGuardSelections?.[req.id] || '';
+  if (selectedId) {
+    const selected = entries.find(entry => String(entry.guard.id) === String(selectedId));
+    if (selected) return selected;
+  }
+  return entries.slice().sort((a,b) => milesBetween(a.coords.lat,a.coords.lng,coords.lat,coords.lng) - milesBetween(b.coords.lat,b.coords.lng,coords.lat,coords.lng))[0] || null;
+}
+function dispatchRouteForRequestAndGuard(req = {}, guardEntry = null) {
+  const end = getPropertyCoords(req);
+  const entry = guardEntry || dispatchNearestOnlineGuardEntry(req);
+  const start = entry?.coords || null;
+  if (!start || !end) return null;
+  return dispatchRouteForPoints(start, end);
+}
+function scheduleDispatchRoutePrep() {
+  if (state.role !== 'admin') return;
+  if (!['dashboard','dispatch-board','live-gps','pending-dispatch'].includes(state.view)) return;
+  dispatchMapOnlineGuards().forEach(entry => {
+    if (!entry.request || !entry.coords) return;
+    const end = getPropertyCoords(entry.request);
+    if (end) ensureDispatchRoute(entry.coords, end);
+  });
+  const reqs = state.view === 'pending-dispatch'
+    ? [selectedPendingRequest()].filter(Boolean)
+    : pendingDispatchRequests().slice(0, 2);
+  reqs.forEach(req => {
+    const entry = dispatchNearestOnlineGuardEntry(req);
+    const end = getPropertyCoords(req);
+    if (entry?.coords && end) ensureDispatchRoute(entry.coords, end);
+  });
+}
+
 async function syncGpsForCurrentJob() {
   const req = guard302CurrentRequest();
   if (!liveGps.online || !req) {
@@ -3355,7 +3520,7 @@ function clientLivePatrolMapCard() {
       <div class="guard302-map-fallback" id="client-live-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        ${dispatchRoutePaths ? `<svg class="guard302-fallback-route dispatch-multi-route" viewBox="0 0 100 100" preserveAspectRatio="none">${dispatchRoutePaths}</svg>` : ''}
         ${entries.map(entry => {
           const pos = entry.coords ? mapPercentForPoint(entry.coords.lat, entry.coords.lng, bounds) : entry.fallback;
           return `<button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(entry.property.id)}" style="left:${pos.x.toFixed ? pos.x.toFixed(2) : pos.x}%;top:${pos.y.toFixed ? pos.y.toFixed(2) : pos.y}%" aria-label="Open property card"><span></span></button>`;
@@ -3852,7 +4017,7 @@ function clientPropertyMapCard(property = {}) {
       <div class="guard302-map-fallback" id="client-property-detail-map-fallback">
         <span class="street-name s1">W. Flamingo Rd</span><span class="street-name s2">S. Durango Dr</span><span class="street-name s3">W. Tropicana Ave</span><span class="street-name s4">S. Jones Blvd</span>
         <div class="fallback-road r1"></div><div class="fallback-road r2"></div><div class="fallback-road r3"></div><div class="fallback-road r4"></div>
-        ${routePath ? `<svg class="guard302-fallback-route" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(routePath)}"></path></svg>` : ''}
+        ${dispatchRoutePaths ? `<svg class="guard302-fallback-route dispatch-multi-route" viewBox="0 0 100 100" preserveAspectRatio="none">${dispatchRoutePaths}</svg>` : ''}
         <button type="button" class="guard302-fallback-marker property" data-action="map-card" data-card="property" data-property-id="${esc(property.id)}" style="left:${propertyPos.x.toFixed ? propertyPos.x.toFixed(2) : propertyPos.x}%;top:${propertyPos.y.toFixed ? propertyPos.y.toFixed(2) : propertyPos.y}%" aria-label="Open property card"><span></span></button>
         ${showGuard && guardPos ? `<button type="button" class="guard302-fallback-marker guard" data-action="map-card" data-card="guard" style="left:${guardPos.x.toFixed(2)}%;top:${guardPos.y.toFixed(2)}%" aria-label="Open guard card"><span></span></button>` : ''}
         <small>${esc(liveGps.mapNotice || 'Property map ready.')}</small>
@@ -5086,15 +5251,12 @@ function requestedForLabel(req = {}) {
   return `${day}, ${timeText}`;
 }
 function pendingDistance(req = {}) {
+  const entry = dispatchNearestOnlineGuardEntry(req);
+  const route = dispatchRouteForRequestAndGuard(req, entry);
+  if (route?.distanceMiles) return `${route.distanceMiles.toFixed(1)} mi`;
   const raw = req.distance_miles || req.distance || req.eta_distance_miles || req.route_distance_miles;
   const n = Number(raw);
   if (Number.isFinite(n) && n > 0) return `${n.toFixed(1)} mi`;
-  const coords = getPropertyCoords(req);
-  const guard = dispatchMapOnlineGuards()[0]?.coords;
-  if (coords && guard && Number.isFinite(coords.lat) && Number.isFinite(guard.lat)) {
-    const miles = Math.hypot((coords.lat - guard.lat) * 69, (coords.lng - guard.lng) * 55);
-    return `${miles.toFixed(1)} mi`;
-  }
   return '—';
 }
 function assignedTodayCount() {
@@ -5220,12 +5382,23 @@ function pendingDispatchFilterBar() {
     <button type="button" data-action="pending-clear-filters">× Clear Filters</button>
   </div>`;
 }
+function pendingGuardOptionsForRequest(req = {}) {
+  const onlineEntries = dispatchMapOnlineGuards();
+  const selectedEntry = dispatchNearestOnlineGuardEntry(req);
+  const selectedId = state.pendingDispatchGuardSelections?.[req.id] || selectedEntry?.guard?.id || '';
+  return onlineEntries.map(entry => {
+    const g = entry.guard;
+    const route = dispatchRouteForRequestAndGuard(req, entry);
+    const dist = route?.distanceMiles ? ` — ${route.distanceMiles.toFixed(1)} mi / ${route.etaMin || '—'} min` : '';
+    return `<option value="${esc(g.id)}" ${String(selectedId) === String(g.id) ? 'selected' : ''}>${esc(adminGuardOptionLabel(g) + dist)}</option>`;
+  }).join('');
+}
 function pendingDispatchRow(req = {}) {
   const selected = String(state.selectedPendingRequestId || '') === String(req.id);
   const checked = (state.pendingDispatchSelectedIds || []).map(String).includes(String(req.id));
   const property = propertyById(req.property_id);
   const onlineGuards = dispatchMapOnlineGuards().map(e => e.guard);
-  const guardOptions = onlineGuards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  const guardOptions = pendingGuardOptionsForRequest(req);
   return `<div class="pending-dispatch-row ${selected ? 'selected' : ''}" data-request-id="${esc(req.id)}">
     <label class="pending-check"><input type="checkbox" ${checked ? 'checked' : ''} data-pending-request-check="${esc(req.id)}"></label>
     <div>${pendingPriorityBadge(req)}</div>
@@ -5259,7 +5432,37 @@ function pendingDispatchPagination() {
   return `<footer class="pending-dispatch-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} requests</span><div class="pending-pagination"><button type="button" data-action="pending-page-prev">‹</button><strong>${esc(state.pendingDispatchPage || 1)}</strong><button type="button" data-action="pending-page-next">›</button></div><label><select data-pending-per-page><option value="6" ${per === 6 ? 'selected' : ''}>6 per page</option><option value="10" ${per === 10 ? 'selected' : ''}>10 per page</option><option value="20" ${per === 20 ? 'selected' : ''}>20 per page</option></select></label></footer>`;
 }
 function pendingRequestMiniMap(req = {}) {
-  return `<div class="pending-mini-map"><div class="mini-road r1"></div><div class="mini-road r2"></div><div class="mini-marker property"></div><div class="mini-marker guard"></div><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M20 70 C40 45,55 76,80 32"></path></svg><span>Est. Travel Time: ${esc(liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : '8 min')}</span></div>`;
+  const end = getPropertyCoords(req);
+  const entry = dispatchNearestOnlineGuardEntry(req);
+  const start = entry?.coords || null;
+  if (!start || !end) {
+    return `<div class="pending-mini-map"><div class="mini-road r1"></div><div class="mini-road r2"></div><div class="pending-mini-empty">Waiting for online guard GPS and property coordinates.</div></div>`;
+  }
+  const route = dispatchRouteForPoints(start, end);
+  const points = route?.points?.length >= 2 ? route.points : dispatchRouteFallbackPoints(start, end);
+  const bounds = (() => {
+    const all = [start, end, ...(points || [])].filter(p => p && Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    let minLat = Math.min(...all.map(p => p.lat));
+    let maxLat = Math.max(...all.map(p => p.lat));
+    let minLng = Math.min(...all.map(p => p.lng));
+    let maxLng = Math.max(...all.map(p => p.lng));
+    const latPad = Math.max(.002, (maxLat - minLat) * .35);
+    const lngPad = Math.max(.002, (maxLng - minLng) * .35);
+    return { minLat: minLat - latPad, maxLat: maxLat + latPad, minLng: minLng - lngPad, maxLng: maxLng + lngPad };
+  })();
+  const gPct = mapPercentForPoint(start.lat, start.lng, bounds);
+  const pPct = mapPercentForPoint(end.lat, end.lng, bounds);
+  const path = dispatchRouteSvgPath(points, bounds);
+  const dist = route?.distanceMiles ? route.distanceMiles.toFixed(1) : '—';
+  const eta = route?.etaMin || '—';
+  const guardName = entry.guard?.name || entry.guard?.display_name || entry.guard?.email || 'Guard';
+  return `<div class="pending-mini-map route-aware">
+    <div class="mini-road r1"></div><div class="mini-road r2"></div>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="${esc(path)}"></path></svg>
+    <div class="mini-marker property" style="left:${pPct.x.toFixed(2)}%;top:${pPct.y.toFixed(2)}%"></div>
+    <div class="mini-marker guard" style="left:${gPct.x.toFixed(2)}%;top:${gPct.y.toFixed(2)}%"></div>
+    <span>${esc(guardName)} · ${esc(dist)} mi · ETA ${esc(eta)} min</span>
+  </div>`;
 }
 function pendingRequestDetailsRail() {
   const req = selectedPendingRequest();
@@ -5267,13 +5470,13 @@ function pendingRequestDetailsRail() {
   const property = propertyById(req.property_id);
   const photo = propertyImageValue(property);
   const onlineGuards = dispatchMapOnlineGuards().map(e => e.guard);
-  const guardOptions = onlineGuards.map(g => `<option value="${esc(g.id)}">${esc(adminGuardOptionLabel(g))}</option>`).join('');
+  const guardOptions = pendingGuardOptionsForRequest(req);
   return `<aside class="pending-detail-rail"><section class="panel panel-pad pending-request-details">
     <button type="button" class="pending-rail-close" data-action="clear-selected-pending">×</button>
     ${pendingPriorityBadge(req)}
     <h2>${esc(requestTitle(req))}</h2><p class="pending-request-code">#${esc(shortRequestId(req.id))}</p>
     <div class="pending-detail-photo">${photo ? `<img src="${esc(photo)}" alt="${esc(propertyLabel(req))}">` : `<span>${esc(initials(propertyLabel(req)))}</span>`}</div>
-    <div class="pending-address-box"><i>⌖</i><strong>${esc(propertyAddress(req))}</strong><small>${esc(pendingDistance(req))} from nearest online guard</small></div>
+    <div class="pending-address-box"><i>⌖</i><strong>${esc(propertyAddress(req))}</strong><small>${esc((() => { const r = dispatchRouteForRequestAndGuard(req); return r ? `${r.distanceMiles?.toFixed(1) || '—'} mi · ETA ${r.etaMin || '—'} min` : pendingDistance(req); })())} from selected/nearest guard</small></div>
     <dl class="pending-detail-list"><dt>Client</dt><dd>${esc(requestClientName(req))}</dd><dt>Property Type</dt><dd>${esc(propertyTypeLabel(property))}</dd><dt>Requested By</dt><dd>${esc(req.requested_by_name || req.contact_name || requestClientName(req))}</dd><dt>Phone</dt><dd>${esc(req.phone || req.contact_phone || property.phone || '—')}</dd><dt>Requested For</dt><dd>${esc(requestedForLabel(req))}</dd><dt>Special Instructions</dt><dd>${esc(req.instructions || req.special_instructions || 'No special instructions.')}</dd></dl>
     ${pendingRequestMiniMap(req)}
     <select class="pending-rail-guard-select" data-assign-guard="${esc(req.id)}">${guardOptions || '<option value="">No online guards</option>'}</select>
@@ -5526,6 +5729,7 @@ function render() {
   scheduleGuardGpsPrep();
   scheduleGuardLeafletMap();
   scheduleDispatchLeafletMap();
+  scheduleDispatchRoutePrep();
   scheduleClientMapPrep();
   scheduleClientLeafletMap();
   scheduleClientPropertyMapPrep();
@@ -6002,6 +6206,18 @@ document.addEventListener('input', event => {
     state.pendingDispatchSelectedIds = [...set];
     return;
   }
+  if (input && input.hasAttribute('data-assign-guard') && state.role === 'admin' && state.view === 'pending-dispatch') {
+    const requestId = input.dataset.assignGuard;
+    state.pendingDispatchGuardSelections = { ...(state.pendingDispatchGuardSelections || {}), [requestId]: input.value || '' };
+    const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
+    if (req) {
+      const entry = dispatchMapOnlineGuards().find(e => String(e.guard.id) === String(input.value));
+      const end = getPropertyCoords(req);
+      if (entry?.coords && end) ensureDispatchRoute(entry.coords, end);
+    }
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-live-gps-view-mode')) {
     state.liveGpsViewMode = input.value || 'default';
     liveGps.selectedMapCard = null;
@@ -6080,6 +6296,18 @@ document.addEventListener('change', event => {
     const set = new Set((state.pendingDispatchSelectedIds || []).map(String));
     if (input.checked) set.add(String(id)); else set.delete(String(id));
     state.pendingDispatchSelectedIds = [...set];
+    return;
+  }
+  if (input && input.hasAttribute('data-assign-guard') && state.role === 'admin' && state.view === 'pending-dispatch') {
+    const requestId = input.dataset.assignGuard;
+    state.pendingDispatchGuardSelections = { ...(state.pendingDispatchGuardSelections || {}), [requestId]: input.value || '' };
+    const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
+    if (req) {
+      const entry = dispatchMapOnlineGuards().find(e => String(e.guard.id) === String(input.value));
+      const end = getPropertyCoords(req);
+      if (entry?.coords && end) ensureDispatchRoute(entry.coords, end);
+    }
+    render();
     return;
   }
   if (input && input.hasAttribute('data-live-gps-view-mode')) {
