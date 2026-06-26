@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T11-40-v3062';
+const CP_DEV_CACHE_BUST = '2026-06-26T12-05-v3063';
 const BUILD = {
-  version: '3.0.62',
-  label: 'v3.0.62 REPORT BUILDER GUARD NAME FIX'
+  version: '3.0.63',
+  label: 'v3.0.63 REPORT ARCHIVE COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -122,7 +122,13 @@ const state = {
   reportBuilderClientFilter: 'all',
   reportBuilderPropertyFilter: 'all',
   reportBuilderPage: 1,
-  reportBuilderPerPage: 8
+  reportBuilderPerPage: 8,
+  reportArchiveSearch: '',
+  reportArchiveFilters: { clientId: 'all', propertyId: 'all', guardId: 'all', status: 'all', dateRange: 'all', sort: 'newest' },
+  selectedArchiveReportId: '',
+  reportArchiveCheckedIds: [],
+  reportArchivePage: 1,
+  reportArchivePerPage: 10
 };;
 const liveGps = {
   online: false,
@@ -6594,7 +6600,7 @@ async function scheduleGuardInterview(id) {
 }
 
 
-/* v3.0.62 Admin Clients Command Center */
+/* v3.0.63 Admin Clients Command Center */
 function adminClientSourceRows() {
   const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
   const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
@@ -6967,7 +6973,7 @@ async function adminClientRefresh() {
 }
 
 
-/* v3.0.62 Activity Log Command Center */
+/* v3.0.63 Activity Log Command Center */
 function activitySafeId(prefix, item = {}, idx = 0) {
   return `${prefix}-${item.id || item.request_id || item.thread_id || item.created_at || item.updated_at || idx}`;
 }
@@ -7475,7 +7481,7 @@ function exportActivityLogCsv() {
 }
 
 
-/* v3.0.62 Proof Review Command Center */
+/* v3.0.63 Proof Review Command Center */
 function proofReviewStateKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_proof_review_state_${who}`;
@@ -7863,7 +7869,7 @@ function exportProofReviewCsv() {
 }
 
 
-/* v3.0.62 Report Builder Command Center */
+/* v3.0.63 Report Builder Command Center */
 function reportBuilderStorageKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_report_builder_records_${who}`;
@@ -8272,6 +8278,339 @@ function exportReportBuilderPreview() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+
+/* v3.0.63 Report Archive Command Center */
+function reportArchiveClientName(client = {}) {
+  return client.business_name || client.company_name || client.name || client.display_name || client.email || 'Client';
+}
+function reportArchiveSourceReports() {
+  const saved = [
+    ...(state.patrolReports || []).map(report => ({ ...report, _source: 'patrolReports' })),
+    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords().map(report => ({ ...report, _source: 'localReportBuilder' })) : [])
+  ];
+  const savedRequestIds = new Set(saved.map(report => String(report.request_id || report.patrol_request_id || '')).filter(Boolean));
+  const completedDrafts = (state.patrolRequests || [])
+    .filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()))
+    .filter(req => !savedRequestIds.has(String(req.id)))
+    .map((req, index) => ({
+      id: `completed-request-${req.id || index}`,
+      request_id: req.id,
+      client_id: req.client_id,
+      property_id: req.property_id,
+      guard_id: req.guard_id || req.assigned_guard_id,
+      title: `${requestTitle(req)} Report`,
+      report_number: typeof reportNumber === 'function' ? reportNumber(req) : `RPT-${String(req.id || index).slice(0,8)}`,
+      template: 'Standard Patrol Report',
+      status: 'draft',
+      summary: req.summary || req.final_summary || req.details || req.instructions || 'Completed patrol ready for final report archive.',
+      created_at: req.completed_at || req.updated_at || req.created_at,
+      updated_at: req.updated_at || req.completed_at || req.created_at,
+      _source: 'completedRequest'
+    }));
+  const seen = new Set();
+  return [...saved, ...completedDrafts].filter(report => {
+    const key = String(report.id || report.report_id || report.request_id || report.patrol_request_id || `${report.title}-${report.created_at}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function reportArchiveStatus(row = {}) {
+  const report = row.report || row;
+  const status = String(row.status || report.status || report.report_status || 'draft').toLowerCase();
+  if (row.publishedAt || report.released_at || report.published_at) return 'published';
+  if (status.includes('schedule')) return 'scheduled';
+  if (status.includes('publish') || status.includes('release')) return 'published';
+  if (status.includes('ready')) return 'scheduled';
+  if (status.includes('draft')) return 'draft';
+  return status || 'draft';
+}
+function reportArchiveStatusBadge(row = {}) {
+  const status = reportArchiveStatus(row);
+  if (status === 'published') return `<span class="archive-status published">Published</span>`;
+  if (status === 'scheduled') return `<span class="archive-status scheduled">Scheduled</span>`;
+  return `<span class="archive-status draft">Draft</span>`;
+}
+function reportArchiveRows() {
+  const proofRowsAll = typeof proofReviewRows === 'function' ? proofReviewRows() : [];
+  return reportArchiveSourceReports().map((report, index) => {
+    const requestId = report.request_id || report.patrol_request_id;
+    const request = requestById(requestId) || {};
+    const property = propertyById(report.property_id || request.property_id) || {};
+    const guard = guardById(report.guard_id || request.guard_id || request.assigned_guard_id) || {};
+    const client = clientById(report.client_id || request.client_id || property.client_id) || {};
+    const rawProofIds = report.selected_proof_ids || report.proof_ids || report.included_proof_ids || [];
+    const proofIds = Array.isArray(rawProofIds) ? rawProofIds.map(String) : String(rawProofIds || '').split(',').map(x => x.trim()).filter(Boolean);
+    let proofRows = proofRowsAll.filter(row => proofIds.includes(String(row.id)));
+    if (!proofRows.length && requestId) {
+      proofRows = proofRowsAll.filter(row => String(proofRequestIdValue(row.proof)) === String(requestId) || String(row.request?.id || '') === String(requestId));
+    }
+    const publishedAt = report.released_at || report.published_at || report.publishedAt || report.updated_at || report.created_at || request.completed_at || request.updated_at || request.created_at || new Date().toISOString();
+    const title = report.title || report.report_title || requestTitle(request) || 'Patrol Report';
+    const reportNum = report.report_number || report.report_id || (typeof reportNumber === 'function' ? reportNumber(request) : `RPT-${index + 1}`);
+    return {
+      id: String(report.id || report.report_id || `archive-report-${index}`),
+      report,
+      request,
+      property,
+      guard,
+      client,
+      title,
+      reportNumber: reportNum,
+      template: report.template || report.report_template || 'Standard Patrol Report',
+      status: report.status || report.report_status || (report.released_at || report.published_at ? 'published' : 'draft'),
+      createdAt: report.created_at || request.created_at || publishedAt,
+      publishedAt,
+      publishedBy: report.released_by || report.published_by || report.created_by || 'Owner Admin',
+      summary: report.summary || report.final_summary || request.summary || request.final_summary || request.details || request.instructions || 'All areas of the property were checked. No issues or suspicious activity observed.',
+      photoCount: proofRows.filter(row => proofMediaType(row) === 'photo').length,
+      videoCount: proofRows.filter(row => proofMediaType(row) === 'video').length,
+      proofRows
+    };
+  }).sort((a,b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+}
+function reportArchiveCounts() {
+  const reports = reportArchiveRows();
+  return {
+    total: reports.length,
+    published: reports.filter(r => reportArchiveStatus(r) === 'published').length,
+    drafts: reports.filter(r => reportArchiveStatus(r) === 'draft').length,
+    scheduled: reports.filter(r => reportArchiveStatus(r) === 'scheduled').length,
+    photos: reports.reduce((sum, r) => sum + Number(r.photoCount || 0), 0),
+    videos: reports.reduce((sum, r) => sum + Number(r.videoCount || 0), 0)
+  };
+}
+function reportArchiveKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="report-archive-kpi ${esc(tone)}"><div class="report-archive-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function reportArchiveKpiRow() {
+  const c = reportArchiveCounts();
+  return `<section class="report-archive-kpis">
+    ${reportArchiveKpi('▣','Total Reports',c.total,'All time','purple')}
+    ${reportArchiveKpi('✓','Published',c.published,'Released reports','green')}
+    ${reportArchiveKpi('◷','Drafts',c.drafts,'In progress','blue')}
+    ${reportArchiveKpi('▤','Scheduled',c.scheduled,'Upcoming','orange')}
+    ${reportArchiveKpi('🖼','Photos Included',c.photos,'All time','cyan')}
+    ${reportArchiveKpi('🎥','Videos Included',c.videos,'All time','red')}
+  </section>`;
+}
+function reportArchiveClientOptions() {
+  const clients = [...new Map(reportArchiveRows().map(row => [String(row.client?.id || ''), row.client]).filter(([id]) => id)).values()];
+  return clients.map(client => `<option value="${esc(client.id)}" ${String(state.reportArchiveFilters?.clientId) === String(client.id) ? 'selected' : ''}>${esc(reportArchiveClientName(client))}</option>`).join('');
+}
+function reportArchivePropertyOptions() {
+  const properties = [...new Map(reportArchiveRows().map(row => [String(row.property?.id || ''), row.property]).filter(([id]) => id)).values()];
+  return properties.map(property => `<option value="${esc(property.id)}" ${String(state.reportArchiveFilters?.propertyId) === String(property.id) ? 'selected' : ''}>${esc(propertyDisplayName(property))}</option>`).join('');
+}
+function reportArchiveGuardOptions() {
+  const guards = [...new Map(reportArchiveRows().map(row => [String(row.guard?.id || ''), row.guard]).filter(([id]) => id)).values()];
+  return guards.map(guard => `<option value="${esc(guard.id)}" ${String(state.reportArchiveFilters?.guardId) === String(guard.id) ? 'selected' : ''}>${esc(guardDisplayName(guard))}</option>`).join('');
+}
+function reportArchiveFilterBar() {
+  const filters = state.reportArchiveFilters || {};
+  return `<section class="report-archive-filter-bar">
+    <select data-report-archive-filter="clientId"><option value="all">All Clients</option>${reportArchiveClientOptions()}</select>
+    <select data-report-archive-filter="propertyId"><option value="all">All Properties</option>${reportArchivePropertyOptions()}</select>
+    <select data-report-archive-filter="guardId"><option value="all">All Guards</option>${reportArchiveGuardOptions()}</select>
+    <select data-report-archive-filter="status"><option value="all">All Status</option><option value="published" ${filters.status === 'published' ? 'selected' : ''}>Published</option><option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>Draft</option><option value="scheduled" ${filters.status === 'scheduled' ? 'selected' : ''}>Scheduled</option></select>
+    <select data-report-archive-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option><option value="year" ${filters.dateRange === 'year' ? 'selected' : ''}>This Year</option></select>
+    <select data-report-archive-filter="sort"><option value="newest" ${filters.sort === 'newest' ? 'selected' : ''}>Sort: Newest First</option><option value="oldest" ${filters.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option><option value="client" ${filters.sort === 'client' ? 'selected' : ''}>Sort: Client</option><option value="status" ${filters.sort === 'status' ? 'selected' : ''}>Sort: Status</option></select>
+    <button type="button" data-action="report-archive-clear-filters">× Clear Filters</button>
+  </section>`;
+}
+function filteredReportArchiveRows() {
+  let rows = reportArchiveRows();
+  const q = String(state.reportArchiveSearch || '').trim().toLowerCase();
+  const filters = state.reportArchiveFilters || {};
+  if (q) {
+    rows = rows.filter(row => [
+      row.title, row.reportNumber, row.template, reportArchiveClientName(row.client), propertyDisplayName(row.property),
+      propertyDisplayAddress(row.property), guardDisplayName(row.guard), requestTitle(row.request), row.summary
+    ].join(' ').toLowerCase().includes(q));
+  }
+  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(row => String(row.client?.id || '') === String(filters.clientId));
+  if (filters.propertyId && filters.propertyId !== 'all') rows = rows.filter(row => String(row.property?.id || '') === String(filters.propertyId));
+  if (filters.guardId && filters.guardId !== 'all') rows = rows.filter(row => String(row.guard?.id || '') === String(filters.guardId));
+  if (filters.status && filters.status !== 'all') rows = rows.filter(row => reportArchiveStatus(row) === filters.status);
+  const now = new Date();
+  if (filters.dateRange === 'today') rows = rows.filter(row => new Date(row.publishedAt).toDateString() === now.toDateString());
+  if (filters.dateRange === 'week') {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    rows = rows.filter(row => new Date(row.publishedAt) >= weekAgo);
+  }
+  if (filters.dateRange === 'month') {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    rows = rows.filter(row => new Date(row.publishedAt) >= monthStart);
+  }
+  if (filters.dateRange === 'year') {
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    rows = rows.filter(row => new Date(row.publishedAt) >= yearStart);
+  }
+  if (filters.sort === 'oldest') rows.sort((a,b) => new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0));
+  else if (filters.sort === 'client') rows.sort((a,b) => reportArchiveClientName(a.client).localeCompare(reportArchiveClientName(b.client)));
+  else if (filters.sort === 'status') rows.sort((a,b) => reportArchiveStatus(a).localeCompare(reportArchiveStatus(b)) || (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)));
+  else rows.sort((a,b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+  return rows;
+}
+function selectedArchiveReport() {
+  const rows = filteredReportArchiveRows();
+  const selected = rows.find(row => String(row.id) === String(state.selectedArchiveReportId));
+  return selected || rows[0] || null;
+}
+function isArchiveReportChecked(id) {
+  return (state.reportArchiveCheckedIds || []).map(String).includes(String(id));
+}
+function reportArchiveRow(row = {}) {
+  const selected = String(state.selectedArchiveReportId || '') === String(row.id);
+  return `<div class="report-archive-row ${selected ? 'selected' : ''}">
+    <label class="archive-check"><input type="checkbox" data-report-archive-check="${esc(row.id)}" ${isArchiveReportChecked(row.id) ? 'checked' : ''}></label>
+    <button type="button" class="archive-report-cell" data-action="select-archive-report" data-report-id="${esc(row.id)}"><span class="archive-pdf-icon">pdf</span><span><strong>${esc(row.title)}</strong><small>${esc(row.reportNumber)}</small><small>${esc(row.template)}</small></span></button>
+    <div class="archive-client-cell"><strong>${esc(reportArchiveClientName(row.client))}</strong><small>${esc(propertyDisplayName(row.property))}</small><small>${esc(propertyDisplayAddress(row.property))}</small></div>
+    <div class="archive-job-cell"><strong>${esc(requestTitle(row.request))}</strong><small>${esc(guardDisplayName(row.guard))}</small></div>
+    <div class="archive-date-cell"><strong>${esc(fmtDate(row.publishedAt))}</strong><small>${esc(fmtTime(row.publishedAt))}</small></div>
+    <div class="archive-status-cell">${reportArchiveStatusBadge(row)}<small>${esc(fmtDate(row.publishedAt))}</small></div>
+    <div class="archive-included-cell"><span class="archive-media-count photo">🖼 ${esc(row.photoCount)}</span><span class="archive-media-count video">🎥 ${esc(row.videoCount)}</span></div>
+    <div class="archive-row-actions"><button type="button" data-action="view-archive-report" data-report-id="${esc(row.id)}">👁</button><button type="button" data-action="archive-report-menu" data-report-id="${esc(row.id)}">⋯</button></div>
+  </div>`;
+}
+function reportArchiveTable() {
+  const rows = filteredReportArchiveRows();
+  const per = Number(state.reportArchivePerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.reportArchivePage = Math.min(Math.max(1, state.reportArchivePage || 1), maxPage);
+  const start = (state.reportArchivePage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<section class="report-archive-table-wrap"><div class="report-archive-head"><span></span><span>Report</span><span>Client / Property</span><span>Patrol / Job</span><span>Date</span><span>Status</span><span>Included</span><span>Actions</span></div><div class="report-archive-rows">${pageRows.length ? pageRows.map(reportArchiveRow).join('') : '<div class="report-archive-empty">No reports match your filters.</div>'}</div></section>`;
+}
+function reportArchivePagination() {
+  const rows = filteredReportArchiveRows();
+  const per = Number(state.reportArchivePerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.reportArchivePage = Math.min(Math.max(1, state.reportArchivePage || 1), maxPage);
+  const start = rows.length ? (state.reportArchivePage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.reportArchivePage || 1) * per);
+  return `<footer class="report-archive-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} reports</span><div class="report-archive-pagination"><button type="button" data-action="report-archive-page-prev">‹</button><strong>${esc(state.reportArchivePage || 1)}</strong><button type="button" data-action="report-archive-page-next">›</button></div><label>Rows per page:<select data-report-archive-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
+}
+function reportArchivePreviewCard(row = {}) {
+  const property = row.property || {};
+  return `<article class="archive-preview-card">
+    <header><div><b>🛡</b><span><strong>Co Pilot Security</strong><small>Patrol Report</small></span></div><small>REPORT ID<br>${esc(row.reportNumber)}</small></header>
+    <img src="${esc(typeof reportPropertyImage === 'function' ? reportPropertyImage(property) : (property.photo_url || ''))}" alt="Property">
+    <footer><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small></footer>
+  </article>`;
+}
+function reportArchiveDetailRail() {
+  const row = selectedArchiveReport();
+  if (!row) return `<aside class="report-archive-detail-rail"><section class="panel panel-pad archive-detail-card"><div class="empty">Select a report.</div></section></aside>`;
+  return `<aside class="report-archive-detail-rail"><section class="panel panel-pad archive-detail-card">
+    <button class="rail-close" type="button" data-action="clear-selected-archive-report">×</button>
+    <h2>Selected Report</h2>
+    ${reportArchivePreviewCard(row)}
+    <dl class="archive-detail-list">
+      <dt>Patrol / Job</dt><dd>${esc(requestTitle(row.request))}</dd>
+      <dt>Guard</dt><dd>${esc(guardDisplayName(row.guard))}</dd>
+      <dt>Patrol Type</dt><dd>${esc(statusText(row.request?.request_type || row.request?.patrol_type || 'Patrol'))}</dd>
+      <dt>Date / Time</dt><dd>${esc(fmtDateTimeStamp(row.publishedAt))}</dd>
+      <dt>Duration</dt><dd>${esc(typeof reportRequestDuration === 'function' ? reportRequestDuration(row.request) : '60 min')}</dd>
+      <dt>Status</dt><dd>${reportArchiveStatusBadge(row)}</dd>
+      <dt>Published By</dt><dd>${esc(row.publishedBy)}</dd>
+      <dt>Published On</dt><dd>${esc(fmtDate(row.publishedAt))}</dd>
+      <dt>Template</dt><dd>${esc(row.template)}</dd>
+    </dl>
+    <section class="archive-summary-card"><h3>Summary</h3><p>${esc(row.summary)}</p></section>
+    <section class="archive-media-summary"><h3>Included Media</h3><div><span class="photo">🖼 ${esc(row.photoCount)} Photos</span><span class="video">🎥 ${esc(row.videoCount)} Videos</span></div></section>
+    <div class="archive-detail-actions"><button class="primary" type="button" data-action="view-full-archive-report" data-report-id="${esc(row.id)}">↗ View Full Report</button><button type="button" data-action="download-archive-report" data-report-id="${esc(row.id)}">⇩ Download PDF</button><button type="button" data-action="share-archive-report" data-report-id="${esc(row.id)}">⤴ Share Report</button><button class="danger" type="button" data-action="delete-archive-report" data-report-id="${esc(row.id)}">🗑 Delete Report</button></div>
+  </section></aside>`;
+}
+function reportArchiveHeader() {
+  return `<header class="dashboard-header report-archive-header"><div class="title-block"><h1>Report Archive</h1><p>View, search, and manage all published reports.</p></div><div class="report-archive-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-archive-search"><input type="search" placeholder="Search reports, clients, properties..." value="${esc(state.reportArchiveSearch || '')}" data-report-archive-search><b>⌕</b></label><button type="button" data-action="report-archive-filters">⌁ Filters</button><button type="button" data-action="report-archive-export">⇩ Export</button></div></header>`;
+}
+function reportArchiveCommandCenterView() {
+  return `<div class="dashboard report-archive-shell">${reportArchiveHeader()}${reportArchiveKpiRow()}<section class="report-archive-layout"><main class="report-archive-main panel">${reportArchiveFilterBar()}${reportArchiveTable()}${reportArchivePagination()}</main>${reportArchiveDetailRail()}</section></div>`;
+}
+function archiveReportText(row = {}) {
+  return [
+    `Co Pilot Security - Patrol Report`,
+    `Report ID: ${row.reportNumber}`,
+    `Title: ${row.title}`,
+    `Status: ${statusText(reportArchiveStatus(row))}`,
+    `Client: ${reportArchiveClientName(row.client)}`,
+    `Property: ${propertyDisplayName(row.property)}`,
+    `Address: ${propertyDisplayAddress(row.property)}`,
+    `Guard: ${guardDisplayName(row.guard)}`,
+    `Patrol: ${requestTitle(row.request)}`,
+    `Date/Time: ${fmtDateTimeStamp(row.publishedAt)}`,
+    `Duration: ${typeof reportRequestDuration === 'function' ? reportRequestDuration(row.request) : '60 min'}`,
+    `Template: ${row.template}`,
+    `Photos: ${row.photoCount}`,
+    `Videos: ${row.videoCount}`,
+    '',
+    'Summary:',
+    row.summary || ''
+  ].join('\n');
+}
+function downloadArchiveReportPdf(id) {
+  const row = reportArchiveRows().find(r => String(r.id) === String(id)) || selectedArchiveReport();
+  if (!row) {
+    toast('Select a report first.', 'error');
+    return;
+  }
+  const blob = new Blob([archiveReportText(row)], { type: 'text/plain;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${String(row.reportNumber || 'report').replace(/[^a-z0-9-]/gi, '_')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function exportReportArchiveCsv() {
+  const rows = filteredReportArchiveRows();
+  const cols = ['reportNumber','title','client','property','address','guard','status','publishedAt','photos','videos','template'];
+  const csv = [cols.join(',')].concat(rows.map(row => [
+    row.reportNumber,
+    row.title,
+    reportArchiveClientName(row.client),
+    propertyDisplayName(row.property),
+    propertyDisplayAddress(row.property),
+    guardDisplayName(row.guard),
+    reportArchiveStatus(row),
+    row.publishedAt,
+    row.photoCount,
+    row.videoCount,
+    row.template
+  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `co-pilot-report-archive-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function deleteArchiveReport(id) {
+  const local = typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [];
+  const next = local.filter(item => String(item.id) !== String(id));
+  if (next.length !== local.length && typeof writeLocalReportBuilderRecords === 'function') {
+    writeLocalReportBuilderRecords(next);
+    toast('Report deleted from local archive.', 'success');
+  } else {
+    toast('This report is from system records and cannot be deleted locally.', 'error');
+  }
+  if (String(state.selectedArchiveReportId) === String(id)) state.selectedArchiveReportId = '';
+}
+function shareArchiveReport(id) {
+  const row = reportArchiveRows().find(r => String(r.id) === String(id)) || selectedArchiveReport();
+  if (!row) return toast('Select a report first.', 'error');
+  const text = `${row.title} • ${row.reportNumber}`;
+  if (navigator.share) {
+    navigator.share({ title: row.title, text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text);
+    toast('Report share text copied.', 'success');
+  }
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -8285,7 +8624,7 @@ function renderRoleView() {
     if (state.view === 'activity-log') return activityLogCommandCenterView();
     if (state.view === 'proof-review') return proofReviewCommandCenterView();
     if (state.view === 'report-builder') return reportBuilderCommandCenterView();
-    if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
+    if (state.view === 'report-archive') return reportArchiveCommandCenterView();
   }
   if (state.role === 'guard') {
     if (state.view === 'dashboard') return guardDashboardMockup302();
@@ -9140,6 +9479,72 @@ document.addEventListener('click', async event => {
       toast('Report settings are available in the right rail.', 'success');
       return;
     }
+    if (button.dataset.action === 'select-archive-report' || button.dataset.action === 'view-archive-report') {
+      state.selectedArchiveReportId = button.dataset.reportId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'clear-selected-archive-report') {
+      state.selectedArchiveReportId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'report-archive-clear-filters') {
+      state.reportArchiveSearch = '';
+      state.reportArchiveFilters = { clientId: 'all', propertyId: 'all', guardId: 'all', status: 'all', dateRange: 'all', sort: 'newest' };
+      state.reportArchivePage = 1;
+      state.selectedArchiveReportId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'view-full-archive-report') {
+      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
+      downloadArchiveReportPdf(button.dataset.reportId);
+      toast('Full report preview downloaded.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'download-archive-report') {
+      downloadArchiveReportPdf(button.dataset.reportId);
+      toast('Report download prepared.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'share-archive-report') {
+      shareArchiveReport(button.dataset.reportId);
+      return;
+    }
+    if (button.dataset.action === 'delete-archive-report') {
+      if (confirm('Delete this report from the local archive?')) {
+        deleteArchiveReport(button.dataset.reportId);
+        render();
+      }
+      return;
+    }
+    if (button.dataset.action === 'archive-report-menu') {
+      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
+      render();
+      toast('Report action menu selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'report-archive-filters') {
+      toast('Report Archive filters are visible above the table.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'report-archive-export') {
+      exportReportArchiveCsv();
+      toast('Report Archive exported.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'report-archive-page-prev') {
+      state.reportArchivePage = Math.max(1, (state.reportArchivePage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'report-archive-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredReportArchiveRows().length / Number(state.reportArchivePerPage || 10)));
+      state.reportArchivePage = Math.min(maxPage, (state.reportArchivePage || 1) + 1);
+      render();
+      return;
+    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -9427,6 +9832,13 @@ document.addEventListener('submit', async event => {
 
 document.addEventListener('input', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-report-archive-search')) {
+    state.reportArchiveSearch = input.value || '';
+    state.reportArchivePage = 1;
+    state.selectedArchiveReportId = '';
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-report-builder-search')) {
     state.reportBuilderSearch = input.value || '';
     state.reportBuilderPage = 1;
@@ -9622,6 +10034,35 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-report-archive-search')) {
+    state.reportArchiveSearch = input.value || '';
+    state.reportArchivePage = 1;
+    state.selectedArchiveReportId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-archive-filter')) {
+    const key = input.dataset.reportArchiveFilter;
+    state.reportArchiveFilters = { ...(state.reportArchiveFilters || {}), [key]: input.value || 'all' };
+    state.reportArchivePage = 1;
+    state.selectedArchiveReportId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-archive-per-page')) {
+    state.reportArchivePerPage = Number(input.value || 10);
+    state.reportArchivePage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-report-archive-check')) {
+    const id = String(input.dataset.reportArchiveCheck || '');
+    const set = new Set((state.reportArchiveCheckedIds || []).map(String));
+    if (input.checked) set.add(id);
+    else set.delete(id);
+    state.reportArchiveCheckedIds = [...set];
+    return;
+  }
   if (input && input.hasAttribute('data-report-builder-search')) {
     state.reportBuilderSearch = input.value || '';
     state.reportBuilderPage = 1;

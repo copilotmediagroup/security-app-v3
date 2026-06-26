@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-report-builder-guard-name-fix",
-  "version": "3.0.62",
+  "name": "co-pilot-security-report-archive-command-center",
+  "version": "3.0.63",
   "private": true,
-  "description": "Fixes Report Builder runtime error by adding the missing guardDisplayName helper used by the Report Builder page.",
+  "description": "Rebuilds the Dispatch/Admin Report Archive page into a command-center report library with search, filters, archive table, detail rail, export, download, share, and delete placeholders.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

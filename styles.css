@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.62 Settings Page Redesign */
+/* v3.0.63 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.62 Dispatch map blueprint fix */
+/* v3.0.63 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.62 Dispatch online guard filter + default map button */
+/* v3.0.63 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.62 Dispatch Board Command Center */
+/* v3.0.63 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Dispatch Live GPS Command Center */
+/* v3.0.63 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Pending Dispatch Command Center */
+/* v3.0.63 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Dispatch route + distance/ETA fix */
+/* v3.0.63 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Scheduled Queue Command Center */
+/* v3.0.63 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.62 Scheduled Queue data + layout polish */
+/* v3.0.63 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Guards Data + Layout Fix */
+/* v3.0.63 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Guards data + layout fix */
+/* v3.0.63 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Guard Approvals Command Center */
+/* v3.0.63 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.62 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.63 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.62 Client login + Dispatch sidebar proportion fix */
+/* v3.0.63 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9472,7 +9472,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   font-size: 10px !important;
 }
 
-/* v3.0.62 Dispatch sidebar profile overlap fix */
+/* v3.0.63 Dispatch sidebar profile overlap fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   align-content: stretch !important;
@@ -9551,7 +9551,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 2 !important;
 }
 
-/* v3.0.62 Dispatch sidebar overlap fix - hard separation between profile and nav */
+/* v3.0.63 Dispatch sidebar overlap fix - hard separation between profile and nav */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -9636,7 +9636,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   flex-shrink: 0 !important;
 }
 
-/* v3.0.62 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
+/* v3.0.63 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   row-gap: 0 !important;
@@ -9728,7 +9728,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 3 !important;
 }
 
-/* v3.0.62 Sidebar profile/nav stack fix
+/* v3.0.63 Sidebar profile/nav stack fix
    The Dispatch profile now lives inside a fixed reserved zone, so Dashboard cannot render underneath it. */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   display: grid !important;
@@ -9835,7 +9835,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   display: contents;
 }
 
-/* v3.0.62 Clients Command Center */
+/* v3.0.63 Clients Command Center */
 .admin-clients-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10407,7 +10407,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Activity Log Command Center */
+/* v3.0.63 Activity Log Command Center */
 .activity-log-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10897,7 +10897,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.62 Proof Review Command Center */
+/* v3.0.63 Proof Review Command Center */
 .proof-review-shell { gap: 16px; padding-bottom: 110px; }
 .proof-review-header h1 { font-size: 27px; }
 .proof-review-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -11423,7 +11423,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .proof-review-filter-bar { grid-template-columns: 1fr; }
 }
 
-/* v3.0.62 Report Builder Command Center */
+/* v3.0.63 Report Builder Command Center */
 .report-builder-shell { gap: 16px; padding-bottom: 110px; }
 .report-builder-header h1 { font-size: 27px; }
 .report-builder-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -12050,6 +12050,458 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .report-builder-select-grid,
   .selected-report-job-card dl,
   .report-publish-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* v3.0.63 Report Archive Command Center */
+.report-archive-shell { gap: 16px; padding-bottom: 110px; }
+.report-archive-header h1 { font-size: 27px; }
+.report-archive-header-actions { display: flex; align-items: center; gap: 10px; }
+.report-archive-search {
+  min-width: 330px;
+  height: 42px;
+  display: grid;
+  grid-template-columns: 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+}
+.report-archive-search input {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #edf7ff;
+  font-weight: 850;
+}
+.report-archive-search b { color: #7f96ae; }
+.report-archive-header-actions > button {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 15px;
+  font-weight: 950;
+  cursor: pointer;
+}
+.report-archive-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.report-archive-kpi {
+  min-height: 110px;
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.report-archive-kpi-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 21px;
+  font-weight: 1000;
+}
+.report-archive-kpi span {
+  color: #a9bdd6;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 11px;
+  font-weight: 950;
+}
+.report-archive-kpi strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font-size: 25px;
+  line-height: 1;
+}
+.report-archive-kpi small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.report-archive-kpi.blue .report-archive-kpi-icon { color:#7fc4ff; background:rgba(46,125,255,.16); box-shadow:0 0 28px rgba(46,125,255,.12); }
+.report-archive-kpi.green .report-archive-kpi-icon { color:#87f0ad; background:rgba(55,220,114,.16); box-shadow:0 0 28px rgba(55,220,114,.12); }
+.report-archive-kpi.purple .report-archive-kpi-icon { color:#c59aff; background:rgba(176,92,255,.15); box-shadow:0 0 28px rgba(176,92,255,.10); }
+.report-archive-kpi.orange .report-archive-kpi-icon { color:#ffb66e; background:rgba(255,121,31,.14); box-shadow:0 0 28px rgba(255,121,31,.10); }
+.report-archive-kpi.cyan .report-archive-kpi-icon { color:#65e9ff; background:rgba(0,198,255,.13); box-shadow:0 0 28px rgba(0,198,255,.10); }
+.report-archive-kpi.red .report-archive-kpi-icon { color:#ff9aa8; background:rgba(190,55,69,.17); box-shadow:0 0 28px rgba(190,55,69,.10); }
+
+.report-archive-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 16px;
+  align-items: start;
+}
+.report-archive-main,
+.archive-detail-card {
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.report-archive-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(118px, 1fr)) 126px;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.report-archive-filter-bar select,
+.report-archive-filter-bar button,
+.report-archive-footer select {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 12px;
+  font-weight: 900;
+}
+.report-archive-filter-bar button { cursor: pointer; white-space: nowrap; }
+.report-archive-table-wrap { overflow-x: hidden; }
+.report-archive-head,
+.report-archive-row {
+  display: grid;
+  grid-template-columns: 34px minmax(190px, 1.15fr) minmax(210px, 1.15fr) minmax(150px, .9fr) 120px 116px 124px 92px;
+  gap: 14px;
+  align-items: center;
+  padding: 0 14px;
+}
+.report-archive-head {
+  min-height: 46px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 10px;
+  font-weight: 1000;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.report-archive-row {
+  min-height: 90px;
+  border-bottom: 1px solid rgba(113,169,232,.07);
+}
+.report-archive-row:hover,
+.report-archive-row.selected { background: rgba(12,34,62,.38); }
+.report-archive-row.selected { box-shadow: inset 0 0 0 1px rgba(46,125,255,.55); }
+.archive-check { display: grid; place-items: center; }
+.archive-check input { width: 17px; height: 17px; accent-color: #2f83ff; }
+.archive-report-cell {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+.archive-pdf-icon {
+  width: 44px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(190,55,69,.95), rgba(108,24,38,.95));
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 10px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+.archive-report-cell strong,
+.archive-client-cell strong,
+.archive-job-cell strong,
+.archive-date-cell strong {
+  display: block;
+  color: #edf7ff;
+  font-size: 13px;
+  font-weight: 1000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-report-cell small,
+.archive-client-cell small,
+.archive-job-cell small,
+.archive-date-cell small,
+.archive-status-cell small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-status {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.archive-status.published { color:#71f0a2; background:rgba(55,220,114,.14); }
+.archive-status.scheduled { color:#ffb53d; background:rgba(255,181,61,.15); }
+.archive-status.draft { color:#79c1ff; background:rgba(46,125,255,.14); }
+.archive-included-cell {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.archive-media-count {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 9px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.archive-media-count.photo { color:#79c1ff; background:rgba(46,125,255,.13); }
+.archive-media-count.video { color:#c59aff; background:rgba(176,92,255,.13); }
+.archive-row-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.archive-row-actions button {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  cursor: pointer;
+  font-weight: 1000;
+}
+.report-archive-empty {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.report-archive-footer {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 14px;
+  color: var(--muted);
+  border-top: 1px solid rgba(113,169,232,.08);
+  font-size: 13px;
+}
+.report-archive-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.report-archive-pagination button,
+.report-archive-pagination strong {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.report-archive-pagination button {
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+}
+.report-archive-pagination strong {
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+  color: #fff;
+}
+.report-archive-footer label { display: flex; align-items: center; gap: 10px; }
+.report-archive-detail-rail {
+  position: sticky;
+  top: 16px;
+}
+.archive-detail-card {
+  position: relative;
+  padding: 16px !important;
+}
+.archive-detail-card h2 {
+  margin: 0 0 14px;
+  color: #fff;
+  font-size: 18px;
+}
+.archive-preview-card {
+  border-radius: 15px;
+  overflow: hidden;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(7,18,32,.56);
+}
+.archive-preview-card header {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.archive-preview-card header div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.archive-preview-card header b {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(46,125,255,.15);
+}
+.archive-preview-card header strong,
+.archive-preview-card footer strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+}
+.archive-preview-card header small,
+.archive-preview-card footer small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.archive-preview-card img {
+  display: block;
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+.archive-preview-card footer {
+  padding: 12px;
+}
+.archive-detail-list {
+  display: grid;
+  grid-template-columns: .78fr 1fr;
+  gap: 10px 14px;
+  margin: 14px 0 0;
+  padding: 0 0 14px;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.archive-detail-list dt {
+  color: #8fa4bb;
+  font-size: 12px;
+}
+.archive-detail-list dd {
+  margin: 0;
+  color: #edf7ff;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.archive-summary-card,
+.archive-media-summary {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.archive-summary-card h3,
+.archive-media-summary h3 {
+  margin: 0 0 9px;
+  color: #fff;
+  font-size: 14px;
+}
+.archive-summary-card p {
+  margin: 0;
+  color: #bfd1e6;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.archive-media-summary div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.archive-media-summary span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.archive-media-summary .photo { color:#79c1ff; background:rgba(46,125,255,.14); }
+.archive-media-summary .video { color:#c59aff; background:rgba(176,92,255,.14); }
+.archive-detail-actions {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+}
+.archive-detail-actions button {
+  min-height: 42px;
+  border-radius: 11px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  font-weight: 1000;
+  cursor: pointer;
+}
+.archive-detail-actions .primary {
+  border-color: rgba(46,125,255,.45);
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+  color: #fff;
+}
+.archive-detail-actions .danger {
+  color: #ff9aa8;
+  border-color: rgba(190,55,69,.22);
+  background: rgba(190,55,69,.10);
+}
+@media (max-width: 1700px) {
+  .report-archive-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .report-archive-layout { grid-template-columns: 1fr; }
+  .report-archive-detail-rail { position: static; }
+}
+@media (max-width: 1250px) {
+  .report-archive-filter-bar { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  .report-archive-table-wrap { overflow-x: auto; }
+  .report-archive-head,
+  .report-archive-row { min-width: 1120px; }
+}
+@media (max-width: 850px) {
+  .report-archive-header-actions,
+  .report-archive-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .report-archive-search { min-width: 0; }
+  .report-archive-kpis,
+  .report-archive-filter-bar {
     grid-template-columns: 1fr;
   }
 }
