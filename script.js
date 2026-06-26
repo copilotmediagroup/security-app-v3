@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-25T16-59-v3042';
 const BUILD = {
-  version: '3.0.43',
-  label: 'v3.0.43 DISPATCH BOARD COMMAND CENTER'
+  version: '3.0.44',
+  label: 'v3.0.44 DISPATCH LIVE GPS COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -53,7 +53,10 @@ const state = {
   clientReportStatusFilter: 'all',
   clientReportPropertyFilter: 'all',
   clientReportPage: 1,
-  settingsTab: 'profile'
+  settingsTab: 'profile',
+  liveGpsViewMode: 'default',
+  liveGpsLayersOpen: false,
+  liveGpsSelectedEventId: ''
 };;
 const liveGps = {
   online: false,
@@ -1662,9 +1665,18 @@ function dispatchMapOverlay() {
   return '';
 }
 function mapArea() {
-  const properties = dispatchMapPropertyEntries();
-  const guards = dispatchMapOnlineGuards();
+  let properties = dispatchMapPropertyEntries();
+  let guards = dispatchMapOnlineGuards();
   const active = activeRequests();
+  if (state.role === 'admin' && state.view === 'live-gps') {
+    const mode = state.liveGpsViewMode || 'default';
+    if (mode === 'guards') properties = [];
+    if (mode === 'properties') guards = [];
+    if (mode === 'patrols') {
+      properties = properties.filter(entry => entry.activeReq);
+      guards = guards.filter(entry => entry.request);
+    }
+  }
   const bounds = dispatchMapBounds(properties, guards);
   const routePath = liveGps.routePoints && liveGps.routePoints.length ? routeSvgPath(bounds) : '';
   const propertyMarkers = properties.map(entry => {
@@ -4819,11 +4831,203 @@ function dispatchBoardView() {
   </div>`;
 }
 
+
+function liveGpsKpi(icon, label, value, subtext, tone = 'blue', spark = true) {
+  return `<article class="live-gps-kpi ${esc(tone)}">
+    <div class="live-gps-kpi-icon">${esc(icon)}</div>
+    <div class="live-gps-kpi-copy"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div>
+    ${spark ? `<svg class="live-gps-spark" viewBox="0 0 110 34" aria-hidden="true"><path d="M2 26 C14 19 18 24 28 17 C38 10 45 22 56 14 C66 7 72 14 81 8 C92 2 99 11 108 5"></path></svg>` : ''}
+  </article>`;
+}
+function dispatchLiveGpsKpiRow() {
+  const online = dispatchMapOnlineGuards();
+  const approved = adminAssignableGuards();
+  const active = activeRequests();
+  const properties = dispatchMapPropertyEntries();
+  const alerts = activeAlertCount();
+  const onlineSub = `${online.length} / ${Math.max(approved.length, online.length)} guards online`;
+  const activeSub = `${active.length} active of ${Math.max(state.patrolRequests.length, active.length)} requests`;
+  const propertySub = `${properties.length} properties mapped`;
+  const alertSub = alerts ? 'Require attention' : 'All clear';
+  return `<section class="live-gps-kpi-row">
+    ${liveGpsKpi('⌖', 'Online Guards', online.length, onlineSub, 'blue')}
+    ${liveGpsKpi('🛡', 'Active Patrols', active.length, activeSub, 'green')}
+    ${liveGpsKpi('▥', 'Active Properties', properties.length, propertySub, 'purple')}
+    ${liveGpsKpi('⚠', 'Alerts', alerts, alertSub, 'red')}
+  </section>`;
+}
+function liveGpsGuardSpeed(entry = {}) {
+  const g = entry.guard || {};
+  const speed = Number(g.speed_mph ?? g.speed ?? g.current_speed ?? g.gps_speed ?? 0);
+  return Number.isFinite(speed) ? Math.max(0, Math.round(speed)) : 0;
+}
+function liveGpsGuardBadge(guard = {}) {
+  return guard.badge_id || guard.unit_id || guard.guard_number || guard.employee_id || String(guard.id || '').slice(0, 8) || 'Guard';
+}
+function liveGpsGuardCity(entry = {}) {
+  const g = entry.guard || {};
+  const raw = [g.city, g.current_city, g.location_city, g.state].filter(Boolean).join(', ');
+  if (raw) return raw;
+  const addr = dispatchGuardGpsAddress(entry);
+  if (addr && addr !== 'GPS address unavailable') return addr.split(',').slice(-3, -1).join(', ').trim() || 'Current GPS';
+  return 'Current GPS';
+}
+function liveGpsSelectedGuardCard(entry = {}) {
+  if (!entry?.guard) return `<div class="live-gps-selected-map-card empty">Select a blue guard marker or roster row.</div>`;
+  const guard = entry.guard;
+  const req = entry.request || null;
+  const name = guard.name || guard.display_name || guard.email || 'Guard';
+  const rank = (readGuardRankMap && readGuardRankMap()[guard.id]) || guard.rank || guard.role_title || 'Guard';
+  const address = dispatchGuardGpsAddress(entry);
+  const speed = liveGpsGuardSpeed(entry);
+  const accuracy = entry.coords?.accuracy || guard.accuracy || guard.gps_accuracy || liveGps.accuracy || '—';
+  return `<div class="live-gps-selected-map-card selected-guard">
+    <button type="button" data-action="close-map-card">×</button>
+    <div class="selected-guard-head">${avatar(name, guard.photo_url || guard.avatar_url || guard.image_url || '')}<div><span class="online-dot">● Online</span><h3>${esc(name)}</h3><p>${esc(rank)} ID: ${esc(liveGpsGuardBadge(guard))}</p></div></div>
+    <section><h4>Current Location</h4><p>${esc(address)}</p><small>Updated: ${esc(fmtTime(liveGps.lastUpdate || new Date()))}</small></section>
+    <div class="live-gps-card-grid"><div><span>Speed</span><strong>${esc(speed)} mph</strong></div><div><span>Accuracy</span><strong>± ${esc(String(Math.round(Number(accuracy)) || accuracy))} ft</strong></div></div>
+    <section class="assignment"><h4>Current Assignment</h4><p>${esc(req ? propertyLabel(req) : 'No active assignment')}</p><small>${esc(req ? `ETA: ${liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : 'calculating'}` : 'Available for dispatch')}</small></section>
+  </div>`;
+}
+function liveGpsSelectedProperty() {
+  const entries = dispatchMapPropertyEntries();
+  const selectedId = String(liveGps.dispatchSelectedPropertyId || '');
+  const activeReq = activeRequests()[0] || null;
+  if (selectedId) return entries.find(entry => String(entry.property.id) === selectedId) || entries[0] || null;
+  if (activeReq?.property_id) return entries.find(entry => String(entry.property.id) === String(activeReq.property_id)) || entries[0] || null;
+  return entries[0] || null;
+}
+function liveGpsSelectedPropertyPanel() {
+  const entry = liveGpsSelectedProperty();
+  if (!entry) return `<section class="panel panel-pad live-selected-property-panel"><div class="empty">No mapped properties yet.</div></section>`;
+  const property = entry.property;
+  const req = entry.activeReq || activeRequests().find(r => String(r.property_id) === String(property.id)) || null;
+  const img = propertyImageValue(property);
+  return `<section class="panel panel-pad live-selected-property-panel">
+    <div class="panel-head"><div><h2>Selected Property</h2></div><button type="button" data-view="properties">View</button></div>
+    <button type="button" class="live-selected-property-card" data-action="select-live-gps-property" data-property-id="${esc(property.id)}">
+      <div>${img ? `<img src="${esc(img)}" alt="${esc(propertyDisplayName(property))}">` : `<span>${esc(initials(propertyDisplayName(property)))}</span>`}</div>
+      <aside><h3>${esc(propertyDisplayName(property))}</h3>${req ? '<em>Active Patrol</em>' : '<em class="idle">Mapped Property</em>'}<p>Owner: ${esc(dispatchPropertyOwnerName(property))}</p><p>${esc(propertyDisplayAddress(property))}</p>${req ? `<strong>ETA: ${esc(liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : 'calculating')}</strong>` : ''}</aside>
+    </button>
+  </section>`;
+}
+function liveGpsOnlineGuardRoster() {
+  const rows = dispatchMapOnlineGuards();
+  return `<section class="panel panel-pad live-guard-roster-panel">
+    <div class="panel-head"><div><h2>Online Guard Roster</h2></div><button type="button" data-view="guards">View all</button></div>
+    <div class="live-guard-roster-list">${rows.length ? rows.map(entry => {
+      const g = entry.guard;
+      const name = g.name || g.display_name || g.email || 'Guard';
+      const selected = String(liveGps.dispatchSelectedGuardId || '') === String(g.id);
+      return `<button type="button" class="${selected ? 'selected' : ''}" data-action="select-live-gps-guard" data-guard-id="${esc(g.id)}">
+        ${avatar(name, g.photo_url || g.avatar_url || g.image_url || '')}
+        <span><strong>${esc(name)}</strong><small>${esc(liveGpsGuardBadge(g))}</small></span>
+        <em>${esc(liveGpsGuardSpeed(entry))} mph<br>${esc(liveGpsGuardCity(entry))}</em>
+      </button>`;
+    }).join('') : '<div class="empty">No guards are currently online.</div>'}</div>
+  </section>`;
+}
+function buildLiveGpsEvents() {
+  const now = Date.now();
+  const guardEntries = dispatchMapOnlineGuards();
+  const activityEvents = (state.patrolActivity || []).slice(0, 10).map((item, idx) => {
+    const req = requestById(item.request_id) || {};
+    return {
+      id: item.id || `activity-${idx}`,
+      created_at: item.created_at || new Date(now - idx * 240000).toISOString(),
+      guardName: requestGuardName(req) || item.actor_name || 'System',
+      event: item.title || item.event_type || 'Route event',
+      location: item.details || item.message || propertyLabel(req) || 'Live GPS',
+      status: String(req.status || item.status || 'completed'),
+      eta: liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : fmtTime(item.created_at)
+    };
+  });
+  const guardEvents = guardEntries.map((entry, idx) => {
+    const name = entry.guard.name || entry.guard.display_name || entry.guard.email || 'Guard';
+    const req = entry.request;
+    return {
+      id: `guard-${entry.guard.id}`,
+      created_at: liveGps.lastUpdate || new Date(now - idx * 90000).toISOString(),
+      guardName: name,
+      event: req ? 'En route to destination' : 'Guard is now online',
+      location: req ? propertyLabel(req) : dispatchGuardGpsAddress(entry),
+      status: req ? String(req.status || 'in_progress') : 'online',
+      eta: req && liveGps.routeEtaMin ? `${liveGps.routeEtaMin} min` : 'Live'
+    };
+  });
+  return [...guardEvents, ...activityEvents].sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 12);
+}
+function statusChipHtml(status = '') {
+  const raw = String(status || 'online').toLowerCase();
+  const cls = raw.includes('complete') ? 'completed' : raw.includes('progress') || raw.includes('route') || raw.includes('assigned') || raw.includes('accepted') ? 'in-progress' : raw.includes('urgent') || raw.includes('alert') ? 'attention' : 'online';
+  return `<span class="live-route-status ${esc(cls)}">${esc(statusText(status || 'Online'))}</span>`;
+}
+function liveGpsFeedPanel() {
+  const events = buildLiveGpsEvents().slice(0, 5);
+  return `<section class="panel panel-pad live-gps-feed-panel">
+    <div class="panel-head"><div><h2>Live GPS Feed</h2></div><button type="button" data-view="activity-log">View all</button></div>
+    <div class="live-gps-feed-list">${events.map(e => `<div class="live-gps-feed-row"><i></i><span><strong>${esc(fmtTime(e.created_at))}</strong><p>${esc(`${e.guardName} ${e.event}`)}</p><small>${esc(e.location)}</small></span></div>`).join('') || '<div class="empty">No live GPS events yet.</div>'}</div>
+  </section>`;
+}
+function liveGpsRouteEventsTable() {
+  const events = buildLiveGpsEvents().slice(0, 6);
+  return `<section class="panel live-route-events-panel">
+    <div class="panel-head"><div><h2>Recent Route Events</h2></div><button type="button" data-view="activity-log">View all</button></div>
+    <div class="live-route-events-table">
+      <div class="live-route-events-head"><span>Time</span><span>Guard</span><span>Event</span><span>Property / Location</span><span>Status</span><span>ETA / Info</span></div>
+      ${events.length ? events.map(e => `<div class="live-route-events-row"><span>${esc(fmtTime(e.created_at))}</span><span>${esc(e.guardName)}</span><span>${esc(e.event)}</span><span>${esc(e.location)}</span><span>${statusChipHtml(e.status)}</span><span>${esc(e.eta || '—')}</span></div>`).join('') : '<div class="empty">No route events yet.</div>'}
+    </div>
+  </section>`;
+}
+function liveGpsMapLayersPanel() {
+  if (!state.liveGpsLayersOpen) return '';
+  const mode = state.liveGpsViewMode || 'default';
+  return `<div class="live-gps-layer-popover"><strong>Map Layers</strong><label><input type="radio" name="live_gps_layer" value="default" ${mode === 'default' ? 'checked' : ''}> Default View</label><label><input type="radio" name="live_gps_layer" value="guards" ${mode === 'guards' ? 'checked' : ''}> Guards Only</label><label><input type="radio" name="live_gps_layer" value="properties" ${mode === 'properties' ? 'checked' : ''}> Properties Only</label><label><input type="radio" name="live_gps_layer" value="patrols" ${mode === 'patrols' ? 'checked' : ''}> Active Patrols</label></div>`;
+}
+function liveGpsMapPanel() {
+  return `<section class="panel live-gps-map-panel">
+    <div class="live-gps-map-toolbar">
+      <button type="button" class="live-sync active" data-action="live-gps-refresh">◉ Live Sync</button>
+      <select data-live-gps-view-mode>
+        <option value="default" ${(state.liveGpsViewMode || 'default') === 'default' ? 'selected' : ''}>Default View</option>
+        <option value="guards" ${state.liveGpsViewMode === 'guards' ? 'selected' : ''}>Guards Only</option>
+        <option value="properties" ${state.liveGpsViewMode === 'properties' ? 'selected' : ''}>Properties Only</option>
+        <option value="patrols" ${state.liveGpsViewMode === 'patrols' ? 'selected' : ''}>Active Patrols</option>
+      </select>
+      <button type="button" data-action="live-gps-layers">▱ Layers</button>
+      <button type="button" data-action="dispatch-map-default">⌖ Default</button>
+      <button type="button" data-action="live-gps-fullscreen">⛶</button>
+      ${liveGpsMapLayersPanel()}
+    </div>
+    <div class="live-gps-map-wrap">${mapArea()}</div>
+  </section>`;
+}
+function dispatchLiveGpsView() {
+  return `<div class="dashboard live-gps-shell">
+    <header class="dashboard-header live-gps-header">
+      <div class="title-block"><h1><i>⌖</i> Live GPS</h1><p>Real-time live tracking of online guards, active patrols, and property locations.</p></div>
+      <div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button" data-action="live-gps-search">⌕</button><button class="header-button" data-view="settings">⚙</button><button class="header-button" data-view="notifications">🔔${unreadNotificationsCount() ? `<b>${esc(unreadNotificationsCount())}</b>` : ''}</button><button class="header-button" data-view="dispatch-board">☰</button></div>
+    </header>
+    ${dispatchLiveGpsKpiRow()}
+    <section class="live-gps-layout">
+      <main class="live-gps-main">
+        ${liveGpsMapPanel()}
+        ${liveGpsRouteEventsTable()}
+      </main>
+      <aside class="live-gps-rail">
+        ${liveGpsOnlineGuardRoster()}
+        ${liveGpsSelectedPropertyPanel()}
+        ${liveGpsFeedPanel()}
+      </aside>
+    </section>
+  </div>`;
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
     if (state.view === 'dispatch-board') return dispatchBoardView();
-    if (state.view === 'live-gps') return tableView('Live GPS', 'Active patrol GPS list.', activeRequests());
+    if (state.view === 'live-gps') return dispatchLiveGpsView();
     if (state.view === 'pending-dispatch') return tableView('Pending Dispatch', 'Requests waiting for assignment.', pendingRequests());
     if (state.view === 'scheduled-queue') return tableView('Scheduled Queue', 'Scheduled patrol requests.', scheduledRequests());
     if (state.view === 'guards') return cardsView('Guards', 'Approved guard roster.', state.guards);
@@ -5155,6 +5359,45 @@ document.addEventListener('click', async event => {
       setGuardOffline();
       return;
     }
+    if (button.dataset.action === 'live-gps-search') {
+      toast('Use the guard roster or browser search to find live GPS records.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'live-gps-refresh') {
+      await loadData();
+      state.liveGpsLayersOpen = false;
+      render();
+      toast('Live GPS refreshed.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'live-gps-layers') {
+      state.liveGpsLayersOpen = !state.liveGpsLayersOpen;
+      render();
+      return;
+    }
+    if (button.dataset.action === 'live-gps-fullscreen') {
+      const panel = document.querySelector('.live-gps-map-panel');
+      if (panel?.requestFullscreen) {
+        await panel.requestFullscreen();
+        return;
+      }
+      toast('Fullscreen is not available in this browser preview.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'select-live-gps-guard') {
+      liveGps.dispatchSelectedGuardId = button.dataset.guardId || '';
+      liveGps.selectedMapCard = 'guard';
+      updateDispatchMapCardOnly();
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-live-gps-property') {
+      liveGps.dispatchSelectedPropertyId = button.dataset.propertyId || '';
+      liveGps.selectedMapCard = 'property';
+      updateDispatchMapCardOnly();
+      render();
+      return;
+    }
     if (button.dataset.action === 'dispatch-map-default') {
       resetDispatchMapToDefault();
       return;
@@ -5350,6 +5593,18 @@ document.addEventListener('submit', async event => {
 document.addEventListener('input', event => {
   const input = event.target;
 
+  if (input && input.hasAttribute('data-live-gps-view-mode')) {
+    state.liveGpsViewMode = input.value || 'default';
+    liveGps.selectedMapCard = null;
+    render();
+    return;
+  }
+  if (input && input.name === 'live_gps_layer') {
+    state.liveGpsViewMode = input.value || 'default';
+    liveGps.selectedMapCard = null;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-client-report-property-filter')) {
     state.clientReportPropertyFilter = input.value || 'all';
     state.clientReportPage = 1;
@@ -5391,6 +5646,18 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-live-gps-view-mode')) {
+    state.liveGpsViewMode = input.value || 'default';
+    liveGps.selectedMapCard = null;
+    render();
+    return;
+  }
+  if (input && input.name === 'live_gps_layer') {
+    state.liveGpsViewMode = input.value || 'default';
+    liveGps.selectedMapCard = null;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-client-report-property-filter')) {
     state.clientReportPropertyFilter = input.value || 'all';
     state.clientReportPage = 1;

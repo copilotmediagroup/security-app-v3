@@ -1,22 +1,23 @@
 Co Pilot Security
-Version: 3.0.43
-Build Name: DISPATCH BOARD COMMAND CENTER
+Version: 3.0.44
+Build Name: DISPATCH LIVE GPS COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.42.
-- Redesigned the Dispatch Board page exactly from the command-center blueprint.
-- Added KPI row: Pending Dispatch, Online Guards, Active Patrols, Guard Approvals, Reports Ready.
-- Added Assign Now queue with functional guard assignment shortcut.
-- Added Scheduled Queue and Proof Waiting Review panels.
-- Added Dispatch Command Map panel using the upgraded dispatch live map behavior and Default control.
-- Added Recent Activity table.
-- Added right rail with Messages, Notifications, System Status, and Quick Actions.
-- Preserved v3.0.42 Dispatch online guard visibility and map default fix.
+- Built from v3.0.43.
+- Rebuilt the Dispatch Live GPS page using the exact command-center blueprint.
+- Added KPI row: Online Guards, Active Patrols, Active Properties, Alerts.
+- Added full live map panel using the existing dispatch map engine.
+- Added working Live Sync refresh, Default map reset, view mode selector, Layers popover, and Fullscreen action.
+- Added clickable Online Guard Roster.
+- Added Selected Property right rail card.
+- Added Live GPS Feed.
+- Added Recent Route Events table.
+- Preserved online-only guard visibility behavior.
 - No new SQL required.
 
 Badge:
-v3.0.43 DISPATCH BOARD COMMAND CENTER
+v3.0.44 DISPATCH LIVE GPS COMMAND CENTER
 
 SQL:
 No new SQL required.

@@ -1,30 +1,38 @@
-# Co Pilot Security v3.0.43 — Dispatch Board Command Center
+# Co Pilot Security v3.0.44 — Dispatch Live GPS Command Center
 
 ## What changed
-The Dispatch Board page has been rebuilt from a basic patrol request table into a full operations command-center page.
+The Dispatch `Live GPS` page has been rebuilt from a table into a full GPS command-center screen.
 
-## New Dispatch Board sections
+## New Live GPS sections
+- Header with system status and working navigation buttons
 - KPI row:
-  - Pending Dispatch
   - Online Guards
   - Active Patrols
-  - Guard Approvals
-  - Reports Ready
-- Left queue:
-  - Assign Now
-  - Scheduled Queue
-  - Proof Waiting Review
-- Center command area:
-  - Dispatch Command Map
-  - Recent Activity table
+  - Active Properties
+  - Alerts
+- Live map panel:
+  - Live Sync refresh
+  - Default map reset
+  - View mode selector
+  - Layers popover
+  - Fullscreen action
+  - clickable guard/property markers
 - Right rail:
-  - Messages
-  - Notifications
-  - System Status
-  - Quick Actions
+  - Online Guard Roster
+  - Selected Property
+  - Live GPS Feed
+- Bottom section:
+  - Recent Route Events table
 
 ## Functional behavior
-- Assign buttons use the existing `cp_admin_assign_patrol_request` flow.
-- The Dispatch Command Map keeps the v3.0.42 online-guard visibility and Default map reset behavior.
-- Quick Actions route to the correct admin screens.
+- Offline guards remain hidden.
+- Online guard roster rows select the guard and open the map card.
+- Selected property card opens the property map card.
+- View mode filters map markers:
+  - Default
+  - Guards Only
+  - Properties Only
+  - Active Patrols
+- Default button resets map bounds.
+- Live Sync reloads app data.
 - No new SQL required.
