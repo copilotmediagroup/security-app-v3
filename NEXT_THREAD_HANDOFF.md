@@ -1,12 +1,11 @@
-# Next Thread Handoff — Co Pilot Security v3.0.50
+# Next Thread Handoff — Co Pilot Security v3.0.51
 
-Latest build: v3.0.50 GUARDS DATA LAYOUT FIX
+Latest build: v3.0.51 GUARD APPROVALS COMMAND CENTER
 
 ## What changed
-- Built from v3.0.49.
-- Fixed selected guard rail contact data and mismatched email display.
-- Tightened online/GPS logic.
-- Removed Guards table horizontal overflow and action cutoff.
-- Shortened filter labels.
-- Compact right rail so buttons stay visible.
+- Built from v3.0.50.
+- Rebuilt Guard Approvals into command-center onboarding review page.
+- Added KPIs, tabs, filters, applicant table, detail rail, certifications, onboarding checklist, review notes, approve/reject/request info/interview actions, search, refresh, and pagination.
+- Approve/reject use the existing guard signup flow for signup rows.
+- Request info/interview use local workflow state without new SQL.
 - No new SQL required.

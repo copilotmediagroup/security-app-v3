@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-guards-data-layout-fix",
-  "version": "3.0.50",
+  "name": "co-pilot-security-guard-approvals-command-center",
+  "version": "3.0.51",
   "private": true,
-  "description": "Fixes Guards page selected guard data, online/GPS timestamp logic, table overflow, filter labels, and compact right rail layout.",
+  "description": "Redesigns Guard Approvals into the command-center onboarding review center with KPIs, filters, applicant table, detail rail, approval actions, and pagination.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

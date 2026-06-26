@@ -1,21 +1,20 @@
 Co Pilot Security
-Version: 3.0.50
-Build Name: GUARDS DATA LAYOUT FIX
+Version: 3.0.51
+Build Name: GUARD APPROVALS COMMAND CENTER
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.49 Guards Command Center.
-- Fixed selected guard detail rail data so phone/email fields come from the selected guard record only.
-- Added guard contact safeguards to avoid showing an obviously mismatched generic guard email under another guard.
-- Tightened online detection so approved/on-duty account state is not treated as live online by itself.
-- Improved GPS labels: Live now, Online saved GPS, or GPS stale instead of misleading stale timestamps.
-- Removed ugly horizontal table overflow and fixed the action column cutoff.
-- Shortened filter labels so they fit cleanly.
-- Compact right rail layout so Message / View Route / Assign Patrol / View Profile stay visible.
+- Built from v3.0.50.
+- Rebuilt the Guard Approvals page using the exact command-center onboarding review blueprint.
+- Added KPI row: Total Applications, Pending Review, Approved Today, Rejected, Interview Needed, Missing Docs.
+- Added tabs, filters, applicant table, selected applicant detail rail, certifications, onboarding checklist, and review notes.
+- Added working actions: Approve Guard, Reject Application, Request Info, Schedule Interview, Search, Refresh, pagination, and rows per page.
+- Approve/reject uses the existing signup approval/rejection flow when the row is an actual signup.
+- Request Info and Schedule Interview use local workflow state without new SQL.
 - No new SQL required.
 
 Badge:
-v3.0.50 GUARDS DATA LAYOUT FIX
+v3.0.51 GUARD APPROVALS COMMAND CENTER
 
 SQL:
 No new SQL required.

@@ -1,18 +1,19 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.50",
-  "buildName": "GUARDS DATA LAYOUT FIX",
-  "type": "guards-data-layout-fix",
+  "version": "3.0.51",
+  "buildName": "GUARD APPROVALS COMMAND CENTER",
+  "type": "guard-approvals-command-center",
   "sql_required": false,
   "features": [
-    "Fix selected guard detail rail so phone/email come from the selected guard record only",
-    "Suppress obviously mismatched generic guard emails in the detail rail",
-    "Tighten online detection so approved/on-duty status is not treated as live online by itself",
-    "Update guard GPS display to show Live now / Online saved GPS / GPS stale instead of misleading stale-only timestamps",
-    "Fix table width and action column cutoff by removing horizontal overflow and compacting columns",
-    "Shorten filter dropdown labels and improve filter row fit",
-    "Compact the right detail rail so action buttons stay visible",
-    "Preserve v3.0.49 Guards Command Center features and actions",
+    "Rebuilt Guard Approvals page into command-center onboarding review layout",
+    "Added KPI row: Total Applications, Pending Review, Approved Today, Rejected, Interview Needed, Missing Docs",
+    "Added tabs: All Applications, Pending, Interview, Approved, Rejected",
+    "Added filters: Status, Rank, Experience, Background Check, Sort",
+    "Added applicant table with checkbox, applicant, rank, experience, license status, background check, availability, submitted, status, actions",
+    "Added selected applicant right rail with profile, contact info, experience, guard card, availability, certifications, onboarding checklist, and notes",
+    "Added Approve Guard, Reject Application, Request Info, Schedule Interview, Search, Refresh, Pagination, Rows per page",
+    "Approve/reject uses the existing signup approval/rejection flow when the row is a signup",
+    "Request info and interview use local workflow state without requiring new SQL",
     "No new SQL required"
   ]
 }

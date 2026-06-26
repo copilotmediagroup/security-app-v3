@@ -1,20 +1,54 @@
-# Co Pilot Security v3.0.50 — Guards Data + Layout Fix
+# Co Pilot Security v3.0.51 — Guard Approvals Command Center
 
 ## What changed
-This build preserves the v3.0.49 Guards Command Center and fixes the issues found during testing.
+The Admin `Guard Approvals` page has been rebuilt from basic approval cards into a full onboarding review command center.
 
-## Fixes
-- Selected guard detail rail now uses the selected guard record for phone/email.
-- Obviously mismatched generic emails are hidden instead of being shown under the wrong guard.
-- Online detection is stricter: approved, active, available, or on-duty account status alone does not mean live online.
-- GPS status now shows clearer labels:
-  - Live now
-  - Online saved GPS
-  - GPS stale
-- Guards table no longer uses the ugly horizontal scrollbar.
-- Action buttons are no longer cut off.
-- Filter labels are shortened and fit better.
-- Right rail is more compact so action buttons stay visible.
+## New Guard Approvals sections
+- Header with search and refresh
+- KPI row:
+  - Total Applications
+  - Pending Review
+  - Approved Today
+  - Rejected
+  - Interview Needed
+  - Missing Docs
+- Tabs:
+  - All Applications
+  - Pending
+  - Interview
+  - Approved
+  - Rejected
+- Filters:
+  - Status
+  - Rank
+  - Experience
+  - Background Check
+  - Sort
+- Applicant table:
+  - Applicant
+  - Rank Applied For
+  - Experience
+  - License Status
+  - Background Check
+  - Availability
+  - Submitted
+  - Status
+  - Actions
+- Right rail:
+  - Applicant profile
+  - Phone/email/location
+  - Experience
+  - Guard card
+  - Certifications
+  - Onboarding checklist
+  - Review notes
+  - Approve / Request Info / Schedule Interview / Reject
 
-## SQL
-No new SQL required.
+## Functional behavior
+- Search filters applicants.
+- Tabs filter applications by status.
+- Dropdown filters update the table.
+- Rows select the applicant and update the right rail.
+- Approve and Reject use the existing signup approval/rejection flow for signup rows.
+- Request Info and Schedule Interview save local workflow state and update the UI.
+- No new SQL required.
