@@ -1,16 +1,19 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.55",
-  "buildName": "DISPATCH SIDEBAR OVERLAP FIX",
-  "type": "dispatch-sidebar-overlap-fix",
+  "version": "3.0.32",
+  "buildName": "REQUEST PATROL COMMAND CENTER",
+  "type": "client-request-patrol-command-center",
   "sql_required": false,
   "features": [
-    "Hard-fixed Dispatch/Admin sidebar profile overlap with Dashboard nav item",
-    "Increased Dispatch profile card height to fit avatar, name, portal label, and online status",
-    "Added explicit nav top spacing so Dashboard starts below profile card",
-    "Kept Dispatch sidebar compact but no longer compressed into the Dashboard button",
-    "Preserved Guard and Client sidebar styling",
-    "Preserved Client login fix",
+    "Rebuilt Client Patrol Requests form into command-center layout matching the developer mockup",
+    "Added Request Type dropdown in the form synced with the request type cards",
+    "Converted Priority to a segmented Normal / High / Emergency control",
+    "Reorganized the form into clean rows: property/type/priority, schedule, instructions/services, upload/submit",
+    "Requested Services are now aligned service cards with icons",
+    "Reference Photo/Video remains device-upload only with no URL entry",
+    "Upload preview supports photo/video file name display",
+    "Request Summary rail includes service icons and clearer request context",
+    "Request History table remains below the form",
     "No new SQL required"
   ]
 }

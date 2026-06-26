@@ -1,11 +1,12 @@
-# Next Thread Handoff — Co Pilot Security v3.0.55
+# Next Thread Handoff — Co Pilot Security v3.0.32
 
-Latest build: v3.0.55 DISPATCH SIDEBAR OVERLAP FIX
+Latest build: v3.0.32 REQUEST PATROL COMMAND CENTER
 
 ## What changed
-- Built from v3.0.54.
-- Hard-fixed the Dispatch/Admin sidebar overlap.
-- Dispatch profile card was still sitting on top of the Dashboard button; this build increases profile card height and adds explicit nav separation.
-- Guard and Client sidebar styling preserved.
-- Client login fix preserved.
+- Built from v3.0.31.
+- Rebuilt Client Patrol Requests form into command-center layout.
+- Added request type dropdown synced with request cards.
+- Converted priority to segmented control.
+- Cleaned form rows, services cards, upload area, summary rail, and history layout.
+- No URL input for photo/video anywhere.
 - No new SQL required.
