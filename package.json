@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-dispatch-sidebar-profile-fix",
-  "version": "3.0.54",
+  "name": "co-pilot-security-dispatch-sidebar-overlap-fix",
+  "version": "3.0.55",
   "private": true,
-  "description": "Fixes Dispatch sidebar profile card overlap while preserving the global sidebar redesign and client login fix.",
+  "description": "Hard-fixes Dispatch/Admin sidebar profile overlap by separating the profile card from the nav list.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

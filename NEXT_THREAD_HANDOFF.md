@@ -1,11 +1,11 @@
-# Next Thread Handoff — Co Pilot Security v3.0.54
+# Next Thread Handoff — Co Pilot Security v3.0.55
 
-Latest build: v3.0.54 DISPATCH SIDEBAR PROFILE FIX
+Latest build: v3.0.55 DISPATCH SIDEBAR OVERLAP FIX
 
 ## What changed
-- Built from v3.0.53.
-- Fixed Dispatch/Admin sidebar profile card overlap where the Dashboard nav was covering profile content.
-- Dispatch profile card is compact and proportional.
-- Guard and Client sidebar styling remains preserved.
-- Client login continues to work after the v3.0.53 client map fix.
+- Built from v3.0.54.
+- Hard-fixed the Dispatch/Admin sidebar overlap.
+- Dispatch profile card was still sitting on top of the Dashboard button; this build increases profile card height and adds explicit nav separation.
+- Guard and Client sidebar styling preserved.
+- Client login fix preserved.
 - No new SQL required.

@@ -1,11 +1,9 @@
-# Co Pilot Security v3.0.54 — Dispatch Sidebar Profile Fix
+# Co Pilot Security v3.0.55 — Dispatch Sidebar Overlap Fix
 
 ## What changed
-- Fixed the Dispatch/Admin sidebar profile overlap.
-- The Dispatch profile card is now a compact two-column profile row.
-- The Dashboard/nav area starts underneath the profile card instead of covering it.
-- Guard and Client sidebar layouts are preserved.
-- Client login fix from v3.0.53 is preserved.
-
-## SQL
-No new SQL required.
+- Fixed the Dispatch/Admin profile card still sitting on top of the Dashboard button.
+- Increased the Dispatch profile card height.
+- Added explicit spacing before the Dispatch nav list.
+- Dashboard should now start underneath the profile card, not behind it.
+- Guard and Client sidebar styling are preserved.
+- No new SQL required.
