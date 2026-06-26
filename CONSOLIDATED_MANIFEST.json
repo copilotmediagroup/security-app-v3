@@ -1,18 +1,16 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.58",
-  "buildName": "CLIENTS COMMAND CENTER",
-  "type": "clients-command-center",
+  "version": "3.0.38",
+  "buildName": "SETTINGS PAGE REDESIGN",
+  "type": "settings-page-redesign",
   "sql_required": false,
   "features": [
-    "Rebuilt Dispatch/Admin Clients page using the generated command-center blueprint",
-    "Added KPI row for total clients, active clients, active contracts, monthly revenue, expiring contracts, and past due clients",
-    "Added tabs: All Clients, Active, Inactive, Prospects, On Hold",
-    "Added filters for status, client type, service type, region, and sorting",
-    "Added client roster table with logo/avatar, type, contact, sites, contract, status, revenue, and actions",
-    "Added selected client right rail with profile, tabs, contact info, revenue, services, site/request/report stats, and profile/edit actions",
-    "Added search, pagination, rows-per-page, clear filters, add client placeholder, columns placeholder, and export placeholder",
-    "Preserved global sidebar fix from v3.0.57",
+    "Rebuilt Settings page to match selected image 2 design direction",
+    "Added top settings tabs: Profile, Company, Notifications, Security, Billing, Integrations",
+    "Added Profile Information form, profile photo device upload, Change Password panel, and Communication Preferences",
+    "Added right rail: Account Summary, Company Information, Preferences, and Quick Actions",
+    "Profile photo is device-upload only with no URL field",
+    "Preserved v3.0.37 Client Messages redesign",
     "No new SQL required"
   ]
 }

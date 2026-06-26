@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-clients-command-center",
-  "version": "3.0.58",
+  "name": "co-pilot-security-settings-page-redesign",
+  "version": "3.0.38",
   "private": true,
-  "description": "Rebuilds the Dispatch/Admin Clients page into a command-center client management page with KPIs, filters, client table, and detail rail.",
+  "description": "Redesigns the Settings page into a premium command-center profile, account, notification, security, billing, and integrations layout.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,22 +1,20 @@
 Co Pilot Security
-Version: 3.0.58
-Build Name: CLIENTS COMMAND CENTER
+Version: 3.0.38
+Build Name: SETTINGS PAGE REDESIGN
 Date: 2026-06-25
 
 Summary:
-- Built from v3.0.57.
-- Rebuilt Dispatch/Admin Clients page into a full command-center management page.
-- Added KPI row: Total Clients, Active Clients, Active Contracts, Monthly Revenue, Contracts Expiring, Past Due.
-- Added tabs: All Clients, Active, Inactive, Prospects, On Hold.
-- Added filters: Status, Client Type, Service Type, Region, Sort.
-- Added client roster table with client logo, client type, contact, sites, contract, status, revenue, and actions.
-- Added selected client right rail with profile, overview tabs, contact data, revenue, service tags, site/request/report stats, View Full Profile, and Edit Client.
-- Added search, pagination, rows per page, clear filters, export placeholder, columns placeholder, and Add Client placeholder.
-- Preserved sidebar profile/nav stack fix from v3.0.57.
+- Built from v3.0.37.
+- Rebuilt the Settings page to match the selected image 2 design direction.
+- Added top settings tabs: Profile, Company, Notifications, Security, Billing, and Integrations.
+- Added Profile Information, profile photo device upload, Change Password, and Communication Preferences sections.
+- Added right rail with Account Summary, Company Information, Preferences, and Quick Actions.
+- Profile photo is device-upload only. No URL field is shown.
+- Preserved v3.0.37 Client Messages redesign.
 - No new SQL required.
 
 Badge:
-v3.0.58 CLIENTS COMMAND CENTER
+v3.0.38 SETTINGS PAGE REDESIGN
 
 SQL:
 No new SQL required.

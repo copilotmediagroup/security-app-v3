@@ -1,11 +1,9 @@
-# Next Thread Handoff — Co Pilot Security v3.0.58
+# Next Thread Handoff — Co Pilot Security v3.0.38
 
-Latest build: v3.0.58 CLIENTS COMMAND CENTER
+Latest build: v3.0.38 SETTINGS PAGE REDESIGN
 
 ## What changed
-- Built from v3.0.57.
-- Rebuilt the Dispatch/Admin Clients page based on the generated design blueprint.
-- Added KPIs, tabs, filters, client table, selected client detail rail, search, pagination, rows per page, and action placeholders.
-- Uses existing state clients, client signups, properties, patrol requests, and patrol reports.
+- Built from v3.0.37.
+- Rebuilt Settings page based on selected image 2.
+- Added settings tabs, profile form, device-only photo upload, password panel, communication preferences, and right-side account/company/preferences/quick actions rail.
 - No new SQL required.
-- Sidebar profile/nav stack fix from v3.0.57 is preserved.
