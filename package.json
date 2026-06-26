@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-report-builder-command-center",
-  "version": "3.0.61",
+  "name": "co-pilot-security-report-builder-guard-name-fix",
+  "version": "3.0.62",
   "private": true,
-  "description": "Rebuilds the Dispatch/Admin Report Builder page into a command-center final report creation workflow with completed patrol selection, proof selection, live preview, draft save, and publish.",
+  "description": "Fixes Report Builder runtime error by adding the missing guardDisplayName helper used by the Report Builder page.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

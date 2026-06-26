@@ -1,25 +1,18 @@
 Co Pilot Security
-Version: 3.0.61
-Build Name: REPORT BUILDER COMMAND CENTER
-Date: 2026-06-25
+Version: 3.0.62
+Build Name: REPORT BUILDER GUARD NAME FIX
+Date: 2026-06-26
 
 Summary:
-- Built from v3.0.60.
-- Rebuilt Dispatch/Admin Report Builder into a full command-center final report creation workflow.
-- Added KPI row: Draft Reports, Ready To Publish, Published Reports, Total Reports, Photos Included, Videos Included.
-- Added 4-step builder flow: Select Patrol, Select Proof, Build Report, Review & Publish.
-- Added completed patrol/job selector with Client, Property, and Patrol / Job dropdowns.
-- Added selected job summary card showing property photo, client, property, patrol type, guard, date, time, and duration.
-- Added guard-uploaded proof selector with photo/video proof cards, Select All, pagination, and items per page.
-- Added live report preview right rail with client-facing report paper layout.
-- Added Report Options: template, report title, include guard notes, include patrol summary, selected proof count, Save as Draft, Review & Publish.
-- Added Save Draft and Publish workflows using local report storage if permanent report SQL fields are unavailable.
-- Publishing without proof is allowed after confirmation, matching the requirement that Admin can finalize reports even without photos/videos.
-- No URL inputs were added. Proof comes from guard-uploaded media only.
+- Built from v3.0.61.
+- Fixed the runtime error shown when clicking Report Builder from the Dispatch/Admin sidebar.
+- Cause: Report Builder referenced `guardDisplayName(...)`, but the helper function was missing globally.
+- Added the missing `guardDisplayName(guard)` helper.
+- Kept the full v3.0.61 Report Builder Command Center page intact.
 - No new SQL required.
 
 Badge:
-v3.0.61 REPORT BUILDER COMMAND CENTER
+v3.0.62 REPORT BUILDER GUARD NAME FIX
 
 SQL:
 No new SQL required.

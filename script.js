@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T23-35-v3061';
+const CP_DEV_CACHE_BUST = '2026-06-26T11-40-v3062';
 const BUILD = {
-  version: '3.0.61',
-  label: 'v3.0.61 REPORT BUILDER COMMAND CENTER'
+  version: '3.0.62',
+  label: 'v3.0.62 REPORT BUILDER GUARD NAME FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -612,6 +612,9 @@ function requestClientName(req = {}) {
 function requestGuardName(req = {}) {
   const g = guardById(req.guard_id || req.assigned_guard_id);
   return g.name || g.display_name || g.email || 'Unassigned';
+}
+function guardDisplayName(guard = {}) {
+  return guard.name || guard.display_name || guard.full_name || guard.email || 'Unassigned';
 }
 function requestElapsed(req = {}) {
   const base = req.started_at || req.accepted_at || req.assigned_at || req.created_at;
@@ -6591,7 +6594,7 @@ async function scheduleGuardInterview(id) {
 }
 
 
-/* v3.0.61 Admin Clients Command Center */
+/* v3.0.62 Admin Clients Command Center */
 function adminClientSourceRows() {
   const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
   const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
@@ -6964,7 +6967,7 @@ async function adminClientRefresh() {
 }
 
 
-/* v3.0.61 Activity Log Command Center */
+/* v3.0.62 Activity Log Command Center */
 function activitySafeId(prefix, item = {}, idx = 0) {
   return `${prefix}-${item.id || item.request_id || item.thread_id || item.created_at || item.updated_at || idx}`;
 }
@@ -7472,7 +7475,7 @@ function exportActivityLogCsv() {
 }
 
 
-/* v3.0.61 Proof Review Command Center */
+/* v3.0.62 Proof Review Command Center */
 function proofReviewStateKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_proof_review_state_${who}`;
@@ -7860,7 +7863,7 @@ function exportProofReviewCsv() {
 }
 
 
-/* v3.0.61 Report Builder Command Center */
+/* v3.0.62 Report Builder Command Center */
 function reportBuilderStorageKey() {
   const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
   return `cp_security_report_builder_records_${who}`;

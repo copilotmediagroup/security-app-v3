@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.61 Settings Page Redesign */
+/* v3.0.62 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.61 Dispatch map blueprint fix */
+/* v3.0.62 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.61 Dispatch online guard filter + default map button */
+/* v3.0.62 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.61 Dispatch Board Command Center */
+/* v3.0.62 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Dispatch Live GPS Command Center */
+/* v3.0.62 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Pending Dispatch Command Center */
+/* v3.0.62 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Dispatch route + distance/ETA fix */
+/* v3.0.62 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Scheduled Queue Command Center */
+/* v3.0.62 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.61 Scheduled Queue data + layout polish */
+/* v3.0.62 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Guards Data + Layout Fix */
+/* v3.0.62 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Guards data + layout fix */
+/* v3.0.62 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Guard Approvals Command Center */
+/* v3.0.62 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.61 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.62 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.61 Client login + Dispatch sidebar proportion fix */
+/* v3.0.62 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9472,7 +9472,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   font-size: 10px !important;
 }
 
-/* v3.0.61 Dispatch sidebar profile overlap fix */
+/* v3.0.62 Dispatch sidebar profile overlap fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   align-content: stretch !important;
@@ -9551,7 +9551,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 2 !important;
 }
 
-/* v3.0.61 Dispatch sidebar overlap fix - hard separation between profile and nav */
+/* v3.0.62 Dispatch sidebar overlap fix - hard separation between profile and nav */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -9636,7 +9636,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   flex-shrink: 0 !important;
 }
 
-/* v3.0.61 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
+/* v3.0.62 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   row-gap: 0 !important;
@@ -9728,7 +9728,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 3 !important;
 }
 
-/* v3.0.61 Sidebar profile/nav stack fix
+/* v3.0.62 Sidebar profile/nav stack fix
    The Dispatch profile now lives inside a fixed reserved zone, so Dashboard cannot render underneath it. */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   display: grid !important;
@@ -9835,7 +9835,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   display: contents;
 }
 
-/* v3.0.61 Clients Command Center */
+/* v3.0.62 Clients Command Center */
 .admin-clients-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10407,7 +10407,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Activity Log Command Center */
+/* v3.0.62 Activity Log Command Center */
 .activity-log-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -10897,7 +10897,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.61 Proof Review Command Center */
+/* v3.0.62 Proof Review Command Center */
 .proof-review-shell { gap: 16px; padding-bottom: 110px; }
 .proof-review-header h1 { font-size: 27px; }
 .proof-review-header-actions { display: flex; align-items: center; gap: 10px; }
@@ -11423,7 +11423,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .proof-review-filter-bar { grid-template-columns: 1fr; }
 }
 
-/* v3.0.61 Report Builder Command Center */
+/* v3.0.62 Report Builder Command Center */
 .report-builder-shell { gap: 16px; padding-bottom: 110px; }
 .report-builder-header h1 { font-size: 27px; }
 .report-builder-header-actions { display: flex; align-items: center; gap: 10px; }

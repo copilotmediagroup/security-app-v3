@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.61 report builder command center build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.62 report builder guard name fix build complete. Copied ${count} files to dist/.`);
