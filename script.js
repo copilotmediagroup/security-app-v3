@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-25T22-18-v3057';
+const CP_DEV_CACHE_BUST = '2026-06-25T22-35-v3058';
 const BUILD = {
-  version: '3.0.57',
-  label: 'v3.0.57 SIDEBAR PROFILE NAV STACK FIX'
+  version: '3.0.58',
+  label: 'v3.0.58 CLIENTS COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -90,7 +90,13 @@ const state = {
   selectedGuardApprovalId: '',
   guardApprovalSelectedIds: [],
   guardApprovalPage: 1,
-  guardApprovalPerPage: 5
+  guardApprovalPerPage: 5,
+  adminClientSearch: '',
+  adminClientTab: 'all',
+  adminClientFilters: { status: 'all', type: 'all', service: 'all', region: 'all', sort: 'newest' },
+  selectedAdminClientId: '',
+  adminClientPage: 1,
+  adminClientPerPage: 10
 };;
 const liveGps = {
   online: false,
@@ -6558,6 +6564,379 @@ async function scheduleGuardInterview(id) {
   toast('Interview scheduled.', 'success');
 }
 
+
+/* v3.0.58 Admin Clients Command Center */
+function adminClientSourceRows() {
+  const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
+  const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
+  const prospects = (state.clientSignups || [])
+    .filter(signup => {
+      const key = String(signup.id || signup.email || '').toLowerCase();
+      const status = String(signup.status || signup.approval_status || '').toLowerCase();
+      return !clientIds.has(key) && (!status || ['pending','prospect','new','requested'].includes(status));
+    })
+    .map((client, index) => ({ ...client, _source: 'signup', _sortIndex: index, status: client.status || 'prospect' }));
+  return [...approved, ...prospects];
+}
+function adminClientId(client = {}) {
+  return String(client.id || client.client_id || client.auth_user_id || client.user_id || client.email || client.signup_id || '').trim();
+}
+function adminClientShortId(client = {}) {
+  const raw = String(client.client_number || client.account_number || client.client_code || client.id || client.email || 'client').replace(/[^a-z0-9]/gi, '').slice(0, 7);
+  return `CL-${raw || '00000'}`.toUpperCase();
+}
+function adminClientName(client = {}) {
+  return client.business_name || client.company_name || client.name || client.display_name || client.full_name || client.email || 'Client';
+}
+function adminClientLogo(client = {}) {
+  return client.logo_url || client.avatar_url || client.profile_photo_url || client.photo_url || client.image_url || '';
+}
+function adminClientProperties(client = {}) {
+  const id = adminClientId(client);
+  const email = String(client.email || '').toLowerCase();
+  return (state.properties || []).filter(p => {
+    const ownerEmail = String(p.client_email || p.owner_email || p.email || '').toLowerCase();
+    return String(p.client_id || p.owner_id || p.profile_id || p.account_id || '') === id || (email && ownerEmail === email);
+  });
+}
+function adminClientRequests(client = {}) {
+  const id = adminClientId(client);
+  const props = adminClientProperties(client);
+  const propIds = new Set(props.map(p => String(p.id)));
+  return (state.patrolRequests || []).filter(req => String(req.client_id || req.owner_id || '') === id || propIds.has(String(req.property_id)));
+}
+function adminClientReports(client = {}) {
+  const reqIds = new Set(adminClientRequests(client).map(r => String(r.id)));
+  return (state.patrolReports || []).filter(r => reqIds.has(String(r.request_id || r.patrol_request_id || '')));
+}
+function adminClientPrimaryProperty(client = {}) {
+  return adminClientProperties(client)[0] || {};
+}
+function adminClientAddress(client = {}) {
+  const p = adminClientPrimaryProperty(client);
+  return [client.address || client.address_line1 || client.street || p.address || p.address_line1 || p.street, client.city || p.city, client.state || p.state, client.zip || client.zip_code || p.zip || p.zip_code].filter(Boolean).join(', ') || 'Address unavailable';
+}
+function adminClientRegion(client = {}) {
+  const p = adminClientPrimaryProperty(client);
+  return client.region || client.market || client.city || p.city || (p.state ? `${p.state}` : '') || 'Unassigned';
+}
+function adminClientType(client = {}) {
+  const p = adminClientPrimaryProperty(client);
+  const text = String(client.client_type || client.type || client.industry || client.business_type || p.property_type || p.type || p.category || '').trim();
+  if (text) return statusText(text);
+  const name = adminClientName(client).toLowerCase();
+  if (/mcdonald|restaurant|retail|store|mall/.test(name)) return 'Commercial';
+  if (/hospital|clinic|medical/.test(name)) return 'Healthcare';
+  if (/city|government|county/.test(name)) return 'Government';
+  if (/construction/.test(name)) return 'Construction';
+  if (/storage|warehouse|industrial/.test(name)) return 'Industrial';
+  return 'Commercial';
+}
+function adminClientServices(client = {}) {
+  const direct = client.services || client.service_types || client.service_type || client.contract_services;
+  if (Array.isArray(direct)) return direct.filter(Boolean).map(statusText);
+  if (typeof direct === 'string' && direct.trim()) return direct.split(/[,\|;]/).map(x => statusText(x.trim())).filter(Boolean);
+  const reqText = adminClientRequests(client).map(r => [r.request_type, r.patrol_type, r.proof_preference, r.services, r.requested_services].filter(Boolean).join(' ')).join(' ').toLowerCase();
+  const services = [];
+  if (/patrol|check|perimeter|door|window/.test(reqText)) services.push('Patrol Services');
+  if (/access|lock|gate/.test(reqText)) services.push('Access Control');
+  if (/photo|video|proof|evidence/.test(reqText)) services.push('Photo Proof');
+  if (!services.length) services.push('Patrol Services', 'Security Monitoring');
+  return services.slice(0, 4);
+}
+function adminClientStatusValue(client = {}) {
+  const raw = String(client.status || client.account_status || client.approval_status || '').toLowerCase();
+  if (client._source === 'signup') return 'prospect';
+  if (/hold|paused/.test(raw)) return 'on_hold';
+  if (/inactive|disabled|cancel/.test(raw)) return 'inactive';
+  if (/prospect|pending|new/.test(raw)) return 'prospect';
+  if (client.is_active === false || client.active === false) return 'inactive';
+  return 'active';
+}
+function adminClientContractStatus(client = {}) {
+  const raw = String(client.contract_status || client.subscription_status || client.billing_status || '').toLowerCase();
+  if (/expire/.test(raw)) return 'expiring';
+  if (/hold|pause/.test(raw)) return 'on_hold';
+  if (/past|late|overdue/.test(raw)) return 'past_due';
+  if (/active|current|paid/.test(raw)) return 'active';
+  if (adminClientStatusValue(client) === 'active') return 'active';
+  return adminClientStatusValue(client);
+}
+function adminClientMonthlyRevenue(client = {}) {
+  const values = [client.monthly_revenue, client.mrr, client.monthly_fee, client.contract_monthly_value, client.billing_amount, client.rate, client.subscription_amount, client.amount];
+  for (const v of values) {
+    const n = Number(String(v ?? '').replace(/[^0-9.-]/g, ''));
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  const reqCount = adminClientRequests(client).filter(r => ['accepted','assigned','in_progress','completed'].includes(String(r.status || ''))).length;
+  return reqCount ? reqCount * 150 : 0;
+}
+function adminCurrency(n = 0) {
+  return `$${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+function adminClientContractDate(client = {}) {
+  return client.contract_start_date || client.contract_started_at || client.contract_date || client.approved_at || client.created_at || client.updated_at || '';
+}
+function adminClientContractEndDate(client = {}) {
+  return client.contract_end_date || client.contract_expires_at || client.renewal_date || client.subscription_end || '';
+}
+function adminClientIsExpiring(client = {}) {
+  const end = adminClientContractEndDate(client);
+  if (!end) return adminClientContractStatus(client) === 'expiring';
+  const t = new Date(end).getTime();
+  if (!Number.isFinite(t)) return false;
+  const days = (t - Date.now()) / 86400000;
+  return days >= 0 && days <= 60;
+}
+function adminClientIsPastDue(client = {}) {
+  const status = `${client.payment_status || ''} ${client.billing_status || ''} ${client.invoice_status || ''}`.toLowerCase();
+  const balance = Number(String(client.balance_due || client.amount_due || client.past_due_amount || '').replace(/[^0-9.-]/g, ''));
+  return /past|overdue|late|failed/.test(status) || (Number.isFinite(balance) && balance > 0);
+}
+function adminClientContactName(client = {}) {
+  return client.primary_contact || client.contact_name || client.contact_person || client.owner_name || client.name || client.display_name || '—';
+}
+function adminClientPhone(client = {}) {
+  return client.phone || client.mobile || client.cell_phone || client.contact_phone || client.business_phone || '—';
+}
+function adminClientEmail(client = {}) {
+  return client.email || client.contact_email || '—';
+}
+function adminClientAccountManager(client = {}) {
+  return client.account_manager || client.manager_name || state.profile?.display_name || state.profile?.name || 'Owner Admin';
+}
+function adminClientLastActivity(client = {}) {
+  const dates = [
+    ...adminClientRequests(client).map(r => r.updated_at || r.created_at),
+    ...adminClientReports(client).map(r => r.released_at || r.created_at),
+    client.updated_at,
+    client.created_at
+  ].filter(Boolean).map(x => new Date(x).getTime()).filter(Number.isFinite);
+  return dates.length ? new Date(Math.max(...dates)).toISOString() : '';
+}
+function adminClientTypeClass(type = '') {
+  const t = String(type).toLowerCase();
+  if (/health/.test(t)) return 'healthcare';
+  if (/government|city/.test(t)) return 'government';
+  if (/construction/.test(t)) return 'construction';
+  if (/retail/.test(t)) return 'retail';
+  if (/industrial|storage|warehouse/.test(t)) return 'industrial';
+  if (/office/.test(t)) return 'office';
+  return 'commercial';
+}
+function adminClientStatusBadge(client = {}) {
+  const status = adminClientStatusValue(client);
+  const text = status === 'on_hold' ? 'On Hold' : status === 'prospect' ? 'Prospect' : statusText(status);
+  return `<span class="admin-client-status ${esc(status)}"><i></i>${esc(text)}</span>`;
+}
+function adminClientContractBadge(client = {}) {
+  const status = adminClientContractStatus(client);
+  const text = status === 'past_due' ? 'Past Due' : status === 'on_hold' ? 'On Hold' : status === 'expiring' ? 'Expiring Soon' : statusText(status);
+  return `<span class="admin-client-contract ${esc(status)}">${esc(text)}</span>`;
+}
+function adminClientsCounts() {
+  const rows = adminClientSourceRows();
+  const active = rows.filter(c => adminClientStatusValue(c) === 'active');
+  const activeContracts = rows.filter(c => adminClientContractStatus(c) === 'active');
+  return {
+    total: rows.length,
+    active: active.length,
+    activePct: rows.length ? Math.round((active.length / rows.length) * 100) : 0,
+    contracts: activeContracts.length,
+    revenue: rows.reduce((sum, c) => sum + adminClientMonthlyRevenue(c), 0),
+    expiring: rows.filter(adminClientIsExpiring).length,
+    pastDue: rows.filter(adminClientIsPastDue).length
+  };
+}
+function adminClientsKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="admin-client-kpi ${esc(tone)}"><div class="admin-client-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function adminClientsKpiRow() {
+  const c = adminClientsCounts();
+  return `<section class="admin-clients-kpis">
+    ${adminClientsKpi('👥','Total Clients',c.total,'All time','blue')}
+    ${adminClientsKpi('✓','Active Clients',c.active,`${c.activePct}% of total`,'green')}
+    ${adminClientsKpi('▣','Active Contracts',c.contracts,'Current accounts','purple')}
+    ${adminClientsKpi('$','Monthly Revenue',adminCurrency(c.revenue),'From active contracts','orange')}
+    ${adminClientsKpi('▦','Contracts Expiring',c.expiring,'Next 60 days','cyan')}
+    ${adminClientsKpi('⚠','Past Due',c.pastDue,'Requires attention','red')}
+  </section>`;
+}
+function adminClientTabButton(key, label, count) {
+  const active = (state.adminClientTab || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-admin-client-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function adminClientsTabs() {
+  const rows = adminClientSourceRows();
+  const counts = {
+    all: rows.length,
+    active: rows.filter(c => adminClientStatusValue(c) === 'active').length,
+    inactive: rows.filter(c => adminClientStatusValue(c) === 'inactive').length,
+    prospects: rows.filter(c => adminClientStatusValue(c) === 'prospect').length,
+    on_hold: rows.filter(c => adminClientStatusValue(c) === 'on_hold').length
+  };
+  return `<nav class="admin-client-tabs">
+    ${adminClientTabButton('all','All Clients',counts.all)}
+    ${adminClientTabButton('active','Active',counts.active)}
+    ${adminClientTabButton('inactive','Inactive',counts.inactive)}
+    ${adminClientTabButton('prospects','Prospects',counts.prospects)}
+    ${adminClientTabButton('on_hold','On Hold',counts.on_hold)}
+  </nav>`;
+}
+function adminClientTypeOptions() {
+  const types = [...new Set(adminClientSourceRows().map(adminClientType))].filter(Boolean).sort();
+  return `<option value="all">All Client Types</option>${types.map(type => `<option value="${esc(type)}" ${state.adminClientFilters?.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}`;
+}
+function adminClientServiceOptions() {
+  const services = [...new Set(adminClientSourceRows().flatMap(adminClientServices))].filter(Boolean).sort();
+  return `<option value="all">All Service Types</option>${services.map(service => `<option value="${esc(service)}" ${state.adminClientFilters?.service === service ? 'selected' : ''}>${esc(service)}</option>`).join('')}`;
+}
+function adminClientRegionOptions() {
+  const regions = [...new Set(adminClientSourceRows().map(adminClientRegion))].filter(Boolean).sort();
+  return `<option value="all">All Regions</option>${regions.map(region => `<option value="${esc(region)}" ${state.adminClientFilters?.region === region ? 'selected' : ''}>${esc(region)}</option>`).join('')}`;
+}
+function filteredAdminClients() {
+  let rows = adminClientSourceRows();
+  const q = String(state.adminClientSearch || '').trim().toLowerCase();
+  const tab = state.adminClientTab || 'all';
+  const filters = state.adminClientFilters || {};
+  if (tab === 'active') rows = rows.filter(c => adminClientStatusValue(c) === 'active');
+  if (tab === 'inactive') rows = rows.filter(c => adminClientStatusValue(c) === 'inactive');
+  if (tab === 'prospects') rows = rows.filter(c => adminClientStatusValue(c) === 'prospect');
+  if (tab === 'on_hold') rows = rows.filter(c => adminClientStatusValue(c) === 'on_hold');
+  if (q) rows = rows.filter(c => [
+    adminClientName(c), adminClientShortId(c), adminClientContactName(c), adminClientPhone(c), adminClientEmail(c),
+    adminClientType(c), adminClientRegion(c), adminClientAddress(c), adminClientServices(c).join(' ')
+  ].join(' ').toLowerCase().includes(q));
+  if (filters.status && filters.status !== 'all') rows = rows.filter(c => adminClientStatusValue(c) === filters.status);
+  if (filters.type && filters.type !== 'all') rows = rows.filter(c => adminClientType(c) === filters.type);
+  if (filters.service && filters.service !== 'all') rows = rows.filter(c => adminClientServices(c).includes(filters.service));
+  if (filters.region && filters.region !== 'all') rows = rows.filter(c => adminClientRegion(c) === filters.region);
+  const sort = filters.sort || 'newest';
+  rows.sort((a,b) => {
+    if (sort === 'name') return adminClientName(a).localeCompare(adminClientName(b));
+    if (sort === 'revenue') return adminClientMonthlyRevenue(b) - adminClientMonthlyRevenue(a);
+    if (sort === 'sites') return adminClientProperties(b).length - adminClientProperties(a).length;
+    if (sort === 'oldest') return new Date(a.created_at || a.approved_at || 0) - new Date(b.created_at || b.approved_at || 0);
+    return new Date(b.created_at || b.approved_at || b.updated_at || 0) - new Date(a.created_at || a.approved_at || a.updated_at || 0);
+  });
+  return rows;
+}
+function selectedAdminClient() {
+  const rows = filteredAdminClients();
+  return rows.find(c => String(adminClientId(c)) === String(state.selectedAdminClientId)) || rows[0] || null;
+}
+function adminClientLogoBlock(client = {}, size = 'table') {
+  const logo = adminClientLogo(client);
+  const name = adminClientName(client);
+  const cls = `admin-client-logo ${size} ${logo ? '' : adminClientTypeClass(adminClientType(client))}`;
+  return logo ? `<div class="${esc(cls)}"><img src="${esc(logo)}" alt="${esc(name)}"></div>` : `<div class="${esc(cls)}">${esc(initials(name))}</div>`;
+}
+function adminClientFilterBar() {
+  return `<section class="admin-client-filter-bar">
+    <select data-admin-client-filter="status"><option value="all">All Status</option><option value="active" ${state.adminClientFilters?.status === 'active' ? 'selected' : ''}>Active</option><option value="inactive" ${state.adminClientFilters?.status === 'inactive' ? 'selected' : ''}>Inactive</option><option value="prospect" ${state.adminClientFilters?.status === 'prospect' ? 'selected' : ''}>Prospect</option><option value="on_hold" ${state.adminClientFilters?.status === 'on_hold' ? 'selected' : ''}>On Hold</option></select>
+    <select data-admin-client-filter="type">${adminClientTypeOptions()}</select>
+    <select data-admin-client-filter="service">${adminClientServiceOptions()}</select>
+    <select data-admin-client-filter="region">${adminClientRegionOptions()}</select>
+    <select data-admin-client-filter="sort"><option value="newest" ${state.adminClientFilters?.sort === 'newest' ? 'selected' : ''}>Sort: Newest</option><option value="oldest" ${state.adminClientFilters?.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest</option><option value="name" ${state.adminClientFilters?.sort === 'name' ? 'selected' : ''}>Sort: Name</option><option value="revenue" ${state.adminClientFilters?.sort === 'revenue' ? 'selected' : ''}>Sort: Revenue</option><option value="sites" ${state.adminClientFilters?.sort === 'sites' ? 'selected' : ''}>Sort: Sites</option></select>
+    <button type="button" data-action="admin-client-export">⇩</button>
+    <button type="button" data-action="admin-client-columns">▣ Columns</button>
+  </section>`;
+}
+function adminClientRow(client = {}) {
+  const id = adminClientId(client);
+  const selected = String(state.selectedAdminClientId || '') === String(id);
+  const sites = adminClientProperties(client).length;
+  const type = adminClientType(client);
+  const contractStatus = adminClientContractStatus(client);
+  const contractDate = adminClientContractEndDate(client) || adminClientContractDate(client);
+  return `<div class="admin-client-row ${selected ? 'selected' : ''}" data-client-id="${esc(id)}">
+    <button type="button" class="admin-client-main-cell" data-action="select-admin-client" data-client-id="${esc(id)}">${adminClientLogoBlock(client)}<span><strong>${esc(adminClientName(client))}</strong><small>${esc(adminClientShortId(client))}</small></span></button>
+    <div><span class="admin-client-type ${esc(adminClientTypeClass(type))}">${esc(type)}</span></div>
+    <div class="admin-client-contact"><strong>${esc(adminClientContactName(client))}</strong><small>${esc(adminClientPhone(client))}</small></div>
+    <div class="admin-client-sites"><strong>${esc(sites || 0)}</strong><small>${esc((sites || 0) === 1 ? 'Site' : 'Sites')}</small></div>
+    <div class="admin-client-contract-cell">${adminClientContractBadge(client)}<small>${esc(contractDate ? fmtDate(contractDate) : 'No contract date')}</small></div>
+    <div>${adminClientStatusBadge(client)}</div>
+    <div class="admin-client-revenue"><strong>${esc(adminCurrency(adminClientMonthlyRevenue(client)))}</strong><small>Monthly</small></div>
+    <div class="admin-client-row-actions"><button type="button" data-action="view-admin-client" data-client-id="${esc(id)}">⊙</button><button type="button" data-action="edit-admin-client" data-client-id="${esc(id)}">✎</button><button type="button" data-action="admin-client-menu" data-client-id="${esc(id)}">⋯</button></div>
+  </div>`;
+}
+function adminClientsTable() {
+  const rows = filteredAdminClients();
+  const per = Number(state.adminClientPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  state.adminClientPage = Math.min(Math.max(1, state.adminClientPage || 1), maxPage);
+  const start = (state.adminClientPage - 1) * per;
+  const pageRows = rows.slice(start, start + per);
+  return `<section class="admin-clients-table-wrap">
+    <div class="admin-clients-head"><span>Client</span><span>Client Type</span><span>Contact</span><span>Sites</span><span>Contract</span><span>Status</span><span>Revenue</span><span>Action</span></div>
+    <div class="admin-clients-rows">${pageRows.length ? pageRows.map(adminClientRow).join('') : '<div class="admin-clients-empty">No clients match your filters.</div>'}</div>
+  </section>`;
+}
+function adminClientsPagination() {
+  const rows = filteredAdminClients();
+  const per = Number(state.adminClientPerPage || 10);
+  const maxPage = Math.max(1, Math.ceil(rows.length / per));
+  const start = rows.length ? (state.adminClientPage - 1) * per + 1 : 0;
+  const end = Math.min(rows.length, (state.adminClientPage || 1) * per);
+  return `<footer class="admin-clients-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} clients</span><div class="admin-client-pagination"><button type="button" data-action="admin-client-page-prev">‹</button><strong>${esc(state.adminClientPage || 1)}</strong><button type="button" data-action="admin-client-page-next">›</button></div><label>Rows per page:<select data-admin-client-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="20" ${per === 20 ? 'selected' : ''}>20</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
+}
+function adminClientDetailRail() {
+  const client = selectedAdminClient();
+  if (!client) return `<aside class="admin-client-detail-rail"><section class="panel panel-pad admin-client-detail-card"><div class="empty">Select a client.</div></section></aside>`;
+  const id = adminClientId(client);
+  const sites = adminClientProperties(client);
+  const reqs = adminClientRequests(client);
+  const reports = adminClientReports(client);
+  const services = adminClientServices(client);
+  const type = adminClientType(client);
+  return `<aside class="admin-client-detail-rail"><section class="panel panel-pad admin-client-detail-card">
+    <button type="button" class="admin-client-rail-close" data-action="clear-admin-client">×</button>
+    <div class="admin-client-detail-head">
+      ${adminClientLogoBlock(client, 'large')}
+      <div><h2>${esc(adminClientName(client))}</h2>${adminClientStatusBadge(client)}</div>
+    </div>
+    <nav class="admin-client-detail-tabs"><button class="active">Overview</button><button>Sites (${esc(sites.length)})</button><button>Contracts (${esc(adminClientContractStatus(client) === 'active' ? 1 : 0)})</button><button>Notes</button></nav>
+    <dl class="admin-client-info-list">
+      <dt>Primary Contact</dt><dd>${esc(adminClientContactName(client))}</dd>
+      <dt>Email</dt><dd>${esc(adminClientEmail(client))}</dd>
+      <dt>Phone</dt><dd>${esc(adminClientPhone(client))}</dd>
+      <dt>Client Type</dt><dd>${esc(type)}</dd>
+      <dt>Region</dt><dd>${esc(adminClientRegion(client))}</dd>
+      <dt>Account Manager</dt><dd>${esc(adminClientAccountManager(client))}</dd>
+      <dt>Date Added</dt><dd>${esc(fmtDate(client.created_at || client.approved_at))}</dd>
+    </dl>
+    <section class="admin-client-revenue-card"><span>Monthly Revenue</span><strong>${esc(adminCurrency(adminClientMonthlyRevenue(client)))}</strong></section>
+    <section class="admin-client-services-card"><h3>Service Details</h3><div>${services.map(svc => `<span>${esc(svc)}</span>`).join('')}</div></section>
+    <section class="admin-client-mini-stats"><div><strong>${esc(sites.length)}</strong><span>Sites</span></div><div><strong>${esc(reqs.length)}</strong><span>Requests</span></div><div><strong>${esc(reports.length)}</strong><span>Reports</span></div></section>
+    <button type="button" class="primary-button wide" data-action="view-admin-client" data-client-id="${esc(id)}">View Full Profile ↗</button>
+    <button type="button" class="ghost-button wide" data-action="edit-admin-client" data-client-id="${esc(id)}">✎ Edit Client</button>
+  </section></aside>`;
+}
+function adminClientsHeader() {
+  return `<header class="dashboard-header admin-clients-header"><div class="title-block"><h1>Clients</h1><p>Manage client accounts, contracts, sites, and service details.</p></div><div class="admin-clients-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="admin-client-search"><input type="search" placeholder="Search clients..." value="${esc(state.adminClientSearch || '')}" data-admin-client-search><b>⌕</b></label><button type="button" data-action="admin-client-clear-filters">⌁ Filters</button><button type="button" class="primary-button" data-action="admin-client-add">＋ Add Client</button></div></header>`;
+}
+function adminClientsCommandCenterView() {
+  return `<div class="dashboard admin-clients-shell">
+    ${adminClientsHeader()}
+    ${adminClientsKpiRow()}
+    <section class="admin-clients-layout">
+      <main class="admin-clients-main panel">
+        ${adminClientsTabs()}
+        ${adminClientFilterBar()}
+        ${adminClientsTable()}
+        ${adminClientsPagination()}
+      </main>
+      ${adminClientDetailRail()}
+    </section>
+  </div>`;
+}
+async function adminClientRefresh() {
+  await loadData();
+  render();
+  toast('Clients refreshed.', 'success');
+}
+
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -6567,7 +6946,7 @@ function renderRoleView() {
     if (state.view === 'scheduled-queue') return scheduledQueueView();
     if (state.view === 'guards') return guardsCommandCenterView();
     if (state.view === 'guard-approvals') return guardApprovalsCommandCenterView();
-    if (state.view === 'clients') return cardsView('Clients', 'Approved client roster.', state.clients);
+    if (state.view === 'clients') return adminClientsCommandCenterView();
     if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
     if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
     if (state.view === 'report-builder') return tableView('Report Builder', 'Completed patrols ready for reports.', completedRequests());
@@ -7163,6 +7542,73 @@ document.addEventListener('click', async event => {
       toast('Mini live-location control selected.', 'success');
       return;
     }
+    if (button.dataset.adminClientTab) {
+      state.adminClientTab = button.dataset.adminClientTab || 'all';
+      state.adminClientPage = 1;
+      state.selectedAdminClientId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'select-admin-client') {
+      state.selectedAdminClientId = button.dataset.clientId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'clear-admin-client') {
+      state.selectedAdminClientId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'admin-client-page-prev') {
+      state.adminClientPage = Math.max(1, (state.adminClientPage || 1) - 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'admin-client-page-next') {
+      const maxPage = Math.max(1, Math.ceil(filteredAdminClients().length / Number(state.adminClientPerPage || 10)));
+      state.adminClientPage = Math.min(maxPage, (state.adminClientPage || 1) + 1);
+      render();
+      return;
+    }
+    if (button.dataset.action === 'admin-client-clear-filters') {
+      state.adminClientTab = 'all';
+      state.adminClientSearch = '';
+      state.adminClientFilters = { status: 'all', type: 'all', service: 'all', region: 'all', sort: 'newest' };
+      state.adminClientPage = 1;
+      state.selectedAdminClientId = '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'admin-client-add') {
+      toast('Add Client workflow selected. Full client creation modal is ready for the next form build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'view-admin-client') {
+      state.selectedAdminClientId = button.dataset.clientId || state.selectedAdminClientId;
+      render();
+      toast('Client profile selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'edit-admin-client') {
+      state.selectedAdminClientId = button.dataset.clientId || state.selectedAdminClientId;
+      render();
+      toast('Edit Client workflow selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'admin-client-menu') {
+      state.selectedAdminClientId = button.dataset.clientId || state.selectedAdminClientId;
+      render();
+      toast('Client action menu selected.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'admin-client-export') {
+      toast('Client export queued for the next data export build.', 'success');
+      return;
+    }
+    if (button.dataset.action === 'admin-client-columns') {
+      toast('Column controls selected.', 'success');
+      return;
+    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -7450,6 +7896,13 @@ document.addEventListener('submit', async event => {
 
 document.addEventListener('input', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-admin-client-search')) {
+    state.adminClientSearch = input.value || '';
+    state.adminClientPage = 1;
+    state.selectedAdminClientId = '';
+    render();
+    return;
+  }
 
   if (input && input.hasAttribute('data-guard-approval-search')) {
     state.guardApprovalSearch = input.value || '';
@@ -7612,6 +8065,27 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
+  if (input && input.hasAttribute('data-admin-client-search')) {
+    state.adminClientSearch = input.value || '';
+    state.adminClientPage = 1;
+    state.selectedAdminClientId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-admin-client-filter')) {
+    const key = input.dataset.adminClientFilter;
+    state.adminClientFilters = { ...(state.adminClientFilters || {}), [key]: input.value || 'all' };
+    state.adminClientPage = 1;
+    state.selectedAdminClientId = '';
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-admin-client-per-page')) {
+    state.adminClientPerPage = Number(input.value || 10);
+    state.adminClientPage = 1;
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-guards-search')) {
     state.guardsSearch = input.value || '';
     state.guardsPage = 1;

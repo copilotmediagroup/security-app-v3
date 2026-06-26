@@ -4962,7 +4962,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.57 Settings Page Redesign */
+/* v3.0.58 Settings Page Redesign */
 .settings-shell { gap: 18px; padding-bottom: 110px; }
 .settings-tabs {
   display:grid;
@@ -5053,7 +5053,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 @media (max-width:1100px){ .settings-tabs{ grid-template-columns:repeat(3,minmax(0,1fr)); } .settings-profile-grid,.settings-form-grid,.settings-password-grid,.settings-pref-grid,.settings-rail{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .settings-tabs{ grid-template-columns:1fr; } .settings-section-head{ flex-direction:column; } .settings-placeholder-grid{ grid-template-columns:1fr; } }
 
-/* v3.0.57 Dispatch map blueprint fix */
+/* v3.0.58 Dispatch map blueprint fix */
 .dispatch-leaflet-wrap {
   position: relative;
   overflow: hidden;
@@ -5128,7 +5128,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   box-shadow: 0 0 0 10px rgba(255,69,101,.16),0 0 28px rgba(255,69,101,.72);
 }
 
-/* v3.0.57 Dispatch online guard filter + default map button */
+/* v3.0.58 Dispatch online guard filter + default map button */
 .dispatch-map-default-btn {
   position: absolute;
   top: 10px;
@@ -5151,7 +5151,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   color: #fff;
 }
 
-/* v3.0.57 Dispatch Board Command Center */
+/* v3.0.58 Dispatch Board Command Center */
 .dispatch-board-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -5667,7 +5667,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Dispatch Live GPS Command Center */
+/* v3.0.58 Dispatch Live GPS Command Center */
 .live-gps-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6187,7 +6187,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Pending Dispatch Command Center */
+/* v3.0.58 Pending Dispatch Command Center */
 .pending-dispatch-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -6779,7 +6779,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Dispatch route + distance/ETA fix */
+/* v3.0.58 Dispatch route + distance/ETA fix */
 .guard302-map-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -6836,7 +6836,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Scheduled Queue Command Center */
+/* v3.0.58 Scheduled Queue Command Center */
 .scheduled-queue-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -7584,7 +7584,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.57 Scheduled Queue data + layout polish */
+/* v3.0.58 Scheduled Queue data + layout polish */
 .scheduled-queue-shell {
   overflow-x: hidden;
 }
@@ -7784,7 +7784,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Guards Data + Layout Fix */
+/* v3.0.58 Guards Data + Layout Fix */
 .guards-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -8433,7 +8433,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Guards data + layout fix */
+/* v3.0.58 Guards data + layout fix */
 .guards-layout {
   grid-template-columns: minmax(0, 1fr) 320px !important;
   gap: 14px !important;
@@ -8621,7 +8621,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   }
 }
 
-/* v3.0.57 Guard Approvals Command Center */
+/* v3.0.58 Guard Approvals Command Center */
 .guard-approvals-shell {
   gap: 16px;
   padding-bottom: 110px;
@@ -9045,7 +9045,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   .approval-detail-split { grid-template-columns: 1fr; }
 }
 
-/* v3.0.57 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
+/* v3.0.58 Global Sidebar Redesign — applies to Dispatch, Guard, and Client */
 :root {
   --global-sidebar-width: 286px;
 }
@@ -9365,7 +9365,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 
 
-/* v3.0.57 Client login + Dispatch sidebar proportion fix */
+/* v3.0.58 Client login + Dispatch sidebar proportion fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   --admin-sidebar-scale: .92;
   padding: 16px 12px 14px !important;
@@ -9472,7 +9472,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   font-size: 10px !important;
 }
 
-/* v3.0.57 Dispatch sidebar profile overlap fix */
+/* v3.0.58 Dispatch sidebar profile overlap fix */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   align-content: stretch !important;
@@ -9551,7 +9551,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 2 !important;
 }
 
-/* v3.0.57 Dispatch sidebar overlap fix - hard separation between profile and nav */
+/* v3.0.58 Dispatch sidebar overlap fix - hard separation between profile and nav */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   gap: 14px !important;
@@ -9636,7 +9636,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   flex-shrink: 0 !important;
 }
 
-/* v3.0.57 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
+/* v3.0.58 Dispatch sidebar hard separation — profile can no longer touch Dashboard */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   grid-template-rows: auto auto minmax(0, 1fr) auto !important;
   row-gap: 0 !important;
@@ -9728,7 +9728,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   z-index: 3 !important;
 }
 
-/* v3.0.57 Sidebar profile/nav stack fix
+/* v3.0.58 Sidebar profile/nav stack fix
    The Dispatch profile now lives inside a fixed reserved zone, so Dashboard cannot render underneath it. */
 .sidebar.global-sidebar-redesign.sidebar-admin {
   display: grid !important;
@@ -9833,4 +9833,576 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .sidebar.global-sidebar-redesign:not(.sidebar-admin) .profile-zone {
   display: contents;
+}
+
+/* v3.0.58 Clients Command Center */
+.admin-clients-shell {
+  gap: 16px;
+  padding-bottom: 110px;
+}
+.admin-clients-header {
+  min-height: 76px;
+}
+.admin-clients-header h1 {
+  font-size: 27px;
+}
+.admin-clients-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-client-search {
+  min-width: 290px;
+  height: 42px;
+  display: grid;
+  grid-template-columns: 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+}
+.admin-client-search input {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #edf7ff;
+  font-weight: 850;
+}
+.admin-client-search b {
+  color: #7f96ae;
+}
+.admin-clients-header-actions > button:not(.primary-button) {
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 14px;
+  font-weight: 950;
+}
+.admin-clients-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+.admin-client-kpi {
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.admin-client-kpi-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 22px;
+  font-weight: 1000;
+}
+.admin-client-kpi span {
+  color: #a9bdd6;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 11px;
+  font-weight: 950;
+}
+.admin-client-kpi strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+}
+.admin-client-kpi small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-client-kpi.blue .admin-client-kpi-icon { color:#7fc4ff; background:rgba(46,125,255,.16); box-shadow:0 0 28px rgba(46,125,255,.12); }
+.admin-client-kpi.green .admin-client-kpi-icon { color:#87f0ad; background:rgba(55,220,114,.16); box-shadow:0 0 28px rgba(55,220,114,.12); }
+.admin-client-kpi.purple .admin-client-kpi-icon { color:#c59aff; background:rgba(176,92,255,.15); box-shadow:0 0 28px rgba(176,92,255,.10); }
+.admin-client-kpi.orange .admin-client-kpi-icon { color:#ffb66e; background:rgba(255,121,31,.14); box-shadow:0 0 28px rgba(255,121,31,.10); }
+.admin-client-kpi.cyan .admin-client-kpi-icon { color:#65e9ff; background:rgba(0,198,255,.13); box-shadow:0 0 28px rgba(0,198,255,.10); }
+.admin-client-kpi.red .admin-client-kpi-icon { color:#ff9aa8; background:rgba(190,55,69,.17); box-shadow:0 0 28px rgba(190,55,69,.10); }
+
+.admin-clients-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  align-items: start;
+}
+.admin-clients-main,
+.admin-client-detail-card {
+  border-radius: 16px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: linear-gradient(180deg, rgba(7,18,32,.94), rgba(4,13,24,.985));
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  overflow: hidden;
+}
+.admin-client-tabs {
+  min-height: 64px;
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+  overflow-x: auto;
+}
+.admin-client-tabs button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #a9bdd6;
+  font-weight: 1000;
+  padding: 0 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-client-tabs button.active {
+  color: #58a9ff;
+  border-bottom-color: #2f83ff;
+  background: rgba(46,125,255,.10);
+  border-radius: 10px 10px 0 0;
+}
+.admin-client-tabs b {
+  min-width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(46,125,255,.20);
+  color: #9ecbff;
+  font-size: 12px;
+}
+.admin-client-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(132px, 1fr)) 42px 104px;
+  gap: 10px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.admin-client-filter-bar select,
+.admin-client-filter-bar button,
+.admin-clients-footer select {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  padding: 0 12px;
+  font-weight: 900;
+}
+.admin-client-filter-bar button {
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-clients-table-wrap {
+  overflow-x: hidden;
+}
+.admin-clients-head,
+.admin-client-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.35fr) 126px minmax(150px, .95fr) 70px minmax(130px, .9fr) 108px 112px 116px;
+  gap: 12px;
+  align-items: center;
+  padding: 0 14px;
+}
+.admin-clients-head {
+  min-height: 46px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 10px;
+  font-weight: 1000;
+  border-bottom: 1px solid rgba(113,169,232,.08);
+}
+.admin-client-row {
+  min-height: 76px;
+  border-bottom: 1px solid rgba(113,169,232,.07);
+}
+.admin-client-row:hover,
+.admin-client-row.selected {
+  background: rgba(12,34,62,.38);
+}
+.admin-client-row.selected {
+  box-shadow: inset 0 0 0 1px rgba(46,125,255,.55);
+}
+.admin-client-main-cell {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.admin-client-main-cell strong,
+.admin-client-contact strong,
+.admin-client-sites strong,
+.admin-client-revenue strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-client-main-cell small,
+.admin-client-contact small,
+.admin-client-sites small,
+.admin-client-contract-cell small,
+.admin-client-revenue small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 12px;
+}
+.admin-client-logo {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  font-weight: 1000;
+  border: 1px solid rgba(113,169,232,.14);
+  background: linear-gradient(180deg, rgba(42,84,140,.48), rgba(9,28,50,.78));
+}
+.admin-client-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin-client-logo.table {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+.admin-client-logo.large {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  font-size: 22px;
+}
+.admin-client-logo.commercial { background: linear-gradient(180deg, #d71920, #9b1018); }
+.admin-client-logo.healthcare { background: linear-gradient(180deg, #0d83ff, #1250c8); }
+.admin-client-logo.government { background: linear-gradient(180deg, #355478, #172b45); }
+.admin-client-logo.construction { background: linear-gradient(180deg, #ffb53d, #93520e); }
+.admin-client-logo.retail { background: linear-gradient(180deg, #8f5cff, #4920a2); }
+.admin-client-logo.industrial { background: linear-gradient(180deg, #28be72, #116a42); }
+.admin-client-logo.office { background: linear-gradient(180deg, #2e7dff, #133e9c); }
+.admin-client-type {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  padding: 0 9px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.admin-client-type.commercial { color:#79c1ff; background:rgba(46,125,255,.16); border:1px solid rgba(46,125,255,.25); }
+.admin-client-type.healthcare { color:#c59aff; background:rgba(176,92,255,.16); border:1px solid rgba(176,92,255,.25); }
+.admin-client-type.government { color:#71f0a2; background:rgba(55,220,114,.14); border:1px solid rgba(55,220,114,.22); }
+.admin-client-type.construction { color:#ffd47d; background:rgba(255,181,61,.16); border:1px solid rgba(255,181,61,.22); }
+.admin-client-type.retail { color:#c59aff; background:rgba(176,92,255,.16); border:1px solid rgba(176,92,255,.25); }
+.admin-client-type.industrial { color:#71f0a2; background:rgba(55,220,114,.14); border:1px solid rgba(55,220,114,.22); }
+.admin-client-type.office { color:#79c1ff; background:rgba(46,125,255,.16); border:1px solid rgba(46,125,255,.25); }
+.admin-client-status {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.admin-client-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.admin-client-status.active { color:#71f0a2; }
+.admin-client-status.inactive { color:#9baabe; }
+.admin-client-status.prospect { color:#79c1ff; }
+.admin-client-status.on_hold { color:#ffd47d; }
+.admin-client-contract {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 0 9px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 1000;
+}
+.admin-client-contract.active { color:#71f0a2; background:rgba(55,220,114,.14); }
+.admin-client-contract.expiring { color:#ffb53d; background:rgba(255,181,61,.14); }
+.admin-client-contract.past_due { color:#ff9aa8; background:rgba(190,55,69,.16); }
+.admin-client-contract.on_hold { color:#a9bdd6; background:rgba(113,169,232,.10); }
+.admin-client-contract.inactive,
+.admin-client-contract.prospect { color:#a9bdd6; background:rgba(113,169,232,.10); }
+.admin-client-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.admin-client-row-actions button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+  cursor: pointer;
+  font-weight: 1000;
+}
+.admin-clients-empty {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.admin-clients-footer {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 14px;
+  color: var(--muted);
+  border-top: 1px solid rgba(113,169,232,.08);
+  font-size: 13px;
+}
+.admin-client-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-client-pagination button,
+.admin-client-pagination strong {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.admin-client-pagination button {
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+}
+.admin-client-pagination strong {
+  background: linear-gradient(180deg, #367bff, #1d5fea);
+  color: #fff;
+}
+.admin-clients-footer label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-client-detail-rail {
+  position: sticky;
+  top: 16px;
+}
+.admin-client-detail-card {
+  position: relative;
+  padding: 16px !important;
+}
+.admin-client-rail-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(113,169,232,.14);
+  background: rgba(7,18,32,.84);
+  color: #dcecff;
+}
+.admin-client-detail-head {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding-right: 32px;
+}
+.admin-client-detail-head h2 {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 22px;
+  letter-spacing: -.04em;
+}
+.admin-client-detail-tabs {
+  display: flex;
+  gap: 18px;
+  margin: 16px 0 14px;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.admin-client-detail-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #93a8bd;
+  font-weight: 900;
+  cursor: pointer;
+}
+.admin-client-detail-tabs button.active {
+  color: #58a9ff;
+  border-bottom-color: #2f83ff;
+}
+.admin-client-info-list {
+  display: grid;
+  grid-template-columns: .85fr 1fr;
+  gap: 12px 14px;
+  margin: 0;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.admin-client-info-list dt {
+  color: #8fa4bb;
+  font-size: 12px;
+}
+.admin-client-info-list dd {
+  margin: 0;
+  color: #edf7ff;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.admin-client-revenue-card {
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(113,169,232,.10);
+}
+.admin-client-revenue-card span {
+  color: #fff;
+  font-weight: 950;
+}
+.admin-client-revenue-card strong {
+  color: #71f0a2;
+  font-size: 22px;
+}
+.admin-client-services-card {
+  padding: 14px 0;
+}
+.admin-client-services-card h3 {
+  margin: 0 0 12px;
+  color: #fff;
+  font-size: 15px;
+}
+.admin-client-services-card div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.admin-client-services-card span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9px;
+  padding: 0 10px;
+  color: #cce4ff;
+  background: rgba(113,169,232,.12);
+  font-size: 12px;
+  font-weight: 900;
+}
+.admin-client-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.admin-client-mini-stats div {
+  border: 1px solid rgba(113,169,232,.10);
+  border-radius: 12px;
+  background: rgba(7,18,32,.56);
+  padding: 10px;
+  text-align: center;
+}
+.admin-client-mini-stats strong {
+  display: block;
+  color: #fff;
+  font-size: 19px;
+}
+.admin-client-mini-stats span {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: 11px;
+}
+.admin-client-detail-card .wide {
+  width: 100%;
+  margin-top: 10px;
+}
+@media (max-width: 1600px) {
+  .admin-clients-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .admin-clients-layout {
+    grid-template-columns: 1fr;
+  }
+  .admin-client-detail-rail {
+    position: static;
+  }
+}
+@media (max-width: 1200px) {
+  .admin-clients-head,
+  .admin-client-row {
+    grid-template-columns: minmax(180px, 1.25fr) 118px minmax(145px, .9fr) 60px minmax(120px, .85fr) 94px 100px 106px;
+    gap: 9px;
+  }
+  .admin-client-filter-bar {
+    grid-template-columns: repeat(3, minmax(132px, 1fr));
+  }
+}
+@media (max-width: 850px) {
+  .admin-clients-header-actions,
+  .admin-clients-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-client-search {
+    min-width: 0;
+  }
+  .admin-clients-kpis,
+  .admin-client-filter-bar {
+    grid-template-columns: 1fr;
+  }
+  .admin-clients-table-wrap {
+    overflow-x: auto;
+  }
+  .admin-clients-head,
+  .admin-client-row {
+    min-width: 960px;
+  }
 }

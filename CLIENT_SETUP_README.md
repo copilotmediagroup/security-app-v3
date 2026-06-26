@@ -1,11 +1,52 @@
-# Co Pilot Security v3.0.57 — Sidebar Profile Nav Stack Fix
+# Co Pilot Security v3.0.58 — Clients Command Center
 
 ## What changed
-- Fixed the Dispatch/Admin sidebar overlap at the structure level.
-- Added an `admin-profile-zone` wrapper around the Dispatch profile card.
-- The sidebar grid now reserves a real row for the profile zone.
-- The Dashboard button starts in the nav row below the profile zone.
-- Guard and Client sidebar behavior are preserved.
+The Dispatch/Admin `Clients` page was rebuilt into a modern command-center client management page.
 
-## SQL
-No new SQL required.
+## New Clients page sections
+- Header:
+  - System Operational
+  - Search clients
+  - Filters button
+  - Add Client button
+- KPI row:
+  - Total Clients
+  - Active Clients
+  - Active Contracts
+  - Monthly Revenue
+  - Contracts Expiring
+  - Past Due
+- Main client table:
+  - Client
+  - Client Type
+  - Contact
+  - Sites
+  - Contract
+  - Status
+  - Revenue
+  - Actions
+- Right detail rail:
+  - Client logo/profile
+  - Overview / Sites / Contracts / Notes tabs
+  - Primary contact
+  - Email
+  - Phone
+  - Client type
+  - Region
+  - Account manager
+  - Date added
+  - Monthly revenue
+  - Service tags
+  - Site/request/report stats
+  - View Full Profile
+  - Edit Client
+
+## Functional behavior
+- Search filters the client table.
+- Tabs filter All, Active, Inactive, Prospects, On Hold.
+- Dropdown filters update the table.
+- Clear Filters resets the page.
+- Selecting a client updates the right detail rail.
+- Pagination and rows per page are wired.
+- Add Client, Export, Columns, Edit, View, and Menu actions are placeholder workflows for the next build.
+- No new SQL required.

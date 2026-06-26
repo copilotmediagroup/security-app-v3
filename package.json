@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-sidebar-profile-nav-stack-fix",
-  "version": "3.0.57",
+  "name": "co-pilot-security-clients-command-center",
+  "version": "3.0.58",
   "private": true,
-  "description": "Fixes Dispatch/Admin sidebar by reserving a real profile zone above nav so Dashboard cannot render under the profile.",
+  "description": "Rebuilds the Dispatch/Admin Clients page into a command-center client management page with KPIs, filters, client table, and detail rail.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

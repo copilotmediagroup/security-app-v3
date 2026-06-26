@@ -1,14 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.57",
-  "buildName": "SIDEBAR PROFILE NAV STACK FIX",
-  "type": "sidebar-profile-nav-stack-fix",
+  "version": "3.0.58",
+  "buildName": "CLIENTS COMMAND CENTER",
+  "type": "clients-command-center",
   "sql_required": false,
   "features": [
-    "Changed Dispatch sidebar DOM so profile card is wrapped in a reserved admin-profile-zone",
-    "Dispatch nav list now starts in a separate grid row below the profile zone",
-    "Dashboard button cannot render underneath the profile card",
-    "Guard and Client sidebar behavior preserved",
+    "Rebuilt Dispatch/Admin Clients page using the generated command-center blueprint",
+    "Added KPI row for total clients, active clients, active contracts, monthly revenue, expiring contracts, and past due clients",
+    "Added tabs: All Clients, Active, Inactive, Prospects, On Hold",
+    "Added filters for status, client type, service type, region, and sorting",
+    "Added client roster table with logo/avatar, type, contact, sites, contract, status, revenue, and actions",
+    "Added selected client right rail with profile, tabs, contact info, revenue, services, site/request/report stats, and profile/edit actions",
+    "Added search, pagination, rows-per-page, clear filters, add client placeholder, columns placeholder, and export placeholder",
+    "Preserved global sidebar fix from v3.0.57",
     "No new SQL required"
   ]
 }
