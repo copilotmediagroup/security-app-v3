@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T12-18-v3064';
+const CP_DEV_CACHE_BUST = '2026-06-26T13-05-v3065';
 const BUILD = {
-  version: '3.0.64',
-  label: 'v3.0.64 SERVER VERSION QA FIX'
+  version: '3.0.65',
+  label: 'v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -532,11 +532,93 @@ function statusChip(status = 'pending_dispatch') {
   return `<span style="display:inline-flex;align-items:center;border:1px solid ${color}55;background:${color}22;color:#fff;border-radius:999px;padding:6px 10px;font-weight:900;font-size:12px;">${esc(statusText(s))}</span>`;
 }
 
+
+/* v3.0.65 Global Action Lock + Workflow QA helpers */
+function workflowActionStorageKey() {
+  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
+  return `cp_security_workflow_action_locks_${who}`;
+}
+function readWorkflowActionLocks() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(workflowActionStorageKey()) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeWorkflowActionLocks(map = {}) {
+  try { localStorage.setItem(workflowActionStorageKey(), JSON.stringify(map)); } catch {}
+}
+function workflowActionKey(type = '', id = '') {
+  return `${String(type || 'action').trim()}::${String(id || '').trim()}`;
+}
+function workflowActionLock(type = '', id = '') {
+  return readWorkflowActionLocks()[workflowActionKey(type, id)] || null;
+}
+function saveWorkflowActionLock(type = '', id = '', patch = {}) {
+  if (!id) return null;
+  const map = readWorkflowActionLocks();
+  const key = workflowActionKey(type, id);
+  map[key] = { ...(map[key] || {}), ...patch, type, id: String(id), updated_at: new Date().toISOString() };
+  writeWorkflowActionLocks(map);
+  return map[key];
+}
+function workflowFinishedPanel(title = 'Finished', message = 'This action is complete.', tone = 'success') {
+  return `<section class="workflow-finished-panel ${esc(tone)}"><strong>${esc(title)}</strong><p>${esc(message)}</p></section>`;
+}
+function setActionButtonBusy(button, label = 'Working...') {
+  if (!button) return;
+  button.dataset.originalText = button.dataset.originalText || button.textContent || '';
+  button.dataset.busy = '1';
+  button.disabled = true;
+  button.classList.add('is-busy');
+  if (label) button.textContent = label;
+}
+function clearActionButtonBusy(button) {
+  if (!button) return;
+  button.disabled = false;
+  button.dataset.busy = '0';
+  button.classList.remove('is-busy');
+  if (button.dataset.originalText) button.textContent = button.dataset.originalText;
+}
+function guardApprovalFinished(app = {}) {
+  return ['approved', 'rejected'].includes(typeof approvalStatus === 'function' ? approvalStatus(app) : String(app.status || '').toLowerCase());
+}
+function proofReviewFinished(row = {}) {
+  return ['approved', 'rejected'].includes(typeof proofStatus === 'function' ? proofStatus(row) : String(row.status || '').toLowerCase());
+}
+function publishedReportForRequestId(requestId = '') {
+  const id = String(requestId || '');
+  if (!id) return null;
+  const records = [
+    ...(state.patrolReports || []),
+    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [])
+  ];
+  return records.find(report => {
+    const rid = String(report.request_id || report.patrol_request_id || '');
+    if (rid !== id) return false;
+    const status = typeof reportStatus === 'function' ? reportStatus(report) : String(report.status || report.report_status || '').toLowerCase();
+    return status === 'published' || Boolean(report.released_at || report.published_at || report.publishedAt);
+  }) || null;
+}
+function requestHasPublishedReport(requestId = '') { return Boolean(publishedReportForRequestId(requestId)); }
+function proofLockedByPublishedReport(row = {}) {
+  const requestId = row.request?.id || proofRequestIdValue(row.proof || row) || row.request_id || '';
+  return requestHasPublishedReport(requestId);
+}
+
 function propertyById(id) { return state.properties.find(item => String(item.id) === String(id)) || {}; }
 function guardById(id) { return state.guards.find(item => String(item.id) === String(id)) || {}; }
 function clientById(id) { return state.clients.find(item => String(item.id) === String(id)) || {}; }
 function requestById(id) { return state.patrolRequests.find(item => String(item.id) === String(id)) || null; }
-function reportByRequestId(id) { return state.patrolReports.find(item => String(item.request_id) === String(id)) || null; }
+function reportByRequestId(id) {
+  const requestId = String(id || '');
+  const rows = [
+    ...(state.patrolReports || []),
+    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [])
+  ];
+  return rows.find(item => String(item.request_id || item.patrol_request_id || '') === requestId) || null;
+}
 function proofRequestIdValue(item = {}) {
   return item.request_id || item.patrol_request_id || item.patrolRequestId || item.requestId || item.request?.id || '';
 }
@@ -656,7 +738,7 @@ function scheduledRequests() {
   return (state.patrolRequests || []).filter(isScheduledQueueRequest);
 }
 function proofWaiting() { return state.proofItems.filter(p => !p.report_selected); }
-function reportsReady() { return completedRequests().filter(r => !reportByRequestId(r.id)?.released_at); }
+function reportsReady() { return completedRequests().filter(r => !requestHasPublishedReport(r.id)); }
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
 function clientApprovals() { return state.clientSignups.filter(c => !c.status || String(c.status) === 'pending'); }
 function unreadMessagesCount() { return state.messageThreads.filter(t => Number(t.unread_count || 0) > 0).length; }
@@ -1142,28 +1224,65 @@ async function logout() {
 }
 
 async function approveSignup(kind, id) {
-  if (kind === 'guard') {
-    const pending = state.guardSignups.find(g => String(g.id) === String(id)) || {};
-    const select = document.querySelector(`select[data-guard-rank="${String(id).replace(/"/g,'&quot;')}"]`);
-    const chosenRank = select?.value || 'Guard';
-    saveGuardRank({ id, email: pending.email, signup_id: id }, chosenRank);
+  if (!id) throw new Error('Approval record missing.');
+  const pendingBefore = kind === 'guard'
+    ? (state.guardSignups.find(g => String(g.id) === String(id)) || {})
+    : (state.clientSignups.find(c => String(c.id) === String(id)) || {});
+  const prior = workflowActionLock(`${kind}-signup`, id);
+  if (prior?.status === 'approved') {
+    toast(`${kind === 'guard' ? 'Guard' : 'Client'} is already approved.`, 'success');
+    return;
   }
+  if (kind === 'guard') {
+    const select = document.querySelector(`select[data-guard-rank="${String(id).replace(/"/g,'&quot;')}"]`);
+    const chosenRank = select?.value || guardRankFor(pendingBefore) || 'Guard';
+    saveGuardRank({ id, email: pendingBefore.email, signup_id: id }, chosenRank);
+    saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
+  }
+  saveWorkflowActionLock(`${kind}-signup`, id, { status: 'approved', finished_at: new Date().toISOString() });
   await supabase.rpc(kind === 'guard' ? 'cp_approve_guard_signup' : 'cp_approve_client_signup', { p_signup_id: id });
   await loadData();
   if (kind === 'guard') {
-    const pending = state.guardSignups.find(g => String(g.id) === String(id));
-    const approved = (state.guards || []).find(g => pending?.email && String(g.email || '').trim().toLowerCase() === String(pending.email || '').trim().toLowerCase());
-    if (approved) saveGuardRank(approved, guardRankFor({ id, email: pending?.email, signup_id: id }));
+    const email = String(pendingBefore.email || '').trim().toLowerCase();
+    const approved = (state.guards || []).find(g => email && String(g.email || '').trim().toLowerCase() === email) || (state.guards || [])[0];
+    if (approved) {
+      saveGuardRank(approved, guardRankFor({ id, email: pendingBefore.email, signup_id: id }));
+      state.selectedGuardId = approved.id || '';
+    }
+    state.guardApprovalTab = 'all';
+    state.selectedGuardApprovalId = '';
+    state.view = 'guards';
+  } else {
+    const email = String(pendingBefore.email || '').trim().toLowerCase();
+    const client = (state.clients || []).find(c => email && String(c.email || '').trim().toLowerCase() === email) || (state.clients || [])[0];
+    if (client) state.selectedAdminClientId = client.id || '';
+    state.view = 'clients';
   }
   render();
-  toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved.`, 'success');
+  toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved and moved to the active ${kind === 'guard' ? 'guard roster' : 'client list'}.`, 'success');
 }
 
 async function rejectSignup(kind, id) {
+  if (!id) throw new Error('Rejection record missing.');
+  const prior = workflowActionLock(`${kind}-signup`, id);
+  if (prior?.status === 'rejected') {
+    toast(`${kind === 'guard' ? 'Guard' : 'Client'} is already rejected.`, 'success');
+    return;
+  }
+  if (kind === 'guard') saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
+  saveWorkflowActionLock(`${kind}-signup`, id, { status: 'rejected', finished_at: new Date().toISOString() });
   await supabase.rpc(kind === 'guard' ? 'cp_reject_guard_signup' : 'cp_reject_client_signup', { p_signup_id: id });
   await loadData();
+  if (kind === 'guard') {
+    state.view = 'guard-approvals';
+    state.guardApprovalTab = 'rejected';
+    state.selectedGuardApprovalId = id;
+  } else {
+    state.view = 'clients';
+    state.selectedAdminClientId = '';
+  }
   render();
-  toast(`${kind === 'guard' ? 'Guard' : 'Client'} rejected.`, 'success');
+  toast(`${kind === 'guard' ? 'Guard application' : 'Client application'} rejected and locked.`, 'success');
 }
 
 
@@ -1225,22 +1344,41 @@ async function uploadProof(form) {
 async function assignPatrolNow(requestId) {
   const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
   if (!req) throw new Error('Pending patrol request not found. Refresh Dispatch and try again.');
-  if (String(req.status || '') === 'completed') throw new Error('Completed jobs cannot be assigned.');
+  const currentStatus = String(req.status || '').toLowerCase();
+  if (currentStatus === 'completed') throw new Error('Completed jobs cannot be assigned.');
+  if (!['', 'pending', 'pending_dispatch', 'new', 'requested'].includes(currentStatus)) {
+    state.selectedPendingRequestId = '';
+    state.view = ['assigned','accepted','in_progress'].includes(currentStatus) ? 'dispatch-board' : 'scheduled-queue';
+    render();
+    toast(`This request is already ${statusText(currentStatus)}.`, 'success');
+    return;
+  }
+  if (workflowActionLock('dispatch-assign', requestId)?.status === 'assigned') {
+    state.selectedPendingRequestId = '';
+    state.view = 'dispatch-board';
+    render();
+    toast('This patrol was already assigned.', 'success');
+    return;
+  }
   const guards = adminAssignableGuards();
   if (!guards.length) throw new Error('No approved active guards found. Approve or create a guard before assigning.');
   const select = document.querySelector(`select[data-assign-guard="${String(requestId).replace(/"/g, '&quot;')}"]`);
   const selectedGuardId = select?.value || guards[0]?.id || '';
   if (!selectedGuardId) throw new Error('Choose a guard before assigning.');
+  saveWorkflowActionLock('dispatch-assign', requestId, { status: 'assigning', guard_id: selectedGuardId });
   const result = await supabase.rpc('cp_admin_assign_patrol_request', {
     p_request_id: requestId,
     p_guard_id: selectedGuardId
   });
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
+  saveWorkflowActionLock('dispatch-assign', requestId, { status: 'assigned', guard_id: selectedGuardId, finished_at: new Date().toISOString() });
   await loadData();
-  state.view = ['dispatch-board','pending-dispatch'].includes(state.view) ? state.view : 'dashboard';
+  state.selectedPendingRequestId = '';
+  state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(x => String(x) !== String(requestId));
+  state.view = 'dispatch-board';
   render();
   const guardName = result.guard?.name || result.guard?.display_name || result.guard?.email || 'guard';
-  toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
+  toast(`${requestTitle(result.request || req)} assigned to ${guardName} and moved out of Pending Dispatch.`, 'success');
 }
 
 
@@ -6397,113 +6535,19 @@ function applicantMissingDocs(app = {}) {
   if (String(app.training_docs_complete || '').toLowerCase() === 'false') missing.push('Training Docs');
   return [...new Set(missing)];
 }
-function guardApprovalRows() { return guardApprovalBaseRows(); }
-function guardApprovalCounts() {
-  const apps = guardApprovalRows();
-  const today = new Date().toDateString();
-  return {
-    total: apps.length,
-    pending: apps.filter(a => approvalStatus(a) === 'pending').length,
-    approvedToday: apps.filter(a => approvalStatus(a) === 'approved' && new Date(a.approved_at || a.updated_at || a.created_at || Date.now()).toDateString() === today).length,
-    rejected: apps.filter(a => approvalStatus(a) === 'rejected').length,
-    interview: apps.filter(a => approvalStatus(a) === 'interview').length,
-    missingDocs: apps.filter(a => applicantMissingDocs(a).length > 0).length
-  };
-}
-function guardApprovalKpi(icon, label, value, subtext, tone = 'blue') {
-  return `<article class="approval-kpi ${esc(tone)}"><div class="approval-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
-}
-function guardApprovalKpiRow() {
-  const c = guardApprovalCounts();
-  return `<section class="guard-approvals-kpi-row">
-    ${guardApprovalKpi('▣','Total Applications',c.total,'All time','blue')}
-    ${guardApprovalKpi('◷','Pending Review',c.pending,'Requires attention','amber')}
-    ${guardApprovalKpi('✓','Approved Today',c.approvedToday,'Updated today','green')}
-    ${guardApprovalKpi('×','Rejected',c.rejected,'This week','red')}
-    ${guardApprovalKpi('♙','Interview Needed',c.interview,'Scheduled','purple')}
-    ${guardApprovalKpi('▤','Missing Docs',c.missingDocs,'Incomplete','orange')}
-  </section>`;
-}
-function guardApprovalTabButton(key, label, count) {
-  const active = (state.guardApprovalTab || 'all') === key;
-  return `<button type="button" class="${active ? 'active' : ''}" data-approval-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
-}
-function guardApprovalTabs() {
-  const rows = guardApprovalRows();
-  const counts = {
-    all: rows.length,
-    pending: rows.filter(a => approvalStatus(a) === 'pending').length,
-    interview: rows.filter(a => approvalStatus(a) === 'interview').length,
-    approved: rows.filter(a => approvalStatus(a) === 'approved').length,
-    rejected: rows.filter(a => approvalStatus(a) === 'rejected').length
-  };
-  return `<nav class="guard-approval-tabs">
-    ${guardApprovalTabButton('all','All Applications',counts.all)}
-    ${guardApprovalTabButton('pending','Pending',counts.pending)}
-    ${guardApprovalTabButton('interview','Interview',counts.interview)}
-    ${guardApprovalTabButton('approved','Approved',counts.approved)}
-    ${guardApprovalTabButton('rejected','Rejected',counts.rejected)}
-  </nav>`;
-}
-function guardApprovalFilterBar() {
-  const f = state.guardApprovalFilters || {};
-  return `<section class="guard-approval-filter-bar">
-    <select data-approval-filter="status"><option value="all">All Status</option><option value="pending" ${f.status==='pending'?'selected':''}>Pending</option><option value="interview" ${f.status==='interview'?'selected':''}>Needs Interview</option><option value="approved" ${f.status==='approved'?'selected':''}>Approved</option><option value="rejected" ${f.status==='rejected'?'selected':''}>Rejected</option><option value="missing_docs" ${f.status==='missing_docs'?'selected':''}>Missing Docs</option></select>
-    <select data-approval-filter="rank"><option value="all">All Ranks</option><option value="guard" ${f.rank==='guard'?'selected':''}>Guard</option><option value="officer" ${f.rank==='officer'?'selected':''}>Officer</option><option value="corporal" ${f.rank==='corporal'?'selected':''}>Corporal</option><option value="sergeant" ${f.rank==='sergeant'?'selected':''}>Sergeant</option><option value="supervisor" ${f.rank==='supervisor'?'selected':''}>Supervisor</option></select>
-    <select data-approval-filter="experience"><option value="all">All Experience</option><option value="0-1" ${f.experience==='0-1'?'selected':''}>0–1 Years</option><option value="2-4" ${f.experience==='2-4'?'selected':''}>2–4 Years</option><option value="5-plus" ${f.experience==='5-plus'?'selected':''}>5+ Years</option></select>
-    <select data-approval-filter="background"><option value="all">Background Check</option><option value="clear" ${f.background==='clear'?'selected':''}>Clear</option><option value="in_progress" ${f.background==='in_progress'?'selected':''}>In Progress</option><option value="issue" ${f.background==='issue'?'selected':''}>Issue Found</option></select>
-    <select data-approval-filter="sort"><option value="newest" ${f.sort==='newest'?'selected':''}>Sort: Newest</option><option value="oldest" ${f.sort==='oldest'?'selected':''}>Sort: Oldest</option><option value="priority" ${f.sort==='priority'?'selected':''}>Sort: Priority</option></select>
-    <button type="button" data-action="guard-approval-clear-filters">⌁ Filters</button>
-  </section>`;
-}
-function filteredGuardApprovals() {
-  let rows = guardApprovalRows();
-  const q = String(state.guardApprovalSearch || '').trim().toLowerCase();
-  const f = state.guardApprovalFilters || {};
-  const tab = state.guardApprovalTab || 'all';
-  if (tab !== 'all') rows = rows.filter(app => approvalStatus(app) === tab);
-  if (q) rows = rows.filter(app => [app.name, app.email, app.phone, app.application_number, approvalRank(app), app.city, app.state].join(' ').toLowerCase().includes(q));
-  if (f.status && f.status !== 'all') rows = rows.filter(app => approvalStatus(app) === f.status);
-  if (f.rank && f.rank !== 'all') rows = rows.filter(app => String(approvalRank(app)).toLowerCase() === f.rank);
-  if (f.background && f.background !== 'all') rows = rows.filter(app => approvalBackgroundStatus(app) === f.background);
-  if (f.experience && f.experience !== 'all') rows = rows.filter(app => {
-    const n = approvalExperienceYears(app);
-    if (n === null) return false;
-    if (f.experience === '0-1') return n <= 1;
-    if (f.experience === '2-4') return n >= 2 && n <= 4;
-    if (f.experience === '5-plus') return n >= 5;
-    return true;
-  });
-  const priority = { pending: 0, missing_docs: 1, interview: 2, rejected: 3, approved: 4 };
-  rows = rows.slice().sort((a,b) => {
-    if (f.sort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-    if (f.sort === 'priority') return (priority[approvalStatus(a)] ?? 9) - (priority[approvalStatus(b)] ?? 9);
-    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-  });
-  return rows;
-}
-function selectedGuardApproval() {
-  const rows = filteredGuardApprovals();
-  return rows.find(app => String(app.id) === String(state.selectedGuardApprovalId)) || rows[0] || null;
-}
-function approvalStatusBadge(app = {}) {
+function guardApprovalActionButtons(app = {}) {
   const status = approvalStatus(app);
-  const label = status === 'interview' ? 'Needs Interview' : status === 'missing_docs' ? 'Missing Docs' : statusText(status);
-  return `<span class="approval-status ${esc(status)}">${esc(label)}</span>`;
+  if (status === 'approved') {
+    return `<div class="approval-actions locked"><span class="workflow-lock-chip approved">✓ Approved</span><button type="button" data-action="view-approved-guard" data-approval-id="${esc(app.id)}">View Guard</button></div>`;
+  }
+  if (status === 'rejected') {
+    return `<div class="approval-actions locked"><span class="workflow-lock-chip rejected">× Rejected</span><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">Details</button></div>`;
+  }
+  return `<div class="approval-actions"><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">⊙</button><button type="button" data-action="message-approval" data-approval-id="${esc(app.id)}">☵</button><button type="button" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓</button><button type="button" data-action="reject-guard" data-approval-id="${esc(app.id)}">×</button></div>`;
 }
-function licenseStatusBadge(app = {}) {
-  const status = approvalLicenseStatus(app);
-  return `<span class="license-badge ${esc(status)}">${esc(statusText(status))}</span>`;
-}
-function backgroundStatusBadge(app = {}) {
-  const status = approvalBackgroundStatus(app);
-  const label = status === 'in_progress' ? 'In Progress' : status === 'issue' ? 'Review' : 'Clear';
-  return `<span class="background-badge ${esc(status)}">${esc(label)}</span>`;
-}
-function isApprovalChecked(id) { return (state.guardApprovalSelectedIds || []).map(String).includes(String(id)); }
 function guardApprovalRow(app = {}) {
   const selected = String(state.selectedGuardApprovalId || '') === String(app.id);
-  return `<div class="guard-approval-row ${selected ? 'selected' : ''}">
+  return `<div class="guard-approval-row ${selected ? 'selected' : ''} ${guardApprovalFinished(app) ? 'workflow-finished-row' : ''}">
     <label class="approval-check"><input type="checkbox" data-approval-check="${esc(app.id)}" ${isApprovalChecked(app.id) ? 'checked' : ''}></label>
     <button type="button" class="approval-applicant-cell" data-action="select-guard-approval" data-approval-id="${esc(app.id)}">${avatar(app.name || app.email || 'Applicant', app.photo_url)}<span><strong>${esc(app.name || app.email || 'Applicant')}</strong><small>${esc(app.application_number || shortRequestId(app.id))}</small></span></button>
     <div>${esc(approvalRank(app))}</div>
@@ -6513,7 +6557,7 @@ function guardApprovalRow(app = {}) {
     <div><strong>${esc(app.availability || 'Full Time')}</strong><small>${esc(app.preferred_shift || 'Days')}</small></div>
     <div><strong>${esc(fmtDate(app.created_at))}</strong><small>${esc(fmtTime(app.created_at))}</small></div>
     <div>${approvalStatusBadge(app)}</div>
-    <div class="approval-actions"><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">⊙</button><button type="button" data-action="message-approval" data-approval-id="${esc(app.id)}">☵</button><button type="button" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓</button><button type="button" data-action="reject-guard" data-approval-id="${esc(app.id)}">×</button></div>
+    ${guardApprovalActionButtons(app)}
   </div>`;
 }
 function guardApprovalTable() {
@@ -6553,8 +6597,14 @@ function guardApprovalDetailRail() {
     <dl class="approval-info-list"><dt>Phone</dt><dd>${esc(app.phone || '—')}</dd><dt>Email</dt><dd>${esc(app.email || '—')}</dd><dt>Location</dt><dd>${esc([app.city, app.state].filter(Boolean).join(', ') || '—')}</dd><dt>Experience</dt><dd>${esc(approvalExperienceLabel(app))}</dd><dt>Guard Card</dt><dd>${esc(app.guard_card_number || app.license_number || '—')}</dd><dt>Availability</dt><dd>${esc(app.availability || 'Full Time')}</dd></dl>
     <div class="approval-detail-split">${approvalCertifications(app)}${approvalOnboardingChecklist(app)}</div>
     ${approvalReviewNotes(app)}
-    <div class="approval-detail-actions"><button type="button" class="approve" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓ Approve Guard</button><button type="button" class="info" data-action="request-guard-info" data-approval-id="${esc(app.id)}">✉ Request Info</button><button type="button" class="interview" data-action="schedule-guard-interview" data-approval-id="${esc(app.id)}">▣ Schedule Interview</button><button type="button" class="reject" data-action="reject-guard" data-approval-id="${esc(app.id)}">× Reject Application</button></div>
+    ${guardApprovalDetailActions(app)}
   </section></aside>`;
+}
+function guardApprovalDetailActions(app = {}) {
+  const status = approvalStatus(app);
+  if (status === 'approved') return `${workflowFinishedPanel('Guard approved', 'This application is finished and the guard has been moved to the active roster.')}<div class="approval-detail-actions locked"><button type="button" class="approve" data-action="view-approved-guard" data-approval-id="${esc(app.id)}">View Active Guard</button></div>`;
+  if (status === 'rejected') return `${workflowFinishedPanel('Application rejected', 'This application is locked. Approve / Reject controls are removed so it cannot be processed twice.', 'danger')}<div class="approval-detail-actions locked"><button type="button" class="info" data-action="guard-approval-clear-filters">Back to Applications</button></div>`;
+  return `<div class="approval-detail-actions"><button type="button" class="approve" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓ Approve Guard</button><button type="button" class="info" data-action="request-guard-info" data-approval-id="${esc(app.id)}">✉ Request Info</button><button type="button" class="interview" data-action="schedule-guard-interview" data-approval-id="${esc(app.id)}">▣ Schedule Interview</button><button type="button" class="reject" data-action="reject-guard" data-approval-id="${esc(app.id)}">× Reject Application</button></div>`;
 }
 function guardApprovalsHeader() {
   return `<header class="dashboard-header guard-approvals-header"><div class="title-block"><h1>Guard Approvals</h1><p>Review new guard applications, approve qualified officers, and manage onboarding status.</p></div><div class="approval-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="approval-search"><input type="search" data-guard-approval-search placeholder="Search applicants..." value="${esc(state.guardApprovalSearch || '')}"><b>⌕</b></label><button type="button" data-action="guard-approvals-refresh">⟳ Refresh</button></div></header>`;
@@ -6567,26 +6617,49 @@ function guardApprovalsCommandCenterView() {
 async function approveGuardApplication(id) {
   const app = guardApprovalRows().find(a => String(a.id) === String(id));
   if (!app) throw new Error('Application not found.');
+  if (approvalStatus(app) === 'approved') {
+    state.view = 'guards';
+    const guard = state.guards.find(g => String(g.id) === String(app.id) || String(g.email || '').toLowerCase() === String(app.email || '').toLowerCase());
+    if (guard) state.selectedGuardId = guard.id || '';
+    render();
+    toast('Guard is already approved.', 'success');
+    return;
+  }
+  if (approvalStatus(app) === 'rejected') throw new Error('Rejected applications are locked. Reopen the application before approving.');
   saveGuardRank({ id: app.id, email: app.email, signup_id: app.source === 'signup' ? app.id : '' }, approvalRank(app));
   if (app.source === 'signup') {
     await approveSignup('guard', id);
     return;
   }
-  saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString() });
+  saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
+  saveWorkflowActionLock('guard-approval', id, { status: 'approved', finished_at: new Date().toISOString() });
   await loadData();
+  state.view = 'guards';
+  const guard = state.guards.find(g => String(g.id) === String(app.id) || String(g.email || '').toLowerCase() === String(app.email || '').toLowerCase());
+  if (guard) state.selectedGuardId = guard.id || '';
+  state.selectedGuardApprovalId = '';
   render();
-  toast('Guard approved.', 'success');
+  toast('Guard approved and moved to Guards.', 'success');
 }
 async function rejectGuardApplication(id) {
   const app = guardApprovalRows().find(a => String(a.id) === String(id));
+  if (approvalStatus(app || {}) === 'rejected') {
+    toast('Application is already rejected.', 'success');
+    return;
+  }
+  if (approvalStatus(app || {}) === 'approved') throw new Error('Approved guards are locked. Suspend the guard from the Guards page instead.');
   if (app?.source === 'signup') {
     await rejectSignup('guard', id);
     return;
   }
-  saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString() });
+  saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
+  saveWorkflowActionLock('guard-approval', id, { status: 'rejected', finished_at: new Date().toISOString() });
   await loadData();
+  state.view = 'guard-approvals';
+  state.guardApprovalTab = 'rejected';
+  state.selectedGuardApprovalId = id;
   render();
-  toast('Application rejected.', 'success');
+  toast('Application rejected and locked.', 'success');
 }
 async function requestGuardMoreInfo(id) {
   saveGuardApprovalOverride(id, { status: 'missing_docs', review_notes: 'Additional information requested by Dispatch.' });
@@ -7780,6 +7853,17 @@ function proofReviewPagination() {
   return `<footer class="proof-review-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} proof items</span><div class="proof-review-pagination"><button type="button" data-action="proof-review-page-prev">‹</button><strong>${esc(state.proofReviewPage || 1)}</strong><button type="button" data-action="proof-review-page-next">›</button></div><label>Rows per page:<select data-proof-review-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
 }
 function proofReviewActions(row = {}) {
+  const status = proofStatus(row);
+  const lockedByReport = proofLockedByPublishedReport(row);
+  if (lockedByReport) {
+    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is locked because the final report for this patrol has already been published.')}</section>`;
+  }
+  if (status === 'approved') {
+    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof approved', 'Approve / Reject controls are locked. You can still choose whether this approved proof is included before publishing the report.')}<button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
+  }
+  if (status === 'rejected') {
+    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof rejected', 'This proof is locked and cannot be included in the client-facing report.', 'danger')}</section>`;
+  }
   return `<section class="proof-review-actions"><h3>Review Actions</h3><div class="proof-review-action-grid"><button class="approve" type="button" data-action="approve-proof" data-proof-id="${esc(row.id)}">✓ Approve</button><button class="reject" type="button" data-action="reject-proof" data-proof-id="${esc(row.id)}">× Reject</button></div><button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
 }
 function proofInternalNoteBox(row = {}) {
@@ -7817,14 +7901,33 @@ function proofReviewCommandCenterView() {
   return `<div class="dashboard proof-review-shell">${proofReviewHeader()}${proofReviewKpiRow()}<section class="proof-review-layout"><main class="proof-review-main panel">${proofReviewTabs()}${proofReviewFilterBar()}${proofReviewTable()}${proofReviewPagination()}</main>${proofReviewDetailRail()}</section></div>`;
 }
 async function updateProofReviewStatus(id, status) {
+  const row = proofReviewRows().find(p => String(p.id) === String(id));
+  if (!row) throw new Error('Proof item not found.');
+  if (proofLockedByPublishedReport(row)) throw new Error('This proof is locked because the report has already been published.');
+  const current = proofStatus(row);
+  if (current === status) {
+    toast(`Proof is already ${status}.`, 'success');
+    return;
+  }
+  if (current === 'rejected' && status === 'approved') throw new Error('Rejected proof is locked. Reopen workflow is not enabled yet.');
   const now = new Date().toISOString();
   const patch = { status, review_status: status, reviewed_at: now, reviewed_by: state.profile?.email || 'Dispatch' };
+  if (status === 'rejected') {
+    patch.include_in_report = false;
+    patch.included_in_report = false;
+    patch.selected_for_report = false;
+  }
   saveLocalProofReviewState(id, patch);
+  saveWorkflowActionLock('proof-review', id, { status, finished_at: now });
   const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
   if (item) Object.assign(item, patch);
+  state.proofReviewCheckedIds = (state.proofReviewCheckedIds || []).filter(x => String(x) !== String(id));
 }
 async function toggleProofReportInclusion(id) {
   const row = proofReviewRows().find(p => String(p.id) === String(id));
+  if (!row) throw new Error('Proof item not found.');
+  if (proofLockedByPublishedReport(row)) throw new Error('This proof is locked because the report has already been published.');
+  if (proofStatus(row) === 'rejected') throw new Error('Rejected proof cannot be included in reports.');
   const next = !proofIncludedInReport(row || {});
   saveLocalProofReviewState(id, { include_in_report: next, included_in_report: next, selected_for_report: next });
   const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
@@ -7886,10 +7989,16 @@ function writeLocalReportBuilderRecords(records = []) {
   try { localStorage.setItem(reportBuilderStorageKey(), JSON.stringify(records.slice(0, 500))); } catch {}
 }
 function saveLocalReportBuilderRecord(record = {}) {
-  const records = readLocalReportBuilderRecords();
+  const now = new Date().toISOString();
+  let records = readLocalReportBuilderRecords();
+  const requestId = String(record.request_id || record.patrol_request_id || '');
+  const publishing = String(record.status || record.report_status || '').toLowerCase().includes('publish') || Boolean(record.released_at || record.published_at);
+  if (publishing && requestId) {
+    records = records.filter(item => String(item.id) === String(record.id) || String(item.request_id || item.patrol_request_id || '') !== requestId);
+  }
   const idx = records.findIndex(item => String(item.id) === String(record.id));
-  if (idx >= 0) records[idx] = { ...records[idx], ...record, updated_at: new Date().toISOString() };
-  else records.unshift(record);
+  if (idx >= 0) records[idx] = { ...records[idx], ...record, updated_at: now };
+  else records.unshift({ ...record, updated_at: record.updated_at || now });
   writeLocalReportBuilderRecords(records);
 }
 function createReportBuilderId(prefix = 'rpt') {
@@ -7950,6 +8059,7 @@ function completedReportRequests() {
   const q = String(state.reportBuilderSearch || '').trim().toLowerCase();
   let rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
   if (!rows.length) rows = completedRequests();
+  rows = rows.filter(req => !requestHasPublishedReport(req.id));
   if (state.reportBuilderClientFilter && state.reportBuilderClientFilter !== 'all') {
     rows = rows.filter(req => String(req.client_id || '') === String(state.reportBuilderClientFilter));
   }
@@ -8162,7 +8272,12 @@ function reportPaperPreview(req, proofRows = []) {
   </article>`;
 }
 function reportOptionsPanel() {
+  const req = selectedReportRequest();
   const proofRows = selectedReportProofRows();
+  const published = req ? publishedReportForRequestId(req.id) : null;
+  if (published) {
+    return `<section class="report-options-card locked">${workflowFinishedPanel('Report already published', 'This patrol has already been finalized. It has been moved to Report Archive and cannot be published again.')}<div class="report-publish-actions"><button type="button" class="publish" data-action="open-published-archive" data-report-id="${esc(published.id || '')}">Open in Report Archive</button><button type="button" data-action="new-report">Start Another Report</button></div></section>`;
+  }
   return `<section class="report-options-card">
     <h2>Report Options</h2>
     <div class="report-options-grid">
@@ -8232,6 +8347,18 @@ async function saveReportDraft() {
   toast('Report saved as draft.', 'success');
 }
 async function publishClientReport() {
+  const req = selectedReportRequest();
+  if (!req) {
+    toast('Select a completed patrol first.', 'error');
+    return;
+  }
+  const existing = publishedReportForRequestId(req.id);
+  if (existing) {
+    state.view = 'report-archive';
+    state.selectedArchiveReportId = String(existing.id || '');
+    toast('This report is already published. Opening Report Archive.', 'success');
+    return;
+  }
   const report = reportBuilderPayload('published');
   if (!report) {
     toast('Select a completed patrol first.', 'error');
@@ -8245,8 +8372,13 @@ async function publishClientReport() {
   report.released_by = state.profile?.email || 'Dispatch';
   state.currentReportDraftId = report.id;
   saveLocalReportBuilderRecord(report);
-  toast('Report published to client.', 'success');
+  saveWorkflowActionLock('report-publish', req.id, { status: 'published', report_id: report.id, finished_at: report.released_at });
+  state.selectedArchiveReportId = String(report.id);
+  resetReportBuilderState();
+  state.view = 'report-archive';
+  toast('Report published to client and moved to Report Archive.', 'success');
 }
+
 function exportReportBuilderPreview() {
   const report = reportBuilderPayload('preview');
   if (!report) {
@@ -8837,6 +8969,10 @@ async function initialize() {
 document.addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button) return;
+  if (button.disabled || button.dataset.busy === '1') return;
+  const lockableActions = new Set(['approve-guard','reject-guard','request-guard-info','schedule-guard-interview','approve-proof','reject-proof','toggle-proof-include','save-proof-note','assign-pending-request','pending-auto-assign','pending-assign-selected','admin-assign-now','review-and-publish-report','save-report-draft']);
+  const shouldLockButton = lockableActions.has(button.dataset.action || '') || button.dataset.approve || button.dataset.reject;
+  if (shouldLockButton) setActionButtonBusy(button);
   try {
     if (button.dataset.publicView) {
       state.publicView = button.dataset.publicView;
@@ -9144,6 +9280,14 @@ document.addEventListener('click', async event => {
     }
     if (button.dataset.action === 'select-guard-approval' || button.dataset.action === 'view-approval') {
       state.selectedGuardApprovalId = button.dataset.approvalId || '';
+      render();
+      return;
+    }
+    if (button.dataset.action === 'view-approved-guard') {
+      const app = guardApprovalRows().find(a => String(a.id) === String(button.dataset.approvalId));
+      const guard = state.guards.find(g => String(g.id) === String(app?.id) || String(g.email || '').toLowerCase() === String(app?.email || '').toLowerCase());
+      if (guard) state.selectedGuardId = guard.id || '';
+      state.view = 'guards';
       render();
       return;
     }
@@ -9479,6 +9623,12 @@ document.addEventListener('click', async event => {
       toast('Report settings are available in the right rail.', 'success');
       return;
     }
+    if (button.dataset.action === 'open-published-archive') {
+      state.view = 'report-archive';
+      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
+      render();
+      return;
+    }
     if (button.dataset.action === 'select-archive-report' || button.dataset.action === 'view-archive-report') {
       state.selectedArchiveReportId = button.dataset.reportId || '';
       render();
@@ -9798,6 +9948,8 @@ document.addEventListener('click', async event => {
     }
   } catch (err) {
     toast(friendly(err));
+  } finally {
+    if (shouldLockButton && document.body.contains(button)) clearActionButtonBusy(button);
   }
 });
 

@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.64 server version QA fix build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.65 global action lock workflow QA build complete. Copied ${count} files to dist/.`);

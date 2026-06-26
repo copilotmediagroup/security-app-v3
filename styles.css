@@ -12505,3 +12505,73 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
     grid-template-columns: 1fr;
   }
 }
+
+/* v3.0.65 Global Action Lock + Workflow QA */
+button:disabled,
+button.is-busy {
+  cursor: not-allowed !important;
+  opacity: .58;
+  filter: saturate(.72);
+}
+.workflow-finished-row {
+  opacity: .92;
+}
+.workflow-finished-panel {
+  border: 1px solid rgba(55,220,114,.25);
+  background: rgba(21, 72, 45, .18);
+  color: #dfffee;
+  border-radius: 12px;
+  padding: 13px 14px;
+  margin: 10px 0;
+}
+.workflow-finished-panel strong {
+  display: block;
+  color: #8df4ad;
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.workflow-finished-panel p {
+  margin: 5px 0 0;
+  color: #b9d4c7;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.workflow-finished-panel.danger {
+  border-color: rgba(255,89,115,.30);
+  background: rgba(140, 35, 50, .18);
+  color: #ffe1e7;
+}
+.workflow-finished-panel.danger strong { color: #ff9bac; }
+.workflow-lock-chip {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.workflow-lock-chip.approved {
+  color: #8df4ad;
+  border: 1px solid rgba(55,220,114,.28);
+  background: rgba(55,220,114,.12);
+}
+.workflow-lock-chip.rejected {
+  color: #ff9bac;
+  border: 1px solid rgba(255,89,115,.28);
+  background: rgba(255,89,115,.12);
+}
+.approval-actions.locked,
+.approval-detail-actions.locked,
+.proof-review-actions.locked {
+  align-items: stretch;
+}
+.proof-review-actions.locked .include {
+  margin-top: 10px;
+}
+.report-options-card.locked .report-publish-actions {
+  margin-top: 12px;
+}

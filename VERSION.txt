@@ -1,21 +1,21 @@
 Co Pilot Security
-Version: 3.0.64
-Build Name: SERVER VERSION QA FIX
+Version: 3.0.65
+Build Name: GLOBAL ACTION LOCK + WORKFLOW QA
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.63 REPORT ARCHIVE COMMAND CENTER.
-- QA-tested the uploaded Report Archive package after upload.
-- Fixed stale server startup console label that still printed v3.0.7.
-- Server startup label now reads VERSION.txt/package metadata so future packages stay aligned.
-- Confirmed JavaScript syntax checks passed.
-- Confirmed npm build succeeds and copies 14 files to dist/.
-- Confirmed Report Archive renders with sample admin data, filters/search work, and included proof media counts correctly.
-- Confirmed Admin, Guard, and Client nav views render without sandbox runtime errors.
-- Preserved Report Archive Command Center, Report Builder guardDisplayName fix, upload-only media requirements, and no-SQL setup.
+- Built from v3.0.64 SERVER VERSION QA FIX.
+- Added a global workflow action-lock layer for major Dispatch/Admin actions.
+- Guard approvals now lock after approval/rejection, remove repeat approve/reject controls, and move approved guards to the active Guards roster view.
+- Pending Dispatch assignments now move the request out of Pending Dispatch and route Dispatch to the Dispatch Board after assignment.
+- Proof Review now locks approved/rejected proof states, blocks rejected proof from report inclusion, and blocks proof changes after a report is published.
+- Report Builder now blocks duplicate publishing for the same completed patrol and routes published reports directly to Report Archive.
+- Report-ready counts now ignore completed patrols that already have a published local/system report.
+- Added busy/disabled button state for lockable async actions to prevent double-click duplicate processing.
+- Preserved v3.0.64 server version fix, v3.0.63 Report Archive, upload-only media requirements, and no-SQL setup.
 
 Badge:
-v3.0.64 SERVER VERSION QA FIX
+v3.0.65 GLOBAL ACTION LOCK + WORKFLOW QA
 
 SQL:
 No new SQL required.
