@@ -1,19 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.63",
-  "buildName": "REPORT ARCHIVE COMMAND CENTER",
-  "type": "report-archive-command-center",
+  "version": "3.0.64",
+  "buildName": "SERVER VERSION QA FIX",
+  "type": "server-version-qa-fix",
   "sql_required": false,
+  "based_on": "v3.0.63 REPORT ARCHIVE COMMAND CENTER",
   "features": [
-    "Rebuilt Dispatch/Admin Report Archive page using the generated code blueprint",
-    "Added KPI row for total reports, published, drafts, scheduled, photos included, and videos included",
-    "Added search for reports, clients, properties, guards, jobs, summaries, and report IDs",
-    "Added filters for client, property, guard, status, date range, and sort",
-    "Added report archive table with checkbox, report, client/property, patrol/job, date, status, included media, and actions",
-    "Added selected report detail rail with preview card, property photo, report ID, job details, guard, patrol type, date/time, duration, status, published by, template, summary, media counts, and actions",
-    "Added view full report, download report, share report, delete local report, archive CSV export, pagination, rows per page, and clear filters",
-    "Combines state.patrolReports, local Report Builder saved/published reports, and completed patrol requests as draft-ready archive rows",
-    "Preserved Report Builder Guard Name Fix from v3.0.62 and previous pages",
+    "QA-tested v3.0.63 Report Archive package after upload",
+    "Fixed stale server startup console label that still printed v3.0.7",
+    "Server startup label now reads from VERSION.txt/package metadata so future builds stay aligned",
+    "Confirmed JavaScript syntax checks passed for build.cjs, server.cjs, supabase-client.js, config.js, and script.js",
+    "Confirmed npm build succeeds and copies the consolidated 14-file package to dist/",
+    "Confirmed Report Archive renders with sample admin data and counts included proof media correctly",
+    "Confirmed all Admin, Guard, and Client nav views render without runtime errors in sandbox smoke test",
+    "Preserved v3.0.63 Report Archive Command Center features and v3.0.62 guardDisplayName fix",
+    "No URL inputs were added",
     "No new SQL required"
   ]
 }

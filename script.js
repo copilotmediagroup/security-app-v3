@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T12-05-v3063';
+const CP_DEV_CACHE_BUST = '2026-06-26T12-18-v3064';
 const BUILD = {
-  version: '3.0.63',
-  label: 'v3.0.63 REPORT ARCHIVE COMMAND CENTER'
+  version: '3.0.64',
+  label: 'v3.0.64 SERVER VERSION QA FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;

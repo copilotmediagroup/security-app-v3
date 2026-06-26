@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-report-archive-command-center",
-  "version": "3.0.63",
+  "name": "co-pilot-security-server-version-qa-fix",
+  "version": "3.0.64",
   "private": true,
-  "description": "Rebuilds the Dispatch/Admin Report Archive page into a command-center report library with search, filters, archive table, detail rail, export, download, share, and delete placeholders.",
+  "description": "QA pass for v3.0.63 Report Archive Command Center. Fixes stale server startup version label while preserving Report Archive, Report Builder guard-name fix, and all no-SQL workflow requirements.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

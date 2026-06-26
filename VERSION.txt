@@ -1,21 +1,21 @@
 Co Pilot Security
-Version: 3.0.63
-Build Name: REPORT ARCHIVE COMMAND CENTER
+Version: 3.0.64
+Build Name: SERVER VERSION QA FIX
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.62.
-- Rebuilt Dispatch/Admin Report Archive into a full command-center report library.
-- Added KPI row: Total Reports, Published, Drafts, Scheduled, Photos Included, Videos Included.
-- Added search, filters, report archive table, selected report detail rail, report preview card, included media counts, pagination, rows per page, and clear filters.
-- Added actions: View Full Report, Download Report, Share Report, Delete Local Report, and CSV Export.
-- Report Archive combines existing patrol reports, local Report Builder drafts/published records, and completed patrol requests as draft-ready archive rows.
-- Preserved the v3.0.62 Report Builder guardDisplayName fix.
-- No URL inputs were added.
-- No new SQL required.
+- Built from v3.0.63 REPORT ARCHIVE COMMAND CENTER.
+- QA-tested the uploaded Report Archive package after upload.
+- Fixed stale server startup console label that still printed v3.0.7.
+- Server startup label now reads VERSION.txt/package metadata so future packages stay aligned.
+- Confirmed JavaScript syntax checks passed.
+- Confirmed npm build succeeds and copies 14 files to dist/.
+- Confirmed Report Archive renders with sample admin data, filters/search work, and included proof media counts correctly.
+- Confirmed Admin, Guard, and Client nav views render without sandbox runtime errors.
+- Preserved Report Archive Command Center, Report Builder guardDisplayName fix, upload-only media requirements, and no-SQL setup.
 
 Badge:
-v3.0.63 REPORT ARCHIVE COMMAND CENTER
+v3.0.64 SERVER VERSION QA FIX
 
 SQL:
 No new SQL required.
