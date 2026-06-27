@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-27T01-05-v3076';
+const CP_DEV_CACHE_BUST = '2026-06-27T01-18-v3077';
 const BUILD = {
-  version: '3.0.76',
-  label: 'v3.0.76 CLIENT RECENT REPORTS UI POLISH'
+  version: '3.0.77',
+  label: 'v3.0.77 CLIENT RECENT REPORTS THUMBNAIL FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -4222,6 +4222,55 @@ function clientDashboardReportReference(row = {}, req = {}) {
   if (/^RPT-/i.test(clean)) return clean;
   return `Report ${clean.length > 10 ? '#' + clean.slice(0, 8) : '#' + clean}`;
 }
+
+function clientDashboardProofUrl(item = {}) {
+  return proofUrlValue(item.proof || item) || item.mediaUrl || item.thumbnail_url || item.thumbnailUrl || item.preview_url || '';
+}
+function clientDashboardIsPhotoProof(item = {}) {
+  const raw = `${item.file_type || item.mime_type || item.type || item.fileType || ''} ${item.file_name || item.name || item.object_path || item.fileName || ''} ${item.mediaUrl || clientDashboardProofUrl(item) || ''}`.toLowerCase();
+  if (!raw.trim()) return false;
+  if (raw.includes('video') || /\.(mp4|mov|webm|m4v)(\?|#|$)/.test(raw)) return false;
+  return raw.includes('image') || /\.(jpg|jpeg|png|gif|webp|bmp|heic|heif)(\?|#|$)/.test(raw) || Boolean(clientDashboardProofUrl(item));
+}
+function clientDashboardReportProofCandidates(row = {}, req = {}) {
+  const report = row.report || {};
+  const archiveProofRows = Array.isArray(row.archiveRow?.proofRows) ? row.archiveRow.proofRows : [];
+  const rowProofRows = Array.isArray(row.proofRows) ? row.proofRows : [];
+  const requestId = row.requestId || row.request_id || req.id || report.request_id || report.patrol_request_id || '';
+  const requestProofRows = requestId ? proofForRequest(requestId) : [];
+  const selectedIdsRaw = report.selected_proof_ids || report.proof_ids || report.included_proof_ids || row.selected_proof_ids || row.proof_ids || row.included_proof_ids || [];
+  const selectedIds = Array.isArray(selectedIdsRaw) ? selectedIdsRaw.map(String) : String(selectedIdsRaw || '').split(',').map(x => x.trim()).filter(Boolean);
+  const all = [...archiveProofRows, ...rowProofRows, ...requestProofRows];
+  const selectedFirst = selectedIds.length
+    ? all.filter(item => selectedIds.includes(String(item.id || item.proof?.id || item.object_path || item.proof?.object_path || clientDashboardProofUrl(item))))
+    : [];
+  const merged = [...selectedFirst, ...all];
+  const seen = new Set();
+  return merged.filter(item => {
+    const key = String(item.id || item.proof?.id || item.object_path || item.proof?.object_path || clientDashboardProofUrl(item) || Math.random());
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function clientDashboardReportThumbnail(row = {}, req = {}) {
+  const report = row.report || {};
+  const direct = report.thumbnail_url || report.thumbnailUrl || report.cover_photo_url || report.coverPhotoUrl || report.photo_url || report.image_url || row.thumbnail_url || row.thumbnailUrl || row.coverPhotoUrl || row.cover_photo_url || '';
+  if (direct) return { url: direct, label: 'Report', source: 'report' };
+  const proofPhoto = clientDashboardReportProofCandidates(row, req).find(item => clientDashboardIsPhotoProof(item) && clientDashboardProofUrl(item));
+  if (proofPhoto) return { url: clientDashboardProofUrl(proofPhoto), label: 'Proof', source: 'proof' };
+  const property = propertyById(row.propertyId || row.property_id || req.property_id || report.property_id) || {};
+  const propertyUrl = row.propertyImageUrl || row.property_photo_url || row.propertyPhotoUrl || propertyImageValue(property) || getPropertyPhotoUrl(req);
+  if (propertyUrl) return { url: propertyUrl, label: 'Property', source: 'property' };
+  return null;
+}
+function clientDashboardReportThumbMarkup(row = {}, req = {}, title = 'Report') {
+  const thumb = clientDashboardReportThumbnail(row, req);
+  if (thumb?.url) {
+    return `<span class="client-dashboard-report-thumb ${esc(thumb.source || 'image')}"><img src="${esc(thumb.url)}" alt="${esc(title)}"><em>${esc(thumb.label || 'Photo')}</em></span>`;
+  }
+  return `<i class="client-dashboard-report-icon">▣</i>`;
+}
 function clientDashboardRecentReportRow(row = {}) {
   const req = row.req || requestById(row.requestId || row.request_id) || {};
   const propertyName = row.propertyName || (req.id ? propertyLabel(req) : row.property_name) || 'Property';
@@ -4232,7 +4281,7 @@ function clientDashboardRecentReportRow(row = {}) {
   const proofCount = Number(row.proofCount ?? row.proof_count ?? (req.id ? proofForRequest(req.id).length : 0) ?? 0);
   const reportId = row.id || row.reportNumber || row.report_number || row.requestId || row.request_id || req.id || '';
   return `<button type="button" class="client-dashboard-report-row" data-view="reports" data-report-id="${esc(reportId)}">
-    <i class="client-dashboard-report-icon">▣</i>
+    ${clientDashboardReportThumbMarkup(row, req, title)}
     <span class="client-dashboard-report-copy">
       <strong>${esc(title)}</strong>
       <small class="client-dashboard-report-ref">${esc(reference || 'Published report')}</small>
@@ -5562,6 +5611,8 @@ function clientReportArchiveRows() {
           guardName: row.guard ? guardDisplayName(row.guard) : (req ? requestGuardName(req) : report.guard_name || 'Unassigned'),
           requestId: req.id || report.request_id || report.patrol_request_id || '',
           proofCount: Number(row.photoCount || 0) + Number(row.videoCount || 0) || (req.id ? proofForRequest(req.id).length : 0),
+          proofRows: row.proofRows || [],
+          propertyImageUrl: propertyImageValue(property),
           url: report.public_url || report.file_url || report.url || report.pdf_url || '',
           source: 'reportArchive'
         };
@@ -5600,6 +5651,8 @@ function clientReportSourceRows() {
         guardName: req ? requestGuardName(req) : report.guard_name || 'Unassigned',
         requestId: report.request_id || report.patrol_request_id || req?.id || '',
         proofCount: report.proof_count || (req ? proofForRequest(req.id).length : 0),
+        proofRows: req ? proofForRequest(req.id) : [],
+        propertyImageUrl: req ? getPropertyPhotoUrl(req) : propertyImageValue(propertyById(report.property_id)),
         url: report.public_url || report.file_url || report.url || report.pdf_url || '',
         source: 'patrolReports'
       };
@@ -5628,6 +5681,8 @@ function clientReportSourceRows() {
         guardName: requestGuardName(req),
         requestId: req.id,
         proofCount: proofForRequest(req.id).length,
+        proofRows: proofForRequest(req.id),
+        propertyImageUrl: getPropertyPhotoUrl(req),
         url: '',
         source: 'completedRequests'
       };

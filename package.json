@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-recent-reports-ui-polish",
-  "version": "3.0.76",
+  "name": "co-pilot-security-client-recent-reports-thumbnail-fix",
+  "version": "3.0.77",
   "private": true,
-  "description": "Polishes the Client Dashboard Recent Reports cards so report titles, property names, addresses, proof counts, and published timestamps display cleanly while preserving v3.0.75 audit trail logic.",
+  "description": "Adds proof/property thumbnails to the Client Dashboard Recent Reports cards while preserving v3.0.76 card polish and v3.0.75 audit trail logic.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

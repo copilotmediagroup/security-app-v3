@@ -1,24 +1,23 @@
 Co Pilot Security
-Version: 3.0.76
-Build Name: CLIENT RECENT REPORTS UI POLISH
+Version: 3.0.77
+Build Name: CLIENT RECENT REPORTS THUMBNAIL FIX
 Date: 2026-06-27
 
 Summary:
-- Built from v3.0.75 JOB TIMELINE / AUDIT TRAIL.
-- Polished the Client Dashboard Recent Reports right-rail cards.
-- Fixed Recent Reports cards being affected by the full Client Reports table CSS, which made the right-rail cards cramped and clipped.
-- Replaced raw Request # / UUID-style titles with clean client-facing titles like property Patrol Report.
-- Kept the report/request reference as a smaller reference line instead of the main title.
-- Improved spacing for property name, address, proof count, and published time.
-- Added proper wrapping/clamping so long report titles and addresses do not break the card layout.
-- Reduced excessive bottom padding on the Recent Reports panel.
-- Preserved v3.0.75 job timeline / audit trail.
+- Built from v3.0.76 CLIENT RECENT REPORTS UI POLISH.
+- Added image thumbnails to Client Dashboard Recent Reports cards.
+- Recent Reports now uses first available selected/report proof photo first.
+- If no report proof photo is available, Recent Reports falls back to the saved property photo.
+- If neither proof nor property image exists, the document icon remains as the safe fallback.
+- Added labels on thumbnails so users can tell whether the card image came from Proof, Property, or Report.
+- Preserved v3.0.76 Recent Reports title/layout polish.
+- Preserved v3.0.75 Job Timeline / Audit Trail.
 - Preserved v3.0.74 dashboard/report/proof count sync.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.76 CLIENT RECENT REPORTS UI POLISH
+v3.0.77 CLIENT RECENT REPORTS THUMBNAIL FIX
 
 SQL:
 No new SQL required.
