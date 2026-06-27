@@ -1,21 +1,22 @@
 Co Pilot Security
-Version: 3.0.68
-Build Name: CLIENT REPORT PREVIEW + DOWNLOAD FIX
+Version: 3.0.69
+Build Name: PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.67.
-- Fixed Client Reports eye/view button so it opens a real selected report preview panel instead of a placeholder toast.
-- Fixed Client Reports download button so it downloads an existing report URL when available or generates a client-facing report text file when no PDF exists yet.
-- Added selected report details, summary, proof count, property, guard/officer, date/time, patrol type, duration, and request metadata to the Client Reports right rail.
-- Added working Client Reports CSV export.
-- Removed the unfinished client report placeholder messages.
-- Preserved proof upload confirmation, global action locks, Report Builder, and Report Archive behavior.
+- Built from v3.0.68.
+- Fixed Proof Review status mismatch where rows could show Pending Review while the detail rail was locked because the report was already published.
+- Added row-level Approve and Reject actions for proof that is truly pending and reviewable.
+- Added a Report Published / Locked display state for proof attached to patrols with already-published final reports.
+- Added a Report Published tab in Proof Review so locked proof is easy to find and no longer counted as pending review.
+- Preserved right-rail Approve, Reject, Include in Report, Save Note, and report lock behavior.
+- Added View Report Archive action for locked proof.
+- Preserved v3.0.68 Client Report preview/download fixes.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.68 CLIENT REPORT PREVIEW + DOWNLOAD FIX
+v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
 
 SQL:
 No new SQL required.

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-report-preview-download-fix",
-  "version": "3.0.68",
+  "name": "co-pilot-security-proof-review-approval-lock-fix",
+  "version": "3.0.69",
   "private": true,
-  "description": "Completes Client Reports view/download actions by adding a real report preview panel, generated report downloads, CSV export, and removing placeholder action messages.",
+  "description": "Fixes Proof Review approval visibility by adding row-level approve/reject actions and showing locked report-published status instead of misleading Pending Review rows.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

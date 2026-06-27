@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.68 client report preview download fix build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.69 proof review approval button lock status fix build complete. Copied ${count} files to dist/.`);

@@ -11064,7 +11064,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .proof-review-head,
 .proof-review-row {
   display: grid;
-  grid-template-columns: 34px 188px minmax(260px, 1.45fr) 140px 142px 94px;
+  grid-template-columns: 34px 178px minmax(240px, 1.4fr) 138px 154px 168px;
   gap: 14px;
   align-items: center;
   padding: 0 14px;
@@ -11224,7 +11224,12 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 }
 .proof-status.pending { color:#ffb53d; }
 .proof-status.approved { color:#71f0a2; }
-.proof-status.rejected { color:#ff6678; }
+ .proof-status.rejected { color:#ff6678; }
+.proof-status.locked {
+  color:#9ecbff;
+  background: rgba(46,125,255,.11);
+  border: 1px solid rgba(46,125,255,.28);
+}
 .proof-row-actions {
   display: flex;
   gap: 8px;
@@ -11240,6 +11245,39 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
   cursor: pointer;
   font-weight: 1000;
 }
+.proof-row-actions.reviewable {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.proof-row-actions.reviewable button {
+  width: auto;
+  min-width: 42px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.proof-row-actions .mini-approve {
+  color: #a9f7c4;
+  background: rgba(38,178,92,.16);
+  border-color: rgba(55,220,114,.38);
+}
+.proof-row-actions .mini-reject {
+  color: #ffb2bf;
+  background: rgba(190,55,69,.16);
+  border-color: rgba(255,89,115,.36);
+}
+.proof-row-actions .mini-include,
+.proof-row-actions .mini-report {
+  color: #9ecbff;
+  background: rgba(46,125,255,.14);
+  border-color: rgba(46,125,255,.34);
+}
+.proof-row-actions .mini-view {
+  color: #dcecff;
+}
+.proof-row-actions.locked { opacity: .9; }
 .proof-review-empty {
   min-height: 280px;
   display: grid;
@@ -12659,7 +12697,7 @@ button.is-busy {
   font-weight: 900;
 }
 
-/* v3.0.68 Client Report Preview + Download Fix */
+/* v3.0.69 Proof Review Approval Button + Lock Status Fix */
 .client-report-row.selected {
   background: linear-gradient(90deg, rgba(46,125,255,.18), rgba(12,34,62,.36));
   box-shadow: inset 3px 0 0 #5aa8ff;

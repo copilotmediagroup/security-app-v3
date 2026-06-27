@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-26T13-50-v3068';
 const BUILD = {
-  version: '3.0.68',
-  label: 'v3.0.68 CLIENT REPORT PREVIEW + DOWNLOAD FIX'
+  version: '3.0.69',
+  label: 'v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -7982,6 +7982,25 @@ function proofMediaType(row = {}) {
 function proofStatus(row = {}) {
   return String(row.status || 'pending').toLowerCase();
 }
+function proofIsLockedByReport(row = {}) {
+  return Boolean(proofLockedByPublishedReport(row));
+}
+function proofDisplayStatus(row = {}) {
+  return proofIsLockedByReport(row) ? 'locked' : proofStatus(row);
+}
+function proofCanBeReviewed(row = {}) {
+  return proofStatus(row) === 'pending' && !proofIsLockedByReport(row);
+}
+function proofCanBeIncluded(row = {}) {
+  return !proofIsLockedByReport(row) && proofStatus(row) !== 'rejected';
+}
+function proofDisplayStatusText(row = {}) {
+  const display = proofDisplayStatus(row);
+  if (display === 'locked') return 'Report Published';
+  if (display === 'approved') return 'Approved';
+  if (display === 'rejected') return 'Rejected';
+  return 'Pending Review';
+}
 function proofIncludedInReport(row = {}) {
   return row.included === true || row.proof?.include_in_report === true || row.proof?.included_in_report === true || row.proof?.selected_for_report === true;
 }
@@ -8011,9 +8030,10 @@ function proofReviewCounts() {
   const rows = proofReviewRows();
   const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
   return {
-    pending: rows.filter(row => proofStatus(row) === 'pending').length,
-    approved: rows.filter(row => proofStatus(row) === 'approved' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
-    rejected: rows.filter(row => proofStatus(row) === 'rejected' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
+    pending: rows.filter(proofCanBeReviewed).length,
+    approved: rows.filter(row => proofDisplayStatus(row) === 'approved' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
+    rejected: rows.filter(row => proofDisplayStatus(row) === 'rejected' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
+    locked: rows.filter(row => proofDisplayStatus(row) === 'locked').length,
     included: rows.filter(proofIncludedInReport).length,
     totalMedia: rows.length,
     expired: rows.filter(proofIsExpired).length
@@ -8041,9 +8061,10 @@ function proofReviewTabs() {
   const rows = proofReviewRows();
   const counts = {
     all: rows.length,
-    pending: rows.filter(row => proofStatus(row) === 'pending').length,
-    approved: rows.filter(row => proofStatus(row) === 'approved').length,
-    rejected: rows.filter(row => proofStatus(row) === 'rejected').length,
+    pending: rows.filter(proofCanBeReviewed).length,
+    approved: rows.filter(row => proofDisplayStatus(row) === 'approved').length,
+    rejected: rows.filter(row => proofDisplayStatus(row) === 'rejected').length,
+    locked: rows.filter(row => proofDisplayStatus(row) === 'locked').length,
     included: rows.filter(proofIncludedInReport).length
   };
   return `<nav class="proof-review-tabs">
@@ -8051,6 +8072,7 @@ function proofReviewTabs() {
     ${proofReviewTabButton('pending','Pending Review',counts.pending)}
     ${proofReviewTabButton('approved','Approved',counts.approved)}
     ${proofReviewTabButton('rejected','Rejected',counts.rejected)}
+    ${proofReviewTabButton('locked','Report Published',counts.locked)}
     ${proofReviewTabButton('included','Included in Reports',counts.included)}
   </nav>`;
 }
@@ -8083,7 +8105,8 @@ function proofTypeBadge(row = {}) {
   return `<span class="proof-type-badge ${esc(type)}">${type === 'video' ? 'Video' : 'Photo'}</span>`;
 }
 function proofStatusBadge(row = {}) {
-  const status = proofStatus(row);
+  const status = proofDisplayStatus(row);
+  if (status === 'locked') return `<span class="proof-status locked"><i></i>Report Published</span>`;
   if (status === 'approved') return `<span class="proof-status approved"><i></i>Approved</span>`;
   if (status === 'rejected') return `<span class="proof-status rejected"><i></i>Rejected</span>`;
   return `<span class="proof-status pending"><i></i>Pending Review</span>`;
@@ -8107,9 +8130,10 @@ function filteredProofReviewRows() {
   const q = String(state.proofReviewSearch || '').trim().toLowerCase();
   const tab = state.proofReviewTab || 'all';
   const filters = state.proofReviewFilters || {};
-  if (tab === 'pending') rows = rows.filter(row => proofStatus(row) === 'pending');
-  if (tab === 'approved') rows = rows.filter(row => proofStatus(row) === 'approved');
-  if (tab === 'rejected') rows = rows.filter(row => proofStatus(row) === 'rejected');
+  if (tab === 'pending') rows = rows.filter(proofCanBeReviewed);
+  if (tab === 'approved') rows = rows.filter(row => proofDisplayStatus(row) === 'approved');
+  if (tab === 'rejected') rows = rows.filter(row => proofDisplayStatus(row) === 'rejected');
+  if (tab === 'locked') rows = rows.filter(row => proofDisplayStatus(row) === 'locked');
   if (tab === 'included') rows = rows.filter(proofIncludedInReport);
   if (q) rows = rows.filter(row => [
     row.title, row.fileName, propertyDisplayName(row.property), propertyDisplayAddress(row.property),
@@ -8130,16 +8154,29 @@ function filteredProofReviewRows() {
     rows = rows.filter(row => new Date(row.uploadedAt) >= d);
   }
   if (filters.sort === 'oldest') rows.sort((a,b) => new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0));
-  else if (filters.sort === 'status') rows.sort((a,b) => proofStatus(a).localeCompare(proofStatus(b)) || (new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0)));
+  else if (filters.sort === 'status') rows.sort((a,b) => proofDisplayStatus(a).localeCompare(proofDisplayStatus(b)) || (new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0)));
   else rows.sort((a,b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
   return rows;
 }
 function selectedProofReviewRow() {
   const rows = filteredProofReviewRows();
-  return rows.find(row => String(row.id) === String(state.selectedProofId)) || rows[0] || null;
+  const selected = rows.find(row => String(row.id) === String(state.selectedProofId));
+  return selected || rows.find(proofCanBeReviewed) || rows[0] || null;
 }
 function isProofChecked(id) {
   return (state.proofReviewCheckedIds || []).map(String).includes(String(id));
+}
+function proofReviewRowActions(row = {}) {
+  if (proofCanBeReviewed(row)) {
+    return `<div class="proof-row-actions reviewable"><button class="mini-approve" type="button" data-action="approve-proof" data-proof-id="${esc(row.id)}" title="Approve proof">✓ Approve</button><button class="mini-reject" type="button" data-action="reject-proof" data-proof-id="${esc(row.id)}" title="Reject proof">× Reject</button><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View proof">👁</button></div>`;
+  }
+  if (proofDisplayStatus(row) === 'approved' && proofCanBeIncluded(row)) {
+    return `<div class="proof-row-actions reviewable"><button class="mini-include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}" title="${proofIncludedInReport(row) ? 'Remove from report' : 'Include in report'}">${proofIncludedInReport(row) ? 'Remove' : 'Include'}</button><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View proof">👁</button></div>`;
+  }
+  if (proofDisplayStatus(row) === 'locked') {
+    return `<div class="proof-row-actions reviewable locked"><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View locked proof">👁 View</button><button class="mini-report" type="button" data-view="report-archive" title="Open Report Archive">Report</button></div>`;
+  }
+  return `<div class="proof-row-actions"><button type="button" data-action="view-proof" data-proof-id="${esc(row.id)}">👁</button></div>`;
 }
 function proofReviewRow(row = {}) {
   const selected = String(state.selectedProofId || '') === String(row.id);
@@ -8154,8 +8191,8 @@ function proofReviewRow(row = {}) {
       <small>Patrol Time: ${esc(fmtDateTimeStamp(row.request?.started_at || row.request?.created_at || row.uploadedAt))}</small>
     </button>
     <div class="proof-uploaded-cell"><strong>${esc(fmtDate(row.uploadedAt))}</strong><small>${esc(fmtTime(row.uploadedAt))}</small></div>
-    <div class="proof-status-cell">${proofStatusBadge(row)}${proofIncludedInReport(row) ? '<small>Included</small>' : ''}</div>
-    <div class="proof-row-actions"><button type="button" data-action="view-proof" data-proof-id="${esc(row.id)}">👁</button><button type="button" data-action="proof-menu" data-proof-id="${esc(row.id)}">⋯</button></div>
+    <div class="proof-status-cell">${proofStatusBadge(row)}${proofIncludedInReport(row) ? '<small>Included</small>' : proofDisplayStatus(row) === 'locked' ? '<small>Locked</small>' : ''}</div>
+    ${proofReviewRowActions(row)}
   </div>`;
 }
 function proofReviewTable() {
@@ -8178,9 +8215,9 @@ function proofReviewPagination() {
 }
 function proofReviewActions(row = {}) {
   const status = proofStatus(row);
-  const lockedByReport = proofLockedByPublishedReport(row);
+  const lockedByReport = proofIsLockedByReport(row);
   if (lockedByReport) {
-    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is locked because the final report for this patrol has already been published.')}</section>`;
+    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is locked because the final report for this patrol has already been published. It no longer needs approval and will not show as Pending Review.')}<button class="include" type="button" data-view="report-archive">View Report Archive</button></section>`;
   }
   if (status === 'approved') {
     return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof approved', 'Approve / Reject controls are locked. You can still choose whether this approved proof is included before publishing the report.')}<button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
@@ -8277,7 +8314,7 @@ function exportProofReviewCsv() {
     row.title,
     row.fileName,
     proofMediaType(row),
-    proofStatus(row),
+    proofDisplayStatusText(row),
     proofIncludedInReport(row) ? 'yes' : 'no',
     propertyDisplayName(row.property),
     propertyDisplayAddress(row.property),
