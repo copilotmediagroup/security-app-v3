@@ -1,24 +1,23 @@
-# Co Pilot Security v3.0.70 — Proof Review KPI Status Cleanup
+# Co Pilot Security v3.0.71 — Client Report Publish Sync + Timestamp Fix
 
 ## What changed
-This build cleans up the Proof Review totals and labels so the page matches the real workflow.
+This build fixes the Client Reports mismatch where Dispatch Report Archive showed a newly published report but the Client Reports page appeared to show older patrol timestamps.
 
 ## Main fixes
-- Published/locked proof no longer looks like it skipped approval.
-- The Approved KPI now shows the full approval picture:
-  - Approved / Ready
-  - Published / Locked
-- Pending Review language was tightened to Needs Review where appropriate.
-- Published proof rows now show Approved + Published.
-- Proof locked by a final published report stays locked and cannot be changed.
-- Approved-but-not-published proof still shows Include/Remove report controls.
-- The detail rail no longer renders the selected proof title twice.
+- Client Reports now pulls from the same published report/archive source used by Dispatch Report Archive when available.
+- Client Reports now prefers `published_at`, `released_at`, or archive `publishedAt` before patrol/request timestamps.
+- Client Reports now sorts by Published On newest first.
+- The client table header changed from Date & Time to Published On.
+- Each client row shows Published time and Patrol time separately.
+- Client report preview shows both Published On and Patrol Time.
+- Client report download text and CSV export now include both Published On and Patrol Time.
+- Recent Activity now uses published time.
+- Client Reports pagination now defaults to 10 rows and shows clearer total/page text.
 
-## Preserved from v3.0.69
-- Pending proof still shows Approve and Reject buttons on the row.
-- Reviewable proof still shows Approve / Reject / Include in the right panel.
-- Rejected proof cannot be included in reports.
-- Published proof can open Report Archive.
+## Preserved from v3.0.70
+- Proof Review KPI/status cleanup remains intact.
+- Published proof still displays as Approved + Published / Locked.
+- No URL inputs were added.
 
 ## SQL
 No new SQL required.

@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-proof-review-kpi-status-cleanup",
-  "version": "3.0.70",
+  "name": "co-pilot-security-client-report-publish-sync-timestamp-fix",
+  "version": "3.0.71",
   "private": true,
-  "description": "Cleans up Proof Review KPI/status logic so published proof counts as approved/finalized and labels match the real review workflow.",
+  "description": "Syncs Client Reports with published Report Archive records and uses published timestamps for sorting/display so new reports appear at the top for clients.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

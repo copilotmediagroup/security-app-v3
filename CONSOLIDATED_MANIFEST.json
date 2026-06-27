@@ -1,20 +1,21 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.70",
-  "buildName": "PROOF REVIEW KPI STATUS CLEANUP",
-  "type": "proof-review-kpi-status-cleanup",
+  "version": "3.0.71",
+  "buildName": "CLIENT REPORT PUBLISH SYNC + TIMESTAMP FIX",
+  "type": "client-report-publish-sync-timestamp-fix",
   "sql_required": false,
   "file_count": 14,
   "features": [
-    "Cleaned up Proof Review KPI/status logic so published proof no longer looks like it skipped approval",
-    "Renamed Pending Review KPI/tab language to Needs Review where appropriate",
-    "Approved KPI now shows Approved Total with ready + published breakdown",
-    "Added Published / Locked KPI count for proof tied to finalized reports",
-    "Locked/published proof now displays as Approved + Published instead of only Report Published",
-    "Kept approved-but-not-published proof in Approved / Ready so Include in Report remains clear",
-    "Preserved row-level Approve/Reject actions for reviewable proof from v3.0.69",
-    "Preserved report-published lock behavior and View Report Archive action",
-    "Removed duplicate selected proof title rendering in the Proof Review detail rail",
+    "Synced Client Reports with the same published report/archive source used by Dispatch Report Archive",
+    "Client Reports now prefers published_at, released_at, and archive publishedAt timestamps before patrol/request timestamps",
+    "Client Reports now sorts by Published On newest first",
+    "Client report table header changed from Date & Time to Published On",
+    "Client report rows now show Published time and Patrol time separately",
+    "Client report preview now shows both Published On and Patrol Time",
+    "Client report download text and CSV export now include published and patrol timestamps",
+    "Recent Activity now uses published report time",
+    "Client Reports pagination now defaults to 10 rows and clearly shows total reports and page count",
+    "Preserved v3.0.70 Proof Review KPI/status cleanup",
     "No new SQL required"
   ]
 }
