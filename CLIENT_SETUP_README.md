@@ -1,23 +1,20 @@
-# Co Pilot Security v3.0.71 — Client Report Publish Sync + Timestamp Fix
+# Co Pilot Security v3.0.72 — Global Report/Proof Count Clarity Fix
 
 ## What changed
-This build fixes the Client Reports mismatch where Dispatch Report Archive showed a newly published report but the Client Reports page appeared to show older patrol timestamps.
+This build clarifies the difference between final report totals and proof/media totals across the app.
 
-## Main fixes
-- Client Reports now pulls from the same published report/archive source used by Dispatch Report Archive when available.
-- Client Reports now prefers `published_at`, `released_at`, or archive `publishedAt` before patrol/request timestamps.
-- Client Reports now sorts by Published On newest first.
-- The client table header changed from Date & Time to Published On.
-- Each client row shows Published time and Patrol time separately.
-- Client report preview shows both Published On and Patrol Time.
-- Client report download text and CSV export now include both Published On and Patrol Time.
-- Recent Activity now uses published time.
-- Client Reports pagination now defaults to 10 rows and shows clearer total/page text.
+## Why this was needed
+Some pages showed 8 published reports while Proof Review showed 6 published/locked items. The underlying workflow can be correct because reports may be published with no proof, but the labels made it look like the counts were supposed to match.
 
-## Preserved from v3.0.70
-- Proof Review KPI/status cleanup remains intact.
-- Published proof still displays as Approved + Published / Locked.
-- No URL inputs were added.
+## Fixes included
+- Report totals now stay consistent across report pages.
+- Proof Review labels now clearly say proof/media items instead of sounding like report totals.
+- Report Archive shows reports with proof and reports without proof.
+- Report Builder shows published reports, reports with proof, and no-proof reports.
+- Client Reports shows total reports, published reports, reports with proof, and no-proof reports.
+- No-proof published reports remain valid and visible.
+- No URL upload fields were added.
+- No new SQL required.
 
-## SQL
-No new SQL required.
+## Badge
+v3.0.72 GLOBAL REPORT/PROOF COUNT CLARITY FIX

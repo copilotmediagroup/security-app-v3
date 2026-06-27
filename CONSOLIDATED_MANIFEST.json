@@ -1,21 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.71",
-  "buildName": "CLIENT REPORT PUBLISH SYNC + TIMESTAMP FIX",
-  "type": "client-report-publish-sync-timestamp-fix",
+  "version": "3.0.72",
+  "buildName": "GLOBAL REPORT/PROOF COUNT CLARITY FIX",
+  "type": "global-report-proof-count-clarity-fix",
   "sql_required": false,
   "file_count": 14,
   "features": [
-    "Synced Client Reports with the same published report/archive source used by Dispatch Report Archive",
-    "Client Reports now prefers published_at, released_at, and archive publishedAt timestamps before patrol/request timestamps",
-    "Client Reports now sorts by Published On newest first",
-    "Client report table header changed from Date & Time to Published On",
-    "Client report rows now show Published time and Patrol time separately",
-    "Client report preview now shows both Published On and Patrol Time",
-    "Client report download text and CSV export now include published and patrol timestamps",
-    "Recent Activity now uses published report time",
-    "Client Reports pagination now defaults to 10 rows and clearly shows total reports and page count",
-    "Preserved v3.0.70 Proof Review KPI/status cleanup",
+    "Added a shared report/proof count summary used across report/proof pages",
+    "Report totals now stay consistent across Report Builder, Report Archive, Client Reports, and Proof Review",
+    "Proof Review now clearly separates proof item counts from published report counts",
+    "Proof Review KPI labels now distinguish Needs Review Proof, Approved Proof Items, Published Reports, Reports With Proof, Reports No Proof, and Total Proof Media",
+    "Report Archive KPI row now shows Published Reports, Reports With Proof, Reports No Proof, Photos Included, Videos Included, and Drafts/Scheduled",
+    "Report Builder KPI row now shows Published Reports, Reports With Proof, Reports No Proof, and proof-media clarity",
+    "Client Reports KPI row now shows Total Reports, Published Reports, Reports With Proof, Reports No Proof, and This Month",
+    "Clarifies the valid case where 8 reports are published but only 6 reports/media items include proof because no-proof reports are allowed",
+    "Preserved v3.0.71 Client Report publish sync and timestamp fix",
     "No new SQL required"
   ]
 }

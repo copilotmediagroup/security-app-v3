@@ -1,22 +1,23 @@
 Co Pilot Security
-Version: 3.0.71
-Build Name: CLIENT REPORT PUBLISH SYNC + TIMESTAMP FIX
-Date: 2026-06-26
+Version: 3.0.72
+Build Name: GLOBAL REPORT/PROOF COUNT CLARITY FIX
+Date: 2026-06-27
 
 Summary:
-- Built from v3.0.70.
-- Synced Client Reports to the same published report/archive source used by Dispatch Report Archive.
-- Client Reports now prefer published/released timestamps over patrol completion timestamps.
-- Client Reports now sort by Published On newest first, so newly published Dispatch reports appear at the top for the client.
-- Client report rows now show Published time and Patrol time separately.
-- Client report preview, download text, CSV export, and activity feed now use published timestamps.
-- Client report pagination now defaults to 10 rows and clearly shows total reports, page count, and rows per page.
-- Preserved v3.0.70 Proof Review KPI/status cleanup.
+- Built from v3.0.71.
+- Added global report/proof count clarity across Report Builder, Report Archive, Client Reports, and Proof Review.
+- Published report totals now stay consistent across pages.
+- Proof Review now clearly labels proof/media counts separately from published report counts.
+- Report Archive now shows Published Reports, Reports With Proof, Reports No Proof, Photos Included, Videos Included, and Drafts/Scheduled.
+- Report Builder now shows Published Reports, Reports With Proof, Reports No Proof, and proof-media totals.
+- Client Reports now shows Total Reports, Published Reports, Reports With Proof, Reports No Proof, and This Month.
+- This prevents 8 published reports and 6 proof/media items from looking like a mismatch.
+- Preserved v3.0.71 Client Report publish sync and timestamp fix.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.71 CLIENT REPORT PUBLISH SYNC + TIMESTAMP FIX
+v3.0.72 GLOBAL REPORT/PROOF COUNT CLARITY FIX
 
 SQL:
 No new SQL required.

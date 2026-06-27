@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-26T13-50-v3068';
 const BUILD = {
-  version: '3.0.71',
-  label: 'v3.0.71 CLIENT REPORT PUBLISH SYNC + TIMESTAMP FIX'
+  version: '3.0.72',
+  label: 'v3.0.72 GLOBAL REPORT/PROOF COUNT CLARITY FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -5265,10 +5265,12 @@ function clientReportCounts() {
   const completed = rows.filter(row => clientReportStatus(row) === 'completed').length;
   const pending = rows.filter(row => clientReportStatus(row) === 'pending_review').length;
   const attention = rows.filter(row => clientReportStatus(row) === 'attention').length;
+  const reportsWithProof = rows.filter(row => (Number(row.proofCount || 0) || clientReportProofRows(row).length) > 0).length;
+  const reportsWithoutProof = Math.max(0, rows.length - reportsWithProof);
   const now = new Date();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const thisMonth = rows.filter(row => new Date(row.createdAt || 0).getTime() >= startMonth).length;
-  return { total, completed, pending, attention, thisMonth };
+  const thisMonth = rows.filter(row => new Date(clientReportPublishedAt(row) || row.createdAt || 0).getTime() >= startMonth).length;
+  return { total, completed, pending, attention, thisMonth, reportsWithProof, reportsWithoutProof };
 }
 function clientReportKpi(icon, label, value, sub, tone = 'blue') {
   return `<article class="client-report-kpi ${esc(tone)}"><div class="icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div></article>`;
@@ -5459,10 +5461,10 @@ function clientReportsView() {
   return `<div class="dashboard client-reports-shell">
     <header class="dashboard-header"><div class="title-block"><h1>Reports</h1><p>View and manage all security reports generated from patrols and activity.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div></header>
     <section class="client-report-kpi-row">
-      ${clientReportKpi('▤','Total Reports',counts.total,'All time','blue')}
-      ${clientReportKpi('✓','Completed',counts.completed,`${completedPct}%`,'green')}
-      ${clientReportKpi('◷','Pending Review',counts.pending,`${pendingPct}%`,'yellow')}
-      ${clientReportKpi('⚑','Attention',counts.attention,`${attentionPct}%`,'purple')}
+      ${clientReportKpi('▤','Total Reports',counts.total,'Matches Dispatch Archive','blue')}
+      ${clientReportKpi('✓','Published Reports',counts.completed,`${completedPct}% released`,'green')}
+      ${clientReportKpi('🖼','Reports With Proof',counts.reportsWithProof,'Includes photo/video proof','cyan')}
+      ${clientReportKpi('Ø','Reports No Proof',counts.reportsWithoutProof,'Published without media','purple')}
       ${clientReportKpi('▣','This Month',counts.thisMonth,'Released this month','orange')}
     </section>
     <section class="client-reports-layout">
@@ -8137,13 +8139,14 @@ function proofReviewKpi(icon, label, value, subtext, tone = 'blue') {
 }
 function proofReviewKpiRow() {
   const c = proofReviewCounts();
+  const g = typeof globalReportProofCounts === 'function' ? globalReportProofCounts() : { publishedReports: 0, reportsWithProof: 0, reportsWithoutProof: 0, proofItems: c.totalMedia };
   return `<section class="proof-review-kpis">
-    ${proofReviewKpi('🖼','Needs Review',c.pending,'Unreviewed items','blue')}
-    ${proofReviewKpi('✓','Approved Total',c.approvedTotal,`${c.approvedReady} ready + ${c.publishedLocked} published`,'green')}
-    ${proofReviewKpi('×','Rejected',c.rejected,'Denied proof','purple')}
-    ${proofReviewKpi('▣','Included in Reports',c.included,'Selected proof','orange')}
-    ${proofReviewKpi('🔒','Published / Locked',c.publishedLocked,'Final reports closed','cyan')}
-    ${proofReviewKpi('🎥','Total Media',c.totalMedia,'All time','red')}
+    ${proofReviewKpi('🖼','Needs Review Proof',c.pending,'Unreviewed proof items','blue')}
+    ${proofReviewKpi('✓','Approved Proof Items',c.approvedTotal,`${c.approvedReady} ready + ${c.publishedLocked} published`,'green')}
+    ${proofReviewKpi('▣','Published Reports',g.publishedReports,`${g.reportsWithProof} with proof · ${g.reportsWithoutProof} no proof`,'purple')}
+    ${proofReviewKpi('🖼','Reports With Proof',g.reportsWithProof,'Published reports with media','cyan')}
+    ${proofReviewKpi('Ø','Reports No Proof',g.reportsWithoutProof,'Published without media','orange')}
+    ${proofReviewKpi('🎥','Total Proof Media',g.proofItems || c.totalMedia,'Photo/video proof items','red')}
   </section>`;
 }
 function proofReviewTabButton(key, label, count) {
@@ -8486,13 +8489,17 @@ function proofMediaTypeFromItem(item = {}) {
 function reportBuilderCounts() {
   const reports = reportBuilderAllReports();
   const proofRows = typeof proofReviewRows === 'function' ? proofReviewRows() : proofReviewAllProofItems().map((proof, idx) => ({ id: proof.id || idx, proof, fileType: proof.file_type, fileName: proof.file_name, mediaUrl: proofUrlValue(proof) }));
+  const global = typeof globalReportProofCounts === 'function' ? globalReportProofCounts() : null;
   return {
     drafts: reports.filter(r => reportStatus(r) === 'draft').length,
     ready: reports.filter(r => reportStatus(r) === 'ready').length,
     published: reports.filter(r => reportStatus(r) === 'published').length,
     total: reports.length,
     photos: proofRows.filter(row => proofMediaType(row) === 'photo').length,
-    videos: proofRows.filter(row => proofMediaType(row) === 'video').length
+    videos: proofRows.filter(row => proofMediaType(row) === 'video').length,
+    reportsWithProof: global ? global.reportsWithProof : 0,
+    reportsWithoutProof: global ? global.reportsWithoutProof : 0,
+    proofItems: global ? global.proofItems : proofRows.length
   };
 }
 function reportBuilderKpi(icon, label, value, subtext, tone = 'blue') {
@@ -8504,8 +8511,8 @@ function reportBuilderKpiRow() {
     ${reportBuilderKpi('▤','Draft Reports',c.drafts,'In progress','blue')}
     ${reportBuilderKpi('✓','Ready To Publish',c.ready,'Awaiting release','green')}
     ${reportBuilderKpi('▣','Published Reports',c.published,'Released to clients','purple')}
-    ${reportBuilderKpi('⚙','Total Reports',c.total,'All time','orange')}
-    ${reportBuilderKpi('🖼','Photos Included',c.photos,'Available proof','cyan')}
+    ${reportBuilderKpi('🖼','Reports With Proof',c.reportsWithProof,`${c.proofItems} proof item${Number(c.proofItems) === 1 ? '' : 's'}`,'cyan')}
+    ${reportBuilderKpi('Ø','Reports No Proof',c.reportsWithoutProof,'Published without media','orange')}
     ${reportBuilderKpi('🎥','Videos Included',c.videos,'Available proof','red')}
   </section>`;
 }
@@ -8955,15 +8962,45 @@ function reportArchiveRows() {
     };
   }).sort((a,b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
 }
+function globalReportProofCounts() {
+  const reports = (typeof reportArchiveRows === 'function' ? reportArchiveRows() : []);
+  const publishedReports = reports.filter(r => (typeof reportArchiveStatus === 'function' ? reportArchiveStatus(r) : String(r.status || '').toLowerCase()) === 'published');
+  const reportTotal = reports.length;
+  const published = publishedReports.length;
+  const reportRowsForProof = publishedReports.length ? publishedReports : reports;
+  const reportsWithProof = reportRowsForProof.filter(r => (Number(r.photoCount || 0) + Number(r.videoCount || 0)) > 0).length;
+  const reportsWithoutProof = Math.max(0, reportRowsForProof.length - reportsWithProof);
+  const photos = reportRowsForProof.reduce((sum, r) => sum + Number(r.photoCount || 0), 0);
+  const videos = reportRowsForProof.reduce((sum, r) => sum + Number(r.videoCount || 0), 0);
+  const proofItems = photos + videos;
+  const proofRows = (typeof proofReviewRows === 'function' ? proofReviewRows() : []);
+  return {
+    reportTotal,
+    publishedReports: published,
+    reportsWithProof,
+    reportsWithoutProof,
+    photos,
+    videos,
+    proofItems,
+    proofRows: proofRows.length
+  };
+}
+function reportProofClarityText(c = globalReportProofCounts()) {
+  return `${c.publishedReports} published reports • ${c.reportsWithProof} with proof • ${c.reportsWithoutProof} without proof`;
+}
 function reportArchiveCounts() {
   const reports = reportArchiveRows();
+  const global = globalReportProofCounts();
   return {
     total: reports.length,
     published: reports.filter(r => reportArchiveStatus(r) === 'published').length,
     drafts: reports.filter(r => reportArchiveStatus(r) === 'draft').length,
     scheduled: reports.filter(r => reportArchiveStatus(r) === 'scheduled').length,
     photos: reports.reduce((sum, r) => sum + Number(r.photoCount || 0), 0),
-    videos: reports.reduce((sum, r) => sum + Number(r.videoCount || 0), 0)
+    videos: reports.reduce((sum, r) => sum + Number(r.videoCount || 0), 0),
+    reportsWithProof: global.reportsWithProof,
+    reportsWithoutProof: global.reportsWithoutProof,
+    proofItems: global.proofItems
   };
 }
 function reportArchiveKpi(icon, label, value, subtext, tone = 'blue') {
@@ -8972,12 +9009,12 @@ function reportArchiveKpi(icon, label, value, subtext, tone = 'blue') {
 function reportArchiveKpiRow() {
   const c = reportArchiveCounts();
   return `<section class="report-archive-kpis">
-    ${reportArchiveKpi('▣','Total Reports',c.total,'All time','purple')}
-    ${reportArchiveKpi('✓','Published',c.published,'Released reports','green')}
-    ${reportArchiveKpi('◷','Drafts',c.drafts,'In progress','blue')}
-    ${reportArchiveKpi('▤','Scheduled',c.scheduled,'Upcoming','orange')}
-    ${reportArchiveKpi('🖼','Photos Included',c.photos,'All time','cyan')}
-    ${reportArchiveKpi('🎥','Videos Included',c.videos,'All time','red')}
+    ${reportArchiveKpi('▣','Total Reports',c.total,'All reports','purple')}
+    ${reportArchiveKpi('✓','Published Reports',c.published,'Released to clients','green')}
+    ${reportArchiveKpi('🖼','Reports With Proof',c.reportsWithProof,`${c.photos} photo${Number(c.photos) === 1 ? '' : 's'} included`,'cyan')}
+    ${reportArchiveKpi('Ø','Reports No Proof',c.reportsWithoutProof,'Published without media','orange')}
+    ${reportArchiveKpi('🎥','Videos Included',c.videos,'All reports','red')}
+    ${reportArchiveKpi('◷','Drafts / Scheduled',c.drafts + c.scheduled,`${c.drafts} drafts · ${c.scheduled} scheduled`,'blue')}
   </section>`;
 }
 function reportArchiveClientOptions() {

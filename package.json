@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-client-report-publish-sync-timestamp-fix",
-  "version": "3.0.71",
+  "name": "co-pilot-security-global-report-proof-count-clarity-fix",
+  "version": "3.0.72",
   "private": true,
-  "description": "Syncs Client Reports with published Report Archive records and uses published timestamps for sorting/display so new reports appear at the top for clients.",
+  "description": "Clarifies global report and proof/media counts so Report Builder, Report Archive, Client Reports, and Proof Review all show the same published report total while clearly separating reports with proof from reports without proof.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

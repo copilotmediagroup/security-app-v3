@@ -4525,6 +4525,7 @@ label { display: grid; gap: 7px; color: #dcecff; font-weight: 750; font-size: 14
 .client-report-kpi.yellow .icon { color:#ffd47d; background:rgba(255,181,61,.15); box-shadow:0 0 30px rgba(255,181,61,.10); }
 .client-report-kpi.purple .icon { color:#c79dff; background:rgba(176,92,255,.15); box-shadow:0 0 30px rgba(176,92,255,.10); }
 .client-report-kpi.orange .icon { color:#ffb66e; background:rgba(255,121,31,.14); box-shadow:0 0 30px rgba(255,121,31,.10); }
+.client-report-kpi.cyan .icon { color:#65e9ff; background:rgba(0,198,255,.13); box-shadow:0 0 30px rgba(0,198,255,.10); }
 
 .client-reports-layout {
   display: grid;

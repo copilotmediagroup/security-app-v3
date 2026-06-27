@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.71 client report publish sync + timestamp fix build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.72 global report/proof count clarity fix build complete. Copied ${count} files to dist/.`);
