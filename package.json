@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-proof-review-approval-lock-fix",
-  "version": "3.0.69",
+  "name": "co-pilot-security-clients-command-center",
+  "version": "3.0.58",
   "private": true,
-  "description": "Fixes Proof Review approval visibility by adding row-level approve/reject actions and showing locked report-published status instead of misleading Pending Review rows.",
+  "description": "Rebuilds the Dispatch/Admin Clients page into a command-center client management page with KPIs, filters, client table, and detail rail.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

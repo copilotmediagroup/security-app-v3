@@ -1,20 +1,52 @@
-# Co Pilot Security v3.0.69 — Proof Review Approval Button + Lock Status Fix
+# Co Pilot Security v3.0.58 — Clients Command Center
 
 ## What changed
-This build fixes the Proof Review confusion where a proof row could still show **Pending Review** while the right-side detail panel said the proof was locked because the final report was already published.
+The Dispatch/Admin `Clients` page was rebuilt into a modern command-center client management page.
 
-## Fixes
-- Pending proof that can still be reviewed now shows row-level **Approve** and **Reject** buttons.
-- The right detail rail still shows the full **Approve / Reject / Include in Report / Save Note** workflow for reviewable proof.
-- Proof connected to an already-published final report now shows **Report Published** instead of **Pending Review**.
-- Locked proof is no longer counted as Pending Review.
-- A new **Report Published** tab makes locked proof easy to identify.
-- Locked proof includes a **View Report Archive** action.
-- Rejected proof remains blocked from report inclusion.
+## New Clients page sections
+- Header:
+  - System Operational
+  - Search clients
+  - Filters button
+  - Add Client button
+- KPI row:
+  - Total Clients
+  - Active Clients
+  - Active Contracts
+  - Monthly Revenue
+  - Contracts Expiring
+  - Past Due
+- Main client table:
+  - Client
+  - Client Type
+  - Contact
+  - Sites
+  - Contract
+  - Status
+  - Revenue
+  - Actions
+- Right detail rail:
+  - Client logo/profile
+  - Overview / Sites / Contracts / Notes tabs
+  - Primary contact
+  - Email
+  - Phone
+  - Client type
+  - Region
+  - Account manager
+  - Date added
+  - Monthly revenue
+  - Service tags
+  - Site/request/report stats
+  - View Full Profile
+  - Edit Client
 
-## Preserved
-- v3.0.68 Client Reports preview/download fix.
-- v3.0.67 proof upload confirmation behavior.
-- v3.0.65/v3.0.66 global action-lock behavior.
-- No URL media inputs.
+## Functional behavior
+- Search filters the client table.
+- Tabs filter All, Active, Inactive, Prospects, On Hold.
+- Dropdown filters update the table.
+- Clear Filters resets the page.
+- Selecting a client updates the right detail rail.
+- Pagination and rows per page are wired.
+- Add Client, Export, Columns, Edit, View, and Menu actions are placeholder workflows for the next build.
 - No new SQL required.

@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T13-50-v3068';
+const CP_DEV_CACHE_BUST = '2026-06-25T22-35-v3058';
 const BUILD = {
-  version: '3.0.69',
-  label: 'v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX'
+  version: '3.0.58',
+  label: 'v3.0.58 CLIENTS COMMAND CENTER'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -52,7 +52,6 @@ const state = {
   clientReportSearch: '',
   clientReportStatusFilter: 'all',
   clientReportPropertyFilter: 'all',
-  selectedClientReportId: '',
   clientReportPage: 1,
   settingsTab: 'profile',
   liveGpsViewMode: 'default',
@@ -97,39 +96,7 @@ const state = {
   adminClientFilters: { status: 'all', type: 'all', service: 'all', region: 'all', sort: 'newest' },
   selectedAdminClientId: '',
   adminClientPage: 1,
-  adminClientPerPage: 10,
-  activityLogSearch: '',
-  activityLogTab: 'all',
-  activityLogFilters: { user: 'all', action: 'all', module: 'all', severity: 'all', dateRange: 'all' },
-  selectedActivityId: '',
-  activityLogPage: 1,
-  activityLogPerPage: 10,
-  proofReviewSearch: '',
-  proofReviewTab: 'all',
-  proofReviewFilters: { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest' },
-  selectedProofId: '',
-  proofReviewCheckedIds: [],
-  proofReviewPage: 1,
-  proofReviewPerPage: 10,
-  reportBuilderSearch: '',
-  reportBuilderStep: 1,
-  selectedReportRequestId: '',
-  selectedReportProofIds: [],
-  reportBuilderTemplate: 'standard',
-  reportBuilderTitle: '',
-  reportBuilderIncludeGuardNotes: true,
-  reportBuilderIncludeSummary: true,
-  currentReportDraftId: '',
-  reportBuilderClientFilter: 'all',
-  reportBuilderPropertyFilter: 'all',
-  reportBuilderPage: 1,
-  reportBuilderPerPage: 8,
-  reportArchiveSearch: '',
-  reportArchiveFilters: { clientId: 'all', propertyId: 'all', guardId: 'all', status: 'all', dateRange: 'all', sort: 'newest' },
-  selectedArchiveReportId: '',
-  reportArchiveCheckedIds: [],
-  reportArchivePage: 1,
-  reportArchivePerPage: 10
+  adminClientPerPage: 10
 };;
 const liveGps = {
   online: false,
@@ -533,142 +500,11 @@ function statusChip(status = 'pending_dispatch') {
   return `<span style="display:inline-flex;align-items:center;border:1px solid ${color}55;background:${color}22;color:#fff;border-radius:999px;padding:6px 10px;font-weight:900;font-size:12px;">${esc(statusText(s))}</span>`;
 }
 
-
-/* v3.0.66 Global Action Lock + Cleanup QA helpers */
-function workflowActionStorageKey() {
-  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
-  return `cp_security_workflow_action_locks_${who}`;
-}
-function readWorkflowActionLocks() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(workflowActionStorageKey()) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function writeWorkflowActionLocks(map = {}) {
-  try { localStorage.setItem(workflowActionStorageKey(), JSON.stringify(map)); } catch {}
-}
-function workflowActionKey(type = '', id = '') {
-  return `${String(type || 'action').trim()}::${String(id || '').trim()}`;
-}
-function workflowActionLock(type = '', id = '') {
-  return readWorkflowActionLocks()[workflowActionKey(type, id)] || null;
-}
-function saveWorkflowActionLock(type = '', id = '', patch = {}) {
-  if (!id) return null;
-  const map = readWorkflowActionLocks();
-  const key = workflowActionKey(type, id);
-  map[key] = { ...(map[key] || {}), ...patch, type, id: String(id), updated_at: new Date().toISOString() };
-  writeWorkflowActionLocks(map);
-  return map[key];
-}
-function workflowFinishedPanel(title = 'Finished', message = 'This action is complete.', tone = 'success') {
-  return `<section class="workflow-finished-panel ${esc(tone)}"><strong>${esc(title)}</strong><p>${esc(message)}</p></section>`;
-}
-function setActionButtonBusy(button, label = 'Working...') {
-  if (!button) return;
-  button.dataset.originalText = button.dataset.originalText || button.textContent || '';
-  button.dataset.busy = '1';
-  button.disabled = true;
-  button.classList.add('is-busy');
-  if (label) button.textContent = label;
-}
-function clearActionButtonBusy(button) {
-  if (!button) return;
-  button.disabled = false;
-  button.dataset.busy = '0';
-  button.classList.remove('is-busy');
-  if (button.dataset.originalText) button.textContent = button.dataset.originalText;
-}
-function guardApprovalFinished(app = {}) {
-  return ['approved', 'rejected'].includes(typeof approvalStatus === 'function' ? approvalStatus(app) : String(app.status || '').toLowerCase());
-}
-function proofReviewFinished(row = {}) {
-  return ['approved', 'rejected'].includes(typeof proofStatus === 'function' ? proofStatus(row) : String(row.status || '').toLowerCase());
-}
-function publishedReportForRequestId(requestId = '') {
-  const id = String(requestId || '');
-  if (!id) return null;
-  const records = [
-    ...(state.patrolReports || []),
-    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [])
-  ];
-  return records.find(report => {
-    const rid = String(report.request_id || report.patrol_request_id || '');
-    if (rid !== id) return false;
-    const status = typeof reportStatus === 'function' ? reportStatus(report) : String(report.status || report.report_status || '').toLowerCase();
-    return status === 'published' || Boolean(report.released_at || report.published_at || report.publishedAt);
-  }) || null;
-}
-function requestHasPublishedReport(requestId = '') { return Boolean(publishedReportForRequestId(requestId)); }
-function proofLockedByPublishedReport(row = {}) {
-  const requestId = row.request?.id || proofRequestIdValue(row.proof || row) || row.request_id || '';
-  return requestHasPublishedReport(requestId);
-}
-
-function requestIsPendingDispatch(req = {}) {
-  const s = String(req.status || '').toLowerCase();
-  return ['', 'pending', 'pending_dispatch', 'new', 'requested'].includes(s);
-}
-function normalizeWorkflowState() {
-  const pendingIds = new Set((state.patrolRequests || []).filter(requestIsPendingDispatch).map(r => String(r.id || '')));
-  state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(id => pendingIds.has(String(id)));
-  if (state.selectedPendingRequestId && !pendingIds.has(String(state.selectedPendingRequestId))) {
-    state.selectedPendingRequestId = '';
-    if (state.view === 'pending-dispatch') state.view = 'dispatch-board';
-  }
-  const reportRequestId = state.selectedReportRequestId || '';
-  const published = reportRequestId ? publishedReportForRequestId(reportRequestId) : null;
-  if (published && state.view === 'report-builder') {
-    state.selectedArchiveReportId = String(published.id || '');
-    resetReportBuilderState();
-    state.view = 'report-archive';
-  }
-  const selectedApproval = state.selectedGuardApprovalId ? guardApprovalRows().find(a => String(a.id) === String(state.selectedGuardApprovalId)) : null;
-  if (selectedApproval && approvalStatus(selectedApproval) === 'approved' && state.view === 'guard-approvals') {
-    const guard = (state.guards || []).find(g => String(g.id || '') === String(selectedApproval.id || '') || String(g.email || '').toLowerCase() === String(selectedApproval.email || '').toLowerCase());
-    if (guard) state.selectedGuardId = guard.id || '';
-  }
-  if (state.view === 'proof-review' && typeof proofReviewRows === 'function') {
-    state.proofReviewFilters = { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest', ...(state.proofReviewFilters || {}) };
-    const filters = state.proofReviewFilters || {};
-    const hasOnlyDateFilter = !state.proofReviewSearch && (state.proofReviewTab || 'all') === 'all' && ['guardId','clientId','propertyId','type'].every(k => !filters[k] || filters[k] === 'all');
-    if (hasOnlyDateFilter && filters.dateRange && filters.dateRange !== 'all' && proofReviewRows().length && !filteredProofReviewRows().length) {
-      state.proofReviewFilters.dateRange = 'all';
-      state.proofReviewPage = 1;
-    }
-  }
-}
-function cleanupInteractiveButtons() {
-  try {
-    const wiredDatasetKeys = new Set([
-      'action','view','publicView','completedFilter','messageFilter','notificationFilter','clientRequestType','clientRequestHistoryFilter','clientPropertyFilter','propertyView','propertyTab','settingsTab','approve','reject'
-    ]);
-    document.querySelectorAll('.app-shell button').forEach(button => {
-      const hasWiredDataset = Object.keys(button.dataset || {}).some(key => wiredDatasetKeys.has(key));
-      const isSubmit = Boolean(button.closest('form')) && String(button.type || '').toLowerCase() === 'submit';
-      if (hasWiredDataset || isSubmit || button.disabled) return;
-      button.classList.add('ui-disabled-placeholder');
-      button.setAttribute('aria-disabled', 'true');
-      button.title = button.title || 'Visual-only control: no live action wired in this cleanup build.';
-    });
-  } catch {}
-}
-
 function propertyById(id) { return state.properties.find(item => String(item.id) === String(id)) || {}; }
 function guardById(id) { return state.guards.find(item => String(item.id) === String(id)) || {}; }
 function clientById(id) { return state.clients.find(item => String(item.id) === String(id)) || {}; }
 function requestById(id) { return state.patrolRequests.find(item => String(item.id) === String(id)) || null; }
-function reportByRequestId(id) {
-  const requestId = String(id || '');
-  const rows = [
-    ...(state.patrolReports || []),
-    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [])
-  ];
-  return rows.find(item => String(item.request_id || item.patrol_request_id || '') === requestId) || null;
-}
+function reportByRequestId(id) { return state.patrolReports.find(item => String(item.request_id) === String(id)) || null; }
 function proofRequestIdValue(item = {}) {
   return item.request_id || item.patrol_request_id || item.patrolRequestId || item.requestId || item.request?.id || '';
 }
@@ -751,9 +587,6 @@ function requestGuardName(req = {}) {
   const g = guardById(req.guard_id || req.assigned_guard_id);
   return g.name || g.display_name || g.email || 'Unassigned';
 }
-function guardDisplayName(guard = {}) {
-  return guard.name || guard.display_name || guard.full_name || guard.email || 'Unassigned';
-}
 function requestElapsed(req = {}) {
   const base = req.started_at || req.accepted_at || req.assigned_at || req.created_at;
   if (!base) return '00:00';
@@ -788,7 +621,7 @@ function scheduledRequests() {
   return (state.patrolRequests || []).filter(isScheduledQueueRequest);
 }
 function proofWaiting() { return state.proofItems.filter(p => !p.report_selected); }
-function reportsReady() { return completedRequests().filter(r => !requestHasPublishedReport(r.id)); }
+function reportsReady() { return completedRequests().filter(r => !reportByRequestId(r.id)?.released_at); }
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
 function clientApprovals() { return state.clientSignups.filter(c => !c.status || String(c.status) === 'pending'); }
 function unreadMessagesCount() { return state.messageThreads.filter(t => Number(t.unread_count || 0) > 0).length; }
@@ -816,7 +649,6 @@ async function loadData() {
   state.messageThreads = data.messageThreads || [];
   state.messages = data.messages || [];
   syncDispatchGuardMessages();
-  normalizeWorkflowState();
   state.status = 'Connected';
   if (!state.view) state.view = 'dashboard';
 }
@@ -1275,118 +1107,71 @@ async function logout() {
 }
 
 async function approveSignup(kind, id) {
-  if (!id) throw new Error('Approval record missing.');
-  const pendingBefore = kind === 'guard'
-    ? (state.guardSignups.find(g => String(g.id) === String(id)) || {})
-    : (state.clientSignups.find(c => String(c.id) === String(id)) || {});
-  const prior = workflowActionLock(`${kind}-signup`, id);
-  if (prior?.status === 'approved') {
-    toast(`${kind === 'guard' ? 'Guard' : 'Client'} is already approved.`, 'success');
-    return;
-  }
   if (kind === 'guard') {
+    const pending = state.guardSignups.find(g => String(g.id) === String(id)) || {};
     const select = document.querySelector(`select[data-guard-rank="${String(id).replace(/"/g,'&quot;')}"]`);
-    const chosenRank = select?.value || guardRankFor(pendingBefore) || 'Guard';
-    saveGuardRank({ id, email: pendingBefore.email, signup_id: id }, chosenRank);
-    saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
+    const chosenRank = select?.value || 'Guard';
+    saveGuardRank({ id, email: pending.email, signup_id: id }, chosenRank);
   }
-  saveWorkflowActionLock(`${kind}-signup`, id, { status: 'approved', finished_at: new Date().toISOString() });
   await supabase.rpc(kind === 'guard' ? 'cp_approve_guard_signup' : 'cp_approve_client_signup', { p_signup_id: id });
   await loadData();
   if (kind === 'guard') {
-    const email = String(pendingBefore.email || '').trim().toLowerCase();
-    const approved = (state.guards || []).find(g => email && String(g.email || '').trim().toLowerCase() === email) || (state.guards || [])[0];
-    if (approved) {
-      saveGuardRank(approved, guardRankFor({ id, email: pendingBefore.email, signup_id: id }));
-      state.selectedGuardId = approved.id || '';
-    }
-    state.guardApprovalTab = 'all';
-    state.selectedGuardApprovalId = '';
-    state.view = 'guards';
-  } else {
-    const email = String(pendingBefore.email || '').trim().toLowerCase();
-    const client = (state.clients || []).find(c => email && String(c.email || '').trim().toLowerCase() === email) || (state.clients || [])[0];
-    if (client) state.selectedAdminClientId = client.id || '';
-    state.view = 'clients';
+    const pending = state.guardSignups.find(g => String(g.id) === String(id));
+    const approved = (state.guards || []).find(g => pending?.email && String(g.email || '').trim().toLowerCase() === String(pending.email || '').trim().toLowerCase());
+    if (approved) saveGuardRank(approved, guardRankFor({ id, email: pending?.email, signup_id: id }));
   }
   render();
-  toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved and moved to the active ${kind === 'guard' ? 'guard roster' : 'client list'}.`, 'success');
+  toast(`${kind === 'guard' ? 'Guard' : 'Client'} approved.`, 'success');
 }
 
 async function rejectSignup(kind, id) {
-  if (!id) throw new Error('Rejection record missing.');
-  const prior = workflowActionLock(`${kind}-signup`, id);
-  if (prior?.status === 'rejected') {
-    toast(`${kind === 'guard' ? 'Guard' : 'Client'} is already rejected.`, 'success');
-    return;
-  }
-  if (kind === 'guard') saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
-  saveWorkflowActionLock(`${kind}-signup`, id, { status: 'rejected', finished_at: new Date().toISOString() });
   await supabase.rpc(kind === 'guard' ? 'cp_reject_guard_signup' : 'cp_reject_client_signup', { p_signup_id: id });
   await loadData();
-  if (kind === 'guard') {
-    state.view = 'guard-approvals';
-    state.guardApprovalTab = 'rejected';
-    state.selectedGuardApprovalId = id;
-  } else {
-    state.view = 'clients';
-    state.selectedAdminClientId = '';
-  }
   render();
-  toast(`${kind === 'guard' ? 'Guard application' : 'Client application'} rejected and locked.`, 'success');
+  toast(`${kind === 'guard' ? 'Guard' : 'Client'} rejected.`, 'success');
 }
 
 
 async function uploadProofFiles(requestId, files = [], note = '') {
   if (!requestId) throw new Error('Active job missing.');
   const list = Array.from(files || []);
-  const validation = validateProofFiles(list);
-  if (!validation.ok) throw new Error(validation.errors[0] || 'Proof upload validation failed.');
+  if (!list.length) throw new Error('Choose at least one photo or video.');
   const uploaded = [];
-  saveProofUploadStatus(requestId, { status: 'uploading', count: list.length, message: `Uploading ${list.length} proof file${list.length === 1 ? '' : 's'}…`, started_at: new Date().toISOString() });
 
   for (const file of list) {
-    const kind = proofKindForFile(file);
-    const safe = String(file.name || 'proof').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90) || `${kind}-proof`;
+    const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : '';
+    if (!kind) throw new Error('Only photo or video files are allowed.');
+    const safe = String(file.name || 'proof').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-90);
     const objectPath = `${requestId}/${Date.now()}-${Math.random().toString(16).slice(2)}-${safe}`;
-    let publicUrl = '';
-    try {
-      await supabase.uploadStorageObject('patrol-proof', objectPath, file, { upsert: false });
-      publicUrl = supabase.getPublicUrl('patrol-proof', objectPath);
-      const result = await supabase.rpc('cp_guard_register_patrol_proof', {
-        p_request_id: requestId,
-        p_bucket_id: 'patrol-proof',
-        p_object_path: objectPath,
-        p_file_name: safe,
-        p_file_type: file.type || kind,
-        p_file_size: file.size || 0,
-        p_public_url: publicUrl,
-        p_note: note
-      });
-      const proof = result?.proof || {};
-      uploaded.push({
-        ...proof,
-        request_id: proof.request_id || requestId,
-        bucket_id: proof.bucket_id || 'patrol-proof',
-        object_path: proof.object_path || objectPath,
-        file_name: proof.file_name || safe,
-        file_type: proof.file_type || file.type || kind,
-        file_size: proof.file_size || file.size || 0,
-        public_url: proof.public_url || publicUrl,
-        note: proof.note || note,
-        uploaded_at: proof.uploaded_at || new Date().toISOString(),
-        created_at: proof.created_at || new Date().toISOString(),
-        review_status: proof.review_status || proof.status || 'pending'
-      });
-    } catch (err) {
-      const message = friendly(err);
-      saveProofUploadStatus(requestId, { status: 'failed', message, failed_at: new Date().toISOString() });
-      throw new Error(message || 'Proof upload failed.');
-    }
+    await supabase.uploadStorageObject('patrol-proof', objectPath, file, { upsert: false });
+    const publicUrl = supabase.getPublicUrl('patrol-proof', objectPath);
+    const result = await supabase.rpc('cp_guard_register_patrol_proof', {
+      p_request_id: requestId,
+      p_bucket_id: 'patrol-proof',
+      p_object_path: objectPath,
+      p_file_name: safe,
+      p_file_type: file.type || kind,
+      p_file_size: file.size || 0,
+      p_public_url: publicUrl,
+      p_note: note
+    });
+    const proof = result?.proof || {};
+    uploaded.push({
+      ...proof,
+      request_id: proof.request_id || requestId,
+      bucket_id: proof.bucket_id || 'patrol-proof',
+      object_path: proof.object_path || objectPath,
+      file_name: proof.file_name || safe,
+      file_type: proof.file_type || file.type || kind,
+      file_size: proof.file_size || file.size || 0,
+      public_url: proof.public_url || publicUrl,
+      note: proof.note || note,
+      uploaded_at: proof.uploaded_at || new Date().toISOString(),
+      created_at: proof.created_at || new Date().toISOString()
+    });
   }
 
   addLocalProofItems(requestId, uploaded);
-  saveProofUploadStatus(requestId, { status: 'success', count: uploaded.length, message: `${uploaded.length} proof file${uploaded.length === 1 ? '' : 's'} uploaded successfully.`, completed_at: new Date().toISOString() });
   return uploaded;
 }
 
@@ -1398,48 +1183,29 @@ async function uploadProof(form) {
   await loadData();
   state.view = state.role === 'guard' ? 'active-job' : 'proof-review';
   render();
-  toast(`${files.length} proof file${files.length === 1 ? '' : 's'} uploaded and attached to this job.`, 'success');
+  toast('Proof uploaded.', 'success');
 }
 
 
 async function assignPatrolNow(requestId) {
   const req = state.patrolRequests.find(r => String(r.id) === String(requestId));
   if (!req) throw new Error('Pending patrol request not found. Refresh Dispatch and try again.');
-  const currentStatus = String(req.status || '').toLowerCase();
-  if (currentStatus === 'completed') throw new Error('Completed jobs cannot be assigned.');
-  if (!['', 'pending', 'pending_dispatch', 'new', 'requested'].includes(currentStatus)) {
-    state.selectedPendingRequestId = '';
-    state.view = ['assigned','accepted','in_progress'].includes(currentStatus) ? 'dispatch-board' : 'scheduled-queue';
-    render();
-    toast(`This request is already ${statusText(currentStatus)}.`, 'success');
-    return;
-  }
-  if (workflowActionLock('dispatch-assign', requestId)?.status === 'assigned') {
-    state.selectedPendingRequestId = '';
-    state.view = 'dispatch-board';
-    render();
-    toast('This patrol was already assigned.', 'success');
-    return;
-  }
+  if (String(req.status || '') === 'completed') throw new Error('Completed jobs cannot be assigned.');
   const guards = adminAssignableGuards();
   if (!guards.length) throw new Error('No approved active guards found. Approve or create a guard before assigning.');
   const select = document.querySelector(`select[data-assign-guard="${String(requestId).replace(/"/g, '&quot;')}"]`);
   const selectedGuardId = select?.value || guards[0]?.id || '';
   if (!selectedGuardId) throw new Error('Choose a guard before assigning.');
-  saveWorkflowActionLock('dispatch-assign', requestId, { status: 'assigning', guard_id: selectedGuardId });
   const result = await supabase.rpc('cp_admin_assign_patrol_request', {
     p_request_id: requestId,
     p_guard_id: selectedGuardId
   });
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
-  saveWorkflowActionLock('dispatch-assign', requestId, { status: 'assigned', guard_id: selectedGuardId, finished_at: new Date().toISOString() });
   await loadData();
-  state.selectedPendingRequestId = '';
-  state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(x => String(x) !== String(requestId));
-  state.view = 'dispatch-board';
+  state.view = ['dispatch-board','pending-dispatch'].includes(state.view) ? state.view : 'dashboard';
   render();
   const guardName = result.guard?.name || result.guard?.display_name || result.guard?.email || 'guard';
-  toast(`${requestTitle(result.request || req)} assigned to ${guardName} and moved out of Pending Dispatch.`, 'success');
+  toast(`${requestTitle(result.request || req)} assigned to ${guardName}.`, 'success');
 }
 
 
@@ -1604,7 +1370,6 @@ function renderLoading() {
   scheduleClientPropertyMapPrep();
   scheduleClientPropertyDetailMap();
   if (state.role === 'client' && state.view === 'patrol-requests') setTimeout(() => updateClientRequestSummaryFromForm(), 0);
-  setTimeout(() => cleanupInteractiveButtons(), 0);
   resumePersistedGuardGpsIfNeeded();
 }
 
@@ -3096,7 +2861,7 @@ function guardDashboardMockup302() {
       ${kpiCard('▤', 'Open Assignments', open.length, open.length ? 'Current field jobs' : 'No pending assignments', '#2f83ff')}
       ${kpiCard('〽', 'In Progress', inProgress.length, inProgress.length ? 'Patrol active now' : 'Nothing in progress', '#15d1c4')}
       ${kpiCard('☵', 'Unread Messages', unreadMessagesCount(), unreadMessagesCount() ? 'Needs response' : 'All caught up', '#b05cff')}
-      ${kpiCard('⇧', 'Proof Uploaded', state.proofItems.length, 'Available', '#ff9b38')}
+      ${kpiCard('⇧', 'Proof Uploaded', state.proofItems.length, 'Today', '#ff9b38')}
     </section>
 
     <section class="guard302-body">
@@ -3108,130 +2873,6 @@ function guardDashboardMockup302() {
   </div>`;
 }
 
-
-const inlineProof = {
-  requestId: '',
-  files: [],
-  objectUrls: []
-};
-const CP_PROOF_UPLOAD_LIMITS = {
-  image: 15 * 1024 * 1024,
-  video: 100 * 1024 * 1024,
-  total: 150 * 1024 * 1024
-};
-function proofUploadStatusKey(requestId = '') {
-  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
-  return `cp_security_proof_upload_status_${who}_${String(requestId || 'none')}`;
-}
-function readProofUploadStatus(requestId = '') {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(proofUploadStatusKey(requestId)) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function saveProofUploadStatus(requestId = '', patch = {}) {
-  if (!requestId) return {};
-  const next = { ...readProofUploadStatus(requestId), ...patch, request_id: String(requestId), updated_at: new Date().toISOString() };
-  try { localStorage.setItem(proofUploadStatusKey(requestId), JSON.stringify(next)); } catch {}
-  return next;
-}
-function clearProofUploadStatus(requestId = '') {
-  try { localStorage.removeItem(proofUploadStatusKey(requestId)); } catch {}
-}
-function proofKindForFile(file = {}) {
-  const type = String(file.type || '').toLowerCase();
-  if (type.startsWith('image/')) return 'image';
-  if (type.startsWith('video/')) return 'video';
-  const name = String(file.name || '').toLowerCase();
-  if (/\.(png|jpe?g|gif|webp|heic|heif)$/i.test(name)) return 'image';
-  if (/\.(mp4|mov|webm|m4v|avi)$/i.test(name)) return 'video';
-  return '';
-}
-function humanFileSize(bytes = 0) {
-  const n = Number(bytes || 0);
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
-  return `${n} B`;
-}
-function validateProofFiles(files = []) {
-  const list = Array.from(files || []);
-  if (!list.length) return { ok: false, errors: ['Choose at least one photo or video.'], totalSize: 0, rows: [] };
-  const errors = [];
-  const rows = [];
-  let totalSize = 0;
-  list.forEach(file => {
-    const kind = proofKindForFile(file);
-    const size = Number(file.size || 0);
-    totalSize += size;
-    let error = '';
-    if (!kind) error = 'Unsupported file type. Use a photo or video.';
-    else if (kind === 'image' && size > CP_PROOF_UPLOAD_LIMITS.image) error = `Photo is too large. Max ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.image)}.`;
-    else if (kind === 'video' && size > CP_PROOF_UPLOAD_LIMITS.video) error = `Video is too large. Max ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.video)}.`;
-    if (error) errors.push(`${file.name || 'Proof file'}: ${error}`);
-    rows.push({ file, kind, size, error });
-  });
-  if (totalSize > CP_PROOF_UPLOAD_LIMITS.total) errors.push(`Selected files total ${humanFileSize(totalSize)}. Max total ${humanFileSize(CP_PROOF_UPLOAD_LIMITS.total)}.`);
-  return { ok: errors.length === 0, errors, totalSize, rows };
-}
-function proofUploadStateLabel(requestId = '') {
-  const st = readProofUploadStatus(requestId);
-  if (st.status === 'uploading') return 'Proof is uploading…';
-  if (st.status === 'success') return `${Number(st.count || 0)} proof file${Number(st.count || 0) === 1 ? '' : 's'} uploaded`;
-  if (st.status === 'failed') return 'Last proof upload failed';
-  return 'No recent upload status';
-}
-function showCompleteWithoutProofModal(req) {
-  if (!req) return;
-  document.querySelectorAll('.complete-without-proof-modal').forEach(el => el.remove());
-  const status = readProofUploadStatus(req.id);
-  const failed = status.status === 'failed';
-  const modal = document.createElement('div');
-  modal.className = 'inline-proof-modal complete-without-proof-modal';
-  modal.innerHTML = `<div class="inline-proof-backdrop" data-action="cancel-complete-without-proof"></div>
-    <section class="inline-proof-dialog complete-without-proof-dialog" role="dialog" aria-modal="true" aria-label="Complete job without proof">
-      <div class="inline-proof-head"><div><p class="eyebrow">Complete Job</p><h2>${failed ? 'Proof upload failed' : 'No proof attached yet'}</h2><span>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</span></div><button type="button" data-action="cancel-complete-without-proof">×</button></div>
-      <div class="proof-upload-warning"><strong>${failed ? 'The last upload did not finish.' : 'This job has no photo or video proof attached.'}</strong><p>You can upload proof now, or complete the job without proof. Dispatch will still be able to build a no-proof report.</p>${status.message ? `<small>${esc(status.message)}</small>` : ''}</div>
-      <div class="inline-proof-actions"><button type="button" class="ghost-button" data-action="cancel-complete-without-proof">Cancel</button><button type="button" class="ghost-button" data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">Upload Proof</button><button type="button" class="primary-button danger" data-action="complete-without-proof" data-request-id="${esc(req.id)}">Complete Without Proof</button></div>
-    </section>`;
-  document.body.appendChild(modal);
-}
-function closeCompleteWithoutProofModal() {
-  document.querySelectorAll('.complete-without-proof-modal').forEach(el => el.remove());
-}
-async function finishGuardJob(req, options = {}) {
-  if (!req) throw new Error('Active job not found.');
-  let latest = req;
-  const beforeStatus = String(latest.status || 'assigned');
-  if (beforeStatus === 'assigned') {
-    const updated = await callGuardStatusRpc(latest, 'accepted');
-    latest = updated || latest;
-  }
-  if (String(latest.status) === 'accepted') {
-    const updated = await callGuardStatusRpc(latest, 'in_progress');
-    latest = updated || latest;
-  }
-  if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
-  setGuardWorkflowLocalStage(req, 'complete');
-  addGuardWorkflowLocalLog(req, options.withoutProof ? 'Guard completed job without proof' : 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
-  clearProofUploadStatus(req.id);
-  liveGps.propertyLat = null;
-  liveGps.propertyLng = null;
-  liveGps.propertyAddress = '';
-  liveGps.routePoints = [];
-  liveGps.routeDistanceMiles = null;
-  liveGps.routeEtaMin = null;
-  liveGps.selectedMapCard = null;
-  await loadData();
-  state.view = 'completed';
-  state.selectedCompletedRequestId = req.id || '';
-  render();
-  const count = proofForRequest(req.id).length;
-  if (count) toast(`Job completed. ${count} proof file${count === 1 ? '' : 's'} sent to Dispatch Proof Review.`, 'success');
-  else toast('Job completed without proof. Dispatch can build a no-proof report.', 'success');
-}
 function guardWorkflowStorageKey(req) {
   return `cp_guard_workflow_stage_${String(req?.id || 'none')}`;
 }
@@ -3349,16 +2990,7 @@ function launchInlineProofPicker(req) {
   input.addEventListener('change', () => {
     const files = Array.from(input.files || []);
     input.remove();
-    if (!files.length) {
-      toast('No proof selected. You can upload proof or complete without proof.', 'success');
-      return;
-    }
-    const validation = validateProofFiles(files);
-    if (!validation.ok) {
-      saveProofUploadStatus(req.id, { status: 'failed', message: validation.errors[0], failed_at: new Date().toISOString() });
-      toast(validation.errors[0], 'error');
-      return;
-    }
+    if (!files.length) return;
     showInlineProofPreview(req, files);
   }, { once: true });
   document.body.appendChild(input);
@@ -3376,7 +3008,7 @@ function showInlineProofPreview(req, files = []) {
     const media = kind === 'video'
       ? `<video src="${esc(url)}" controls muted playsinline></video>`
       : `<img src="${esc(url)}" alt="Proof preview">`;
-    return `<div class="inline-proof-preview-item">${media}<span>${esc(file.name || 'Proof file')} · ${esc(humanFileSize(file.size || 0))}</span></div>`;
+    return `<div class="inline-proof-preview-item">${media}<span>${esc(file.name || 'Proof file')}</span></div>`;
   }).join('');
   const more = inlineProof.files.length > 6 ? `<p class="inline-proof-more">+${inlineProof.files.length - 6} more selected</p>` : '';
   const modal = document.createElement('div');
@@ -3384,7 +3016,7 @@ function showInlineProofPreview(req, files = []) {
   modal.innerHTML = `<div class="inline-proof-backdrop" data-action="cancel-inline-proof"></div>
     <section class="inline-proof-dialog" role="dialog" aria-modal="true" aria-label="Confirm proof upload">
       <div class="inline-proof-head"><div><p class="eyebrow">Proof Upload</p><h2>Confirm this upload</h2><span>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</span></div><button type="button" data-action="cancel-inline-proof">×</button></div>
-      <div class="inline-proof-grid">${previews}${more}</div><div class="inline-proof-upload-state"><strong>Ready to upload</strong><span>${esc(inlineProof.files.length)} file${inlineProof.files.length === 1 ? '' : 's'} selected · ${esc(humanFileSize(inlineProof.files.reduce((sum, file) => sum + Number(file.size || 0), 0)))}</span></div>
+      <div class="inline-proof-grid">${previews}${more}</div>
       <label class="inline-proof-note">Guard note<textarea name="inline_proof_note" placeholder="Optional note for Dispatch and final report"></textarea></label>
       <div class="inline-proof-actions"><button type="button" class="ghost-button" data-action="cancel-inline-proof">Cancel</button><button type="button" class="primary-button" data-action="confirm-inline-proof">Confirm Upload</button></div>
     </section>`;
@@ -3400,34 +3032,16 @@ async function confirmInlineProofUpload() {
   const note = modal?.querySelector('textarea[name="inline_proof_note"]')?.value?.trim() || '';
   const files = inlineProof.files.slice();
   const btn = modal?.querySelector('[data-action="confirm-inline-proof"]');
-  const stateBox = modal?.querySelector('.inline-proof-upload-state');
-  const validation = validateProofFiles(files);
-  if (!validation.ok) {
-    saveProofUploadStatus(req.id, { status: 'failed', message: validation.errors[0], failed_at: new Date().toISOString() });
-    toast(validation.errors[0], 'error');
-    return;
-  }
-  try {
-    if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
-    if (stateBox) stateBox.innerHTML = '<strong>Uploading proof…</strong><span>Please wait. Do not complete the job yet.</span>';
-    saveProofUploadStatus(req.id, { status: 'uploading', count: files.length, message: 'Uploading proof…', started_at: new Date().toISOString() });
-    const uploaded = await uploadProofFiles(req.id, files, note);
-    setGuardWorkflowLocalStage(req, 'upload_proof');
-    addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${uploaded.length} proof item${uploaded.length === 1 ? '' : 's'} uploaded`);
-    closeInlineProofModal();
-    await loadData();
-    state.view = 'active-job';
-    render();
-    toast(`${uploaded.length} proof file${uploaded.length === 1 ? '' : 's'} uploaded successfully. You can now complete the job.`, 'success');
-  } catch (err) {
-    const message = friendly(err);
-    saveProofUploadStatus(req.id, { status: 'failed', message, failed_at: new Date().toISOString() });
-    if (btn) { btn.disabled = false; btn.textContent = 'Try Upload Again'; }
-    if (stateBox) stateBox.innerHTML = `<strong>Upload failed</strong><span>${esc(message)}</span>`;
-    toast(message || 'Proof upload failed.', 'error');
-  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading…'; }
+  await uploadProofFiles(req.id, files, note);
+  setGuardWorkflowLocalStage(req, 'upload_proof');
+  addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${files.length} proof item${files.length === 1 ? '' : 's'} uploaded`);
+  closeInlineProofModal();
+  await loadData();
+  state.view = 'active-job';
+  render();
+  toast('Proof uploaded and saved to this job. You can now complete the job.', 'success');
 }
-
 function guardWorkflowProofProgress(req) {
   const count = req ? proofForRequest(req.id).length : 0;
   const target = 4;
@@ -3452,7 +3066,6 @@ async function updateGuardWorkflowStep(requestId, step) {
   }
 
   if (step === 'upload_proof') {
-    closeCompleteWithoutProofModal();
     setGuardWorkflowLocalStage(req, 'upload_proof');
     addGuardWorkflowLocalLog(req, 'Opened Inline Proof Upload', `${propertyLabel(req)} proof upload opened inside Active Job`);
     syncGuardWorkflowDom(req, 'upload_proof');
@@ -3477,18 +3090,25 @@ async function updateGuardWorkflowStep(requestId, step) {
     setGuardWorkflowLocalStage(req, 'checking');
     addGuardWorkflowLocalLog(req, 'Started Property Check', `${propertyLabel(req)} · checking property`);
   } else if (step === 'complete') {
-    const uploadState = readProofUploadStatus(req.id);
-    if (uploadState.status === 'uploading') {
-      toast('Proof is still uploading. Please wait before completing the job.', 'error');
-      return;
+    let latest = req;
+    if (String(latest.status) === 'assigned') {
+      const updated = await callGuardStatusRpc(latest, 'accepted');
+      latest = updated || latest;
     }
-    const proofCount = proofForRequest(req.id).length;
-    if (!proofCount) {
-      showCompleteWithoutProofModal(req);
-      return;
+    if (String(latest.status) === 'accepted') {
+      const updated = await callGuardStatusRpc(latest, 'in_progress');
+      latest = updated || latest;
     }
-    await finishGuardJob(req, { withoutProof: false });
-    return;
+    if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
+    setGuardWorkflowLocalStage(req, 'complete');
+    addGuardWorkflowLocalLog(req, 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
+    liveGps.propertyLat = null;
+    liveGps.propertyLng = null;
+    liveGps.propertyAddress = '';
+    liveGps.routePoints = [];
+    liveGps.routeDistanceMiles = null;
+    liveGps.routeEtaMin = null;
+    liveGps.selectedMapCard = null;
   }
 
   await loadData();
@@ -3612,7 +3232,6 @@ function activeJobProofNotesCard(req) {
     <div class="active-rail-head"><h2>Proof / Notes</h2><button class="ghost-button ${proofLocked ? 'locked-stage' : ''}" ${proofLocked ? 'disabled aria-disabled="true"' : 'aria-disabled="false"'} data-action="guard-workflow-step" data-request-id="${esc(req.id)}" data-step="upload_proof">${proofLocked ? 'Proof Locked' : 'Upload Proof'}</button></div>
     <div class="active-proof-row"><span>Proof Progress</span><b>${esc(proof.count)} / ${esc(proof.target)} uploaded</b></div>
     <div class="active-proof-bar"><i style="width:${esc(proof.pct)}%"></i></div>
-    <div class="active-proof-upload-state ${esc(readProofUploadStatus(req.id).status || 'idle')}">${esc(proofUploadStateLabel(req.id))}</div>
     <div class="active-note-box"><small>Notes from Guard</small><p>${esc(local?.details || req.instructions || 'No guard notes yet.')}</p><em>— ${esc(activeGuardName())}</em></div>
   </section>`;
 }
@@ -5212,123 +4831,8 @@ function clientReportOfficerAvatar(row = {}) {
   if (img) return `<img src="${esc(img)}" alt="${esc(row.guardName)}">`;
   return `<span>${esc(initials(row.guardName || 'G'))}</span>`;
 }
-function clientReportById(id) {
-  return clientReportSourceRows().find(row => String(row.id) === String(id)) || null;
-}
-function selectedClientReport() {
-  const rows = clientReportSourceRows();
-  let row = rows.find(item => String(item.id) === String(state.selectedClientReportId || '')) || null;
-  if (!row && state.selectedClientReportId) state.selectedClientReportId = '';
-  return row;
-}
-function clientReportProofRows(row = {}) {
-  if (!row?.requestId) return [];
-  return proofForRequest(row.requestId);
-}
-function clientReportSafeFileName(value = 'client-report') {
-  return String(value || 'client-report').replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '') || 'client-report';
-}
-function clientReportSummaryText(row = {}) {
-  const req = row.req || requestById(row.requestId) || {};
-  const report = row.report || {};
-  return report.summary || report.final_summary || report.final_notes || report.notes || row.description || req.final_summary || req.summary || req.instructions || 'Completed patrol report ready for client review.';
-}
-function clientReportDownloadText(row = {}) {
-  const proofRows = clientReportProofRows(row);
-  const req = row.req || requestById(row.requestId) || {};
-  return [
-    'Co Pilot Security - Client Patrol Report',
-    `Report ID: ${row.reportNumber || 'Report'}`,
-    `Status: ${clientReportStatusLabel(clientReportStatus(row))}`,
-    `Property: ${row.propertyName || 'Property'}`,
-    `Address: ${row.propertyAddress || 'Address unavailable'}`,
-    `Patrol Type: ${clientReportTypeLabel(row.type)}`,
-    `Guard / Officer: ${row.guardName || 'Unassigned'}`,
-    `Date / Time: ${fmtDateTimeStamp(row.createdAt)}`,
-    `Duration: ${typeof reportRequestDuration === 'function' ? reportRequestDuration(req) : '60 min'}`,
-    `Proof Items: ${proofRows.length || row.proofCount || 0}`,
-    '',
-    'Summary:',
-    clientReportSummaryText(row),
-    '',
-    'Client-facing report generated by Co Pilot Security.'
-  ].join('\n');
-}
-function downloadClientReportFile(id) {
-  const row = clientReportById(id) || selectedClientReport();
-  if (!row) {
-    toast('Select a report first.', 'error');
-    return;
-  }
-  if (row.url) {
-    const a = document.createElement('a');
-    a.href = row.url;
-    a.download = `${clientReportSafeFileName(row.reportNumber)}.pdf`;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => a.remove(), 250);
-    toast('Report download opened.', 'success');
-    return;
-  }
-  const blob = new Blob([clientReportDownloadText(row)], { type: 'text/plain;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${clientReportSafeFileName(row.reportNumber)}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-  toast('Report downloaded.', 'success');
-}
-function exportClientReportsCsv() {
-  const rows = filteredClientReports();
-  const cols = ['reportNumber','property','address','type','dateTime','status','officer','proofItems','summary'];
-  const csv = [cols.join(',')].concat(rows.map(row => [
-    row.reportNumber,
-    row.propertyName,
-    row.propertyAddress,
-    clientReportTypeLabel(row.type),
-    fmtDateTimeStamp(row.createdAt),
-    clientReportStatusLabel(clientReportStatus(row)),
-    row.guardName,
-    row.proofCount || clientReportProofRows(row).length || 0,
-    clientReportSummaryText(row)
-  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `client_reports_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-function clientReportPreviewPanel() {
-  const row = selectedClientReport();
-  if (!row) {
-    return `<section class="panel panel-pad client-report-preview-card empty-preview"><div class="panel-head"><div><h2>Report Preview</h2><p>Select the eye button on any report to preview it here.</p></div></div><div class="client-report-preview-empty">No report selected.</div></section>`;
-  }
-  const proofRows = clientReportProofRows(row);
-  const req = row.req || requestById(row.requestId) || {};
-  return `<section class="panel panel-pad client-report-preview-card">
-    <div class="client-report-preview-head"><div><span>Selected Report</span><h2>${esc(row.reportNumber)}</h2><p>${esc(row.title || 'Client Patrol Report')}</p></div><button type="button" data-action="clear-selected-client-report">×</button></div>
-    <div class="client-report-preview-hero"><div class="preview-report-image">${clientReportImage(row)}</div><div><strong>${esc(row.propertyName)}</strong><small>${esc(row.propertyAddress || 'Address unavailable')}</small>${clientReportStatusChip(row)}</div></div>
-    <dl class="client-report-preview-list">
-      <dt>Patrol Type</dt><dd>${esc(clientReportTypeLabel(row.type))}</dd>
-      <dt>Date / Time</dt><dd>${esc(fmtDateTimeStamp(row.createdAt))}</dd>
-      <dt>Officer</dt><dd>${esc(row.guardName || 'Unassigned')}</dd>
-      <dt>Duration</dt><dd>${esc(typeof reportRequestDuration === 'function' ? reportRequestDuration(req) : '60 min')}</dd>
-      <dt>Proof Items</dt><dd>${esc(proofRows.length || row.proofCount || 0)}</dd>
-      <dt>Request</dt><dd>${esc(row.requestId ? requestTitle(req) : 'Linked report')}</dd>
-    </dl>
-    <section class="client-report-preview-summary"><h3>Summary</h3><p>${esc(clientReportSummaryText(row))}</p></section>
-    ${proofRows.length ? `<section class="client-report-preview-summary"><h3>Included Proof</h3><p>${esc(proofRows.length)} proof item${proofRows.length === 1 ? '' : 's'} attached to this patrol.</p></section>` : `<section class="client-report-preview-summary"><h3>Included Proof</h3><p>No proof was attached to this report.</p></section>`}
-    <div class="client-report-preview-actions"><button type="button" class="primary-button" data-action="download-client-report" data-report-id="${esc(row.id)}">⇩ Download Report</button><button type="button" class="ghost-button" data-view="properties">View Property</button></div>
-  </section>`;
-}
 function clientReportRow(row = {}) {
-  const selected = String(state.selectedClientReportId || '') === String(row.id);
-  return `<div class="client-report-row ${selected ? 'selected' : ''}">
+  return `<div class="client-report-row">
     <div class="report-main"><div class="report-thumb">${clientReportImage(row)}</div><div><strong>${esc(row.reportNumber)}</strong><small>${esc(row.description)}</small></div></div>
     <div class="report-property"><strong>${esc(row.propertyName)}</strong><small>${esc(row.propertyAddress || 'Address unavailable')}</small></div>
     <div class="report-type"><i>${esc(clientReportTypeIcon(row.type))}</i><span>${esc(clientReportTypeLabel(row.type))}</span></div>
@@ -5395,7 +4899,6 @@ function clientReportsView() {
         <footer class="client-report-footer"><span>Showing ${rows.length ? `${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, rows.length)}` : '0'} of ${rows.length} reports</span><div class="report-pagination"><button type="button" data-action="client-report-page-prev">‹</button><strong>${esc(page)}</strong><button type="button" data-action="client-report-page-next">›</button></div><label>Rows per page:<select><option>6</option></select></label></footer>
       </main>
       <aside class="client-reports-rail">
-        ${clientReportPreviewPanel()}
         ${clientReportSummaryCard()}
         ${clientReportActivityCard()}
         ${clientReportTopPropertiesCard()}
@@ -6859,19 +6362,113 @@ function applicantMissingDocs(app = {}) {
   if (String(app.training_docs_complete || '').toLowerCase() === 'false') missing.push('Training Docs');
   return [...new Set(missing)];
 }
-function guardApprovalActionButtons(app = {}) {
-  const status = approvalStatus(app);
-  if (status === 'approved') {
-    return `<div class="approval-actions locked"><span class="workflow-lock-chip approved">✓ Approved</span><button type="button" data-action="view-approved-guard" data-approval-id="${esc(app.id)}">View Guard</button></div>`;
-  }
-  if (status === 'rejected') {
-    return `<div class="approval-actions locked"><span class="workflow-lock-chip rejected">× Rejected</span><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">Details</button></div>`;
-  }
-  return `<div class="approval-actions"><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">⊙</button><button type="button" data-action="message-approval" data-approval-id="${esc(app.id)}">☵</button><button type="button" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓</button><button type="button" data-action="reject-guard" data-approval-id="${esc(app.id)}">×</button></div>`;
+function guardApprovalRows() { return guardApprovalBaseRows(); }
+function guardApprovalCounts() {
+  const apps = guardApprovalRows();
+  const today = new Date().toDateString();
+  return {
+    total: apps.length,
+    pending: apps.filter(a => approvalStatus(a) === 'pending').length,
+    approvedToday: apps.filter(a => approvalStatus(a) === 'approved' && new Date(a.approved_at || a.updated_at || a.created_at || Date.now()).toDateString() === today).length,
+    rejected: apps.filter(a => approvalStatus(a) === 'rejected').length,
+    interview: apps.filter(a => approvalStatus(a) === 'interview').length,
+    missingDocs: apps.filter(a => applicantMissingDocs(a).length > 0).length
+  };
 }
+function guardApprovalKpi(icon, label, value, subtext, tone = 'blue') {
+  return `<article class="approval-kpi ${esc(tone)}"><div class="approval-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
+}
+function guardApprovalKpiRow() {
+  const c = guardApprovalCounts();
+  return `<section class="guard-approvals-kpi-row">
+    ${guardApprovalKpi('▣','Total Applications',c.total,'All time','blue')}
+    ${guardApprovalKpi('◷','Pending Review',c.pending,'Requires attention','amber')}
+    ${guardApprovalKpi('✓','Approved Today',c.approvedToday,'Updated today','green')}
+    ${guardApprovalKpi('×','Rejected',c.rejected,'This week','red')}
+    ${guardApprovalKpi('♙','Interview Needed',c.interview,'Scheduled','purple')}
+    ${guardApprovalKpi('▤','Missing Docs',c.missingDocs,'Incomplete','orange')}
+  </section>`;
+}
+function guardApprovalTabButton(key, label, count) {
+  const active = (state.guardApprovalTab || 'all') === key;
+  return `<button type="button" class="${active ? 'active' : ''}" data-approval-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
+}
+function guardApprovalTabs() {
+  const rows = guardApprovalRows();
+  const counts = {
+    all: rows.length,
+    pending: rows.filter(a => approvalStatus(a) === 'pending').length,
+    interview: rows.filter(a => approvalStatus(a) === 'interview').length,
+    approved: rows.filter(a => approvalStatus(a) === 'approved').length,
+    rejected: rows.filter(a => approvalStatus(a) === 'rejected').length
+  };
+  return `<nav class="guard-approval-tabs">
+    ${guardApprovalTabButton('all','All Applications',counts.all)}
+    ${guardApprovalTabButton('pending','Pending',counts.pending)}
+    ${guardApprovalTabButton('interview','Interview',counts.interview)}
+    ${guardApprovalTabButton('approved','Approved',counts.approved)}
+    ${guardApprovalTabButton('rejected','Rejected',counts.rejected)}
+  </nav>`;
+}
+function guardApprovalFilterBar() {
+  const f = state.guardApprovalFilters || {};
+  return `<section class="guard-approval-filter-bar">
+    <select data-approval-filter="status"><option value="all">All Status</option><option value="pending" ${f.status==='pending'?'selected':''}>Pending</option><option value="interview" ${f.status==='interview'?'selected':''}>Needs Interview</option><option value="approved" ${f.status==='approved'?'selected':''}>Approved</option><option value="rejected" ${f.status==='rejected'?'selected':''}>Rejected</option><option value="missing_docs" ${f.status==='missing_docs'?'selected':''}>Missing Docs</option></select>
+    <select data-approval-filter="rank"><option value="all">All Ranks</option><option value="guard" ${f.rank==='guard'?'selected':''}>Guard</option><option value="officer" ${f.rank==='officer'?'selected':''}>Officer</option><option value="corporal" ${f.rank==='corporal'?'selected':''}>Corporal</option><option value="sergeant" ${f.rank==='sergeant'?'selected':''}>Sergeant</option><option value="supervisor" ${f.rank==='supervisor'?'selected':''}>Supervisor</option></select>
+    <select data-approval-filter="experience"><option value="all">All Experience</option><option value="0-1" ${f.experience==='0-1'?'selected':''}>0–1 Years</option><option value="2-4" ${f.experience==='2-4'?'selected':''}>2–4 Years</option><option value="5-plus" ${f.experience==='5-plus'?'selected':''}>5+ Years</option></select>
+    <select data-approval-filter="background"><option value="all">Background Check</option><option value="clear" ${f.background==='clear'?'selected':''}>Clear</option><option value="in_progress" ${f.background==='in_progress'?'selected':''}>In Progress</option><option value="issue" ${f.background==='issue'?'selected':''}>Issue Found</option></select>
+    <select data-approval-filter="sort"><option value="newest" ${f.sort==='newest'?'selected':''}>Sort: Newest</option><option value="oldest" ${f.sort==='oldest'?'selected':''}>Sort: Oldest</option><option value="priority" ${f.sort==='priority'?'selected':''}>Sort: Priority</option></select>
+    <button type="button" data-action="guard-approval-clear-filters">⌁ Filters</button>
+  </section>`;
+}
+function filteredGuardApprovals() {
+  let rows = guardApprovalRows();
+  const q = String(state.guardApprovalSearch || '').trim().toLowerCase();
+  const f = state.guardApprovalFilters || {};
+  const tab = state.guardApprovalTab || 'all';
+  if (tab !== 'all') rows = rows.filter(app => approvalStatus(app) === tab);
+  if (q) rows = rows.filter(app => [app.name, app.email, app.phone, app.application_number, approvalRank(app), app.city, app.state].join(' ').toLowerCase().includes(q));
+  if (f.status && f.status !== 'all') rows = rows.filter(app => approvalStatus(app) === f.status);
+  if (f.rank && f.rank !== 'all') rows = rows.filter(app => String(approvalRank(app)).toLowerCase() === f.rank);
+  if (f.background && f.background !== 'all') rows = rows.filter(app => approvalBackgroundStatus(app) === f.background);
+  if (f.experience && f.experience !== 'all') rows = rows.filter(app => {
+    const n = approvalExperienceYears(app);
+    if (n === null) return false;
+    if (f.experience === '0-1') return n <= 1;
+    if (f.experience === '2-4') return n >= 2 && n <= 4;
+    if (f.experience === '5-plus') return n >= 5;
+    return true;
+  });
+  const priority = { pending: 0, missing_docs: 1, interview: 2, rejected: 3, approved: 4 };
+  rows = rows.slice().sort((a,b) => {
+    if (f.sort === 'oldest') return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    if (f.sort === 'priority') return (priority[approvalStatus(a)] ?? 9) - (priority[approvalStatus(b)] ?? 9);
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
+  return rows;
+}
+function selectedGuardApproval() {
+  const rows = filteredGuardApprovals();
+  return rows.find(app => String(app.id) === String(state.selectedGuardApprovalId)) || rows[0] || null;
+}
+function approvalStatusBadge(app = {}) {
+  const status = approvalStatus(app);
+  const label = status === 'interview' ? 'Needs Interview' : status === 'missing_docs' ? 'Missing Docs' : statusText(status);
+  return `<span class="approval-status ${esc(status)}">${esc(label)}</span>`;
+}
+function licenseStatusBadge(app = {}) {
+  const status = approvalLicenseStatus(app);
+  return `<span class="license-badge ${esc(status)}">${esc(statusText(status))}</span>`;
+}
+function backgroundStatusBadge(app = {}) {
+  const status = approvalBackgroundStatus(app);
+  const label = status === 'in_progress' ? 'In Progress' : status === 'issue' ? 'Review' : 'Clear';
+  return `<span class="background-badge ${esc(status)}">${esc(label)}</span>`;
+}
+function isApprovalChecked(id) { return (state.guardApprovalSelectedIds || []).map(String).includes(String(id)); }
 function guardApprovalRow(app = {}) {
   const selected = String(state.selectedGuardApprovalId || '') === String(app.id);
-  return `<div class="guard-approval-row ${selected ? 'selected' : ''} ${guardApprovalFinished(app) ? 'workflow-finished-row' : ''}">
+  return `<div class="guard-approval-row ${selected ? 'selected' : ''}">
     <label class="approval-check"><input type="checkbox" data-approval-check="${esc(app.id)}" ${isApprovalChecked(app.id) ? 'checked' : ''}></label>
     <button type="button" class="approval-applicant-cell" data-action="select-guard-approval" data-approval-id="${esc(app.id)}">${avatar(app.name || app.email || 'Applicant', app.photo_url)}<span><strong>${esc(app.name || app.email || 'Applicant')}</strong><small>${esc(app.application_number || shortRequestId(app.id))}</small></span></button>
     <div>${esc(approvalRank(app))}</div>
@@ -6881,7 +6478,7 @@ function guardApprovalRow(app = {}) {
     <div><strong>${esc(app.availability || 'Full Time')}</strong><small>${esc(app.preferred_shift || 'Days')}</small></div>
     <div><strong>${esc(fmtDate(app.created_at))}</strong><small>${esc(fmtTime(app.created_at))}</small></div>
     <div>${approvalStatusBadge(app)}</div>
-    ${guardApprovalActionButtons(app)}
+    <div class="approval-actions"><button type="button" data-action="view-approval" data-approval-id="${esc(app.id)}">⊙</button><button type="button" data-action="message-approval" data-approval-id="${esc(app.id)}">☵</button><button type="button" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓</button><button type="button" data-action="reject-guard" data-approval-id="${esc(app.id)}">×</button></div>
   </div>`;
 }
 function guardApprovalTable() {
@@ -6921,14 +6518,8 @@ function guardApprovalDetailRail() {
     <dl class="approval-info-list"><dt>Phone</dt><dd>${esc(app.phone || '—')}</dd><dt>Email</dt><dd>${esc(app.email || '—')}</dd><dt>Location</dt><dd>${esc([app.city, app.state].filter(Boolean).join(', ') || '—')}</dd><dt>Experience</dt><dd>${esc(approvalExperienceLabel(app))}</dd><dt>Guard Card</dt><dd>${esc(app.guard_card_number || app.license_number || '—')}</dd><dt>Availability</dt><dd>${esc(app.availability || 'Full Time')}</dd></dl>
     <div class="approval-detail-split">${approvalCertifications(app)}${approvalOnboardingChecklist(app)}</div>
     ${approvalReviewNotes(app)}
-    ${guardApprovalDetailActions(app)}
+    <div class="approval-detail-actions"><button type="button" class="approve" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓ Approve Guard</button><button type="button" class="info" data-action="request-guard-info" data-approval-id="${esc(app.id)}">✉ Request Info</button><button type="button" class="interview" data-action="schedule-guard-interview" data-approval-id="${esc(app.id)}">▣ Schedule Interview</button><button type="button" class="reject" data-action="reject-guard" data-approval-id="${esc(app.id)}">× Reject Application</button></div>
   </section></aside>`;
-}
-function guardApprovalDetailActions(app = {}) {
-  const status = approvalStatus(app);
-  if (status === 'approved') return `${workflowFinishedPanel('Guard approved', 'This application is finished and the guard has been moved to the active roster.')}<div class="approval-detail-actions locked"><button type="button" class="approve" data-action="view-approved-guard" data-approval-id="${esc(app.id)}">View Active Guard</button></div>`;
-  if (status === 'rejected') return `${workflowFinishedPanel('Application rejected', 'This application is locked. Approve / Reject controls are removed so it cannot be processed twice.', 'danger')}<div class="approval-detail-actions locked"><button type="button" class="info" data-action="guard-approval-clear-filters">Back to Applications</button></div>`;
-  return `<div class="approval-detail-actions"><button type="button" class="approve" data-action="approve-guard" data-approval-id="${esc(app.id)}">✓ Approve Guard</button><button type="button" class="info" data-action="request-guard-info" data-approval-id="${esc(app.id)}">✉ Request Info</button><button type="button" class="interview" data-action="schedule-guard-interview" data-approval-id="${esc(app.id)}">▣ Schedule Interview</button><button type="button" class="reject" data-action="reject-guard" data-approval-id="${esc(app.id)}">× Reject Application</button></div>`;
 }
 function guardApprovalsHeader() {
   return `<header class="dashboard-header guard-approvals-header"><div class="title-block"><h1>Guard Approvals</h1><p>Review new guard applications, approve qualified officers, and manage onboarding status.</p></div><div class="approval-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="approval-search"><input type="search" data-guard-approval-search placeholder="Search applicants..." value="${esc(state.guardApprovalSearch || '')}"><b>⌕</b></label><button type="button" data-action="guard-approvals-refresh">⟳ Refresh</button></div></header>`;
@@ -6941,49 +6532,26 @@ function guardApprovalsCommandCenterView() {
 async function approveGuardApplication(id) {
   const app = guardApprovalRows().find(a => String(a.id) === String(id));
   if (!app) throw new Error('Application not found.');
-  if (approvalStatus(app) === 'approved') {
-    state.view = 'guards';
-    const guard = state.guards.find(g => String(g.id) === String(app.id) || String(g.email || '').toLowerCase() === String(app.email || '').toLowerCase());
-    if (guard) state.selectedGuardId = guard.id || '';
-    render();
-    toast('Guard is already approved.', 'success');
-    return;
-  }
-  if (approvalStatus(app) === 'rejected') throw new Error('Rejected applications are locked. Reopen the application before approving.');
   saveGuardRank({ id: app.id, email: app.email, signup_id: app.source === 'signup' ? app.id : '' }, approvalRank(app));
   if (app.source === 'signup') {
     await approveSignup('guard', id);
     return;
   }
-  saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
-  saveWorkflowActionLock('guard-approval', id, { status: 'approved', finished_at: new Date().toISOString() });
+  saveGuardApprovalOverride(id, { status: 'approved', approved_at: new Date().toISOString() });
   await loadData();
-  state.view = 'guards';
-  const guard = state.guards.find(g => String(g.id) === String(app.id) || String(g.email || '').toLowerCase() === String(app.email || '').toLowerCase());
-  if (guard) state.selectedGuardId = guard.id || '';
-  state.selectedGuardApprovalId = '';
   render();
-  toast('Guard approved and moved to Guards.', 'success');
+  toast('Guard approved.', 'success');
 }
 async function rejectGuardApplication(id) {
   const app = guardApprovalRows().find(a => String(a.id) === String(id));
-  if (approvalStatus(app || {}) === 'rejected') {
-    toast('Application is already rejected.', 'success');
-    return;
-  }
-  if (approvalStatus(app || {}) === 'approved') throw new Error('Approved guards are locked. Suspend the guard from the Guards page instead.');
   if (app?.source === 'signup') {
     await rejectSignup('guard', id);
     return;
   }
-  saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString(), reviewed_by: state.profile?.email || 'Dispatch' });
-  saveWorkflowActionLock('guard-approval', id, { status: 'rejected', finished_at: new Date().toISOString() });
+  saveGuardApprovalOverride(id, { status: 'rejected', rejected_at: new Date().toISOString() });
   await loadData();
-  state.view = 'guard-approvals';
-  state.guardApprovalTab = 'rejected';
-  state.selectedGuardApprovalId = id;
   render();
-  toast('Application rejected and locked.', 'success');
+  toast('Application rejected.', 'success');
 }
 async function requestGuardMoreInfo(id) {
   saveGuardApprovalOverride(id, { status: 'missing_docs', review_notes: 'Additional information requested by Dispatch.' });
@@ -6997,7 +6565,7 @@ async function scheduleGuardInterview(id) {
 }
 
 
-/* v3.0.63 Admin Clients Command Center */
+/* v3.0.58 Admin Clients Command Center */
 function adminClientSourceRows() {
   const approved = (state.clients || []).map((client, index) => ({ ...client, _source: 'client', _sortIndex: index }));
   const clientIds = new Set(approved.map(c => String(c.id || c.email || '').toLowerCase()).filter(Boolean));
@@ -7369,1741 +6937,6 @@ async function adminClientRefresh() {
   toast('Clients refreshed.', 'success');
 }
 
-
-/* v3.0.63 Activity Log Command Center */
-function activitySafeId(prefix, item = {}, idx = 0) {
-  return `${prefix}-${item.id || item.request_id || item.thread_id || item.created_at || item.updated_at || idx}`;
-}
-function activityUserFromProfile() {
-  return {
-    user_name: state.profile?.display_name || state.profile?.name || state.profile?.email || 'Owner Admin',
-    user_email: state.profile?.email || 'admin@copilot.com',
-    user_photo: state.profile?.photo_url || state.profile?.avatar_url || ''
-  };
-}
-function activityRequestAction(req = {}) {
-  const status = String(req.status || '').toLowerCase();
-  if (status === 'pending_dispatch') return 'Request Created';
-  if (status === 'assigned') return 'Guard Assigned';
-  if (status === 'accepted') return 'Guard Accepted';
-  if (status === 'in_progress') return 'Patrol Started';
-  if (status === 'completed') return 'Patrol Completed';
-  if (status === 'cancelled' || status === 'canceled') return 'Patrol Cancelled';
-  return status ? statusText(status) : 'Patrol Request';
-}
-function activityRequestModule(req = {}) {
-  const text = [req.request_type, req.patrol_type, req.schedule_type, req.type].filter(Boolean).join(' ').toLowerCase();
-  if (/recurring|schedule|vacation/.test(text)) return 'Scheduled Queue';
-  if (String(req.status || '') === 'pending_dispatch') return 'Pending Dispatch';
-  return 'Patrols';
-}
-function activityRequestSeverity(req = {}) {
-  const priority = String(req.priority || req.urgency || '').toLowerCase();
-  if (/critical|emergency|urgent/.test(priority)) return 'critical';
-  if (/high/.test(priority)) return 'high';
-  if (/medium|normal/.test(priority)) return 'medium';
-  return 'info';
-}
-function activityNotificationSeverity(note = {}) {
-  const text = `${note.title || note._title || ''} ${note.message || note.body || note._body || ''} ${note.type || ''}`.toLowerCase();
-  if (/critical|emergency|alarm|urgent|failed|breach/.test(text)) return 'critical';
-  if (/alert|warning|high/.test(text)) return 'high';
-  if (/assigned|completed|started|approved|message/.test(text)) return 'info';
-  return 'low';
-}
-function activityStatus(row = {}) {
-  return String(row.status || 'success').toLowerCase();
-}
-function activitySeverity(row = {}) {
-  return String(row.severity || 'low').toLowerCase();
-}
-function activityCategory(row = {}) {
-  if (row.category) return row.category;
-  const module = String(row.module || '').toLowerCase();
-  const action = String(row.action || '').toLowerCase();
-  if (/auth|login|security|gps|approval|guard/.test(module) || /login|failed|alert|warning|approve|reject/.test(action)) return 'security';
-  if (/client|property|report|proof|data/.test(module) || /create|update|delete|edit|release|upload/.test(action)) return 'data';
-  if (/system|notification|backup/.test(module) || /system/.test(action)) return 'system';
-  return 'user';
-}
-function activityModuleIcon(module = '') {
-  const key = String(module || '').toLowerCase();
-  if (/auth|login/.test(key)) return '🔐';
-  if (/patrol|dispatch|queue/.test(key)) return '🛡';
-  if (/client/.test(key)) return '👥';
-  if (/guard/.test(key)) return '✓';
-  if (/gps|live/.test(key)) return '⌖';
-  if (/proof/.test(key)) return '⬆';
-  if (/report/.test(key)) return '▣';
-  if (/message/.test(key)) return '✉';
-  if (/property/.test(key)) return '⌂';
-  if (/system|notification/.test(key)) return '⚙';
-  return '•';
-}
-function activityActionTone(action = '') {
-  const key = String(action || '').toLowerCase();
-  if (/login/.test(key)) return 'login';
-  if (/create|request|new/.test(key)) return 'create';
-  if (/update|edit|change|started|assigned|accepted/.test(key)) return 'update';
-  if (/approve|completed|success|released/.test(key)) return 'approve';
-  if (/delete|reject|cancel/.test(key)) return 'delete';
-  if (/alert|critical|failed|alarm/.test(key)) return 'alert';
-  if (/warning|risk|pending/.test(key)) return 'warning';
-  return 'info';
-}
-function activityActionBadge(action = '') {
-  return `<span class="activity-action-badge ${esc(activityActionTone(action))}">${esc(statusText(action || 'Activity'))}</span>`;
-}
-function activitySeverityBadge(row = {}) {
-  const severity = activitySeverity(row);
-  return `<span class="activity-severity ${esc(severity)}">${esc(statusText(severity))}</span>`;
-}
-function activityStatusBadge(row = {}) {
-  const status = activityStatus(row);
-  return `<span class="activity-status ${esc(status)}">${esc(statusText(status))}</span>`;
-}
-function normalizeActivityRow(row = {}, index = 0) {
-  const timestamp = row.timestamp || row.created_at || row.updated_at || new Date().toISOString();
-  return {
-    id: row.id || activitySafeId('activity', row, index),
-    timestamp,
-    user_name: row.user_name || row.actor_name || row.guard_name || row.client_name || row.user || 'System',
-    user_email: row.user_email || row.actor_email || row.email || (row.user_name === 'System' ? 'system@copilot.com' : ''),
-    user_photo: row.user_photo || row.photo_url || row.avatar_url || '',
-    action: row.action || row.title || row.event_type || 'Activity',
-    module: row.module || 'System',
-    details: row.details || row.message || row.body || '—',
-    ip_address: row.ip_address || row.ip || '—',
-    user_agent: row.user_agent || row.browser || 'Chrome / Browser',
-    session_id: row.session_id || row.session || '—',
-    location: row.location || row.city || '—',
-    severity: row.severity || 'low',
-    status: row.status || 'success',
-    category: row.category || '',
-    raw: row.raw || row
-  };
-}
-function activityLogRows() {
-  const rows = [];
-  const profileActivity = activityUserFromProfile();
-  rows.push(normalizeActivityRow({
-    id: 'session-current-login',
-    timestamp: state.profile?.last_sign_in_at || state.profile?.updated_at || new Date().toISOString(),
-    ...profileActivity,
-    action: 'Login',
-    module: 'Authentication',
-    details: 'Current Dispatch session active',
-    ip_address: '—',
-    severity: 'low',
-    status: 'success',
-    category: 'security'
-  }));
-  (state.patrolActivity || []).forEach((item, idx) => {
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('patrol-activity', item, idx),
-      timestamp: item.created_at || item.timestamp || item.updated_at,
-      user_name: item.actor_name || item.guard_name || item.client_name || item.person || requestGuardName(item) || 'System',
-      user_email: item.actor_email || item.email || '',
-      action: item.title || item.event_type || item.event || 'Patrol Activity',
-      module: item.module || 'Patrols',
-      details: item.details || item.message || item.description || '',
-      ip_address: item.ip_address || '—',
-      severity: item.severity || 'info',
-      status: item.status || 'success',
-      category: 'user',
-      raw: item
-    }, idx));
-  });
-  (state.patrolRequests || []).forEach((req, idx) => {
-    const guard = guardById(req.guard_id || req.assigned_guard_id);
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('request', req, idx),
-      timestamp: req.updated_at || req.completed_at || req.created_at,
-      user_name: requestGuardName(req) !== 'Unassigned' ? requestGuardName(req) : requestClientName(req),
-      user_email: guard.email || clientById(req.client_id).email || '',
-      user_photo: guard.photo_url || guard.avatar_url || '',
-      action: activityRequestAction(req),
-      module: activityRequestModule(req),
-      details: `${requestTitle(req)} • ${propertyLabel(req)} • ${statusText(req.status || 'pending')}`,
-      ip_address: req.ip_address || '—',
-      severity: activityRequestSeverity(req),
-      status: ['cancelled','canceled','failed'].includes(String(req.status || '').toLowerCase()) ? 'failed' : 'success',
-      category: ['pending_dispatch','assigned','accepted','in_progress','completed'].includes(String(req.status || '')) ? 'user' : 'data',
-      raw: req
-    }, idx));
-  });
-  (state.proofItems || []).forEach((proof, idx) => {
-    const reqId = proofRequestIdValue(proof);
-    const req = requestById(reqId) || {};
-    const guard = guardById(proof.guard_id || proof.uploaded_by || req.guard_id || req.assigned_guard_id);
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('proof', proof, idx),
-      timestamp: proof.created_at || proof.uploaded_at || proof.updated_at,
-      user_name: proof.guard_name || guard.name || guard.display_name || 'Guard',
-      user_email: guard.email || proof.email || '',
-      user_photo: guard.photo_url || guard.avatar_url || '',
-      action: 'Proof Uploaded',
-      module: 'Proof Review',
-      details: `${proof.file_name || proof.name || proof.file_type || 'Proof item'}${reqId ? ` • ${requestTitle(req)}` : ''}`,
-      ip_address: proof.ip_address || '—',
-      severity: 'info',
-      status: 'success',
-      category: 'data',
-      raw: proof
-    }, idx));
-  });
-  (state.patrolReports || []).forEach((report, idx) => {
-    const req = requestById(report.request_id || report.patrol_request_id) || {};
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('report', report, idx),
-      timestamp: report.released_at || report.created_at || report.updated_at,
-      user_name: report.released_by_name || report.created_by_name || 'Dispatch',
-      user_email: report.released_by_email || report.created_by_email || state.profile?.email || '',
-      action: report.released_at ? 'Report Released' : 'Report Created',
-      module: 'Reports',
-      details: report.title || report.name || requestTitle(req) || 'Patrol report',
-      ip_address: report.ip_address || '—',
-      severity: 'low',
-      status: 'success',
-      category: 'data',
-      raw: report
-    }, idx));
-  });
-  (state.notifications || []).forEach((note, idx) => {
-    const title = note.title || note._title || note.subject || 'System Notification';
-    const body = note.message || note.body || note._body || note.description || '';
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('notification', note, idx),
-      timestamp: note.created_at || note.updated_at,
-      user_name: 'System',
-      user_email: 'system@copilot.com',
-      action: title,
-      module: /message/i.test(title) ? 'Messages' : 'System',
-      details: body || notificationCategoryLabel(note) || 'Notification',
-      ip_address: note.ip_address || '—',
-      severity: activityNotificationSeverity(note),
-      status: 'success',
-      category: /alert|alarm|critical|urgent/i.test(`${title} ${body}`) ? 'security' : 'system',
-      raw: note
-    }, idx));
-  });
-  (state.messageThreads || []).forEach((thread, idx) => {
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('message-thread', thread, idx),
-      timestamp: thread.updated_at || thread.created_at,
-      user_name: thread.sender_name || thread.client_name || thread.guard_name || 'Dispatch',
-      user_email: thread.sender_email || '',
-      action: 'Message Activity',
-      module: 'Messages',
-      details: thread.last_message_preview || thread.subject || thread.title || 'Conversation updated',
-      ip_address: '—',
-      severity: Number(thread.unread_count || 0) ? 'info' : 'low',
-      status: 'success',
-      category: 'user',
-      raw: thread
-    }, idx));
-  });
-  (state.guardSignups || []).forEach((signup, idx) => {
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('guard-signup', signup, idx),
-      timestamp: signup.updated_at || signup.created_at,
-      user_name: signup.name || signup.display_name || signup.email || 'Guard Applicant',
-      user_email: signup.email || '',
-      action: String(signup.status || signup.approval_status || 'pending') === 'approved' ? 'Guard Approved' : 'Guard Application',
-      module: 'Guard Approvals',
-      details: `${signup.rank_applied_for || signup.rank || 'Guard'} • ${statusText(signup.status || signup.approval_status || 'Pending')}`,
-      ip_address: signup.ip_address || '—',
-      severity: String(signup.status || '').toLowerCase() === 'rejected' ? 'high' : 'info',
-      status: String(signup.status || '').toLowerCase() === 'rejected' ? 'failed' : 'success',
-      category: 'security',
-      raw: signup
-    }, idx));
-  });
-  (state.clientSignups || []).forEach((signup, idx) => {
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('client-signup', signup, idx),
-      timestamp: signup.updated_at || signup.created_at,
-      user_name: signup.business_name || signup.name || signup.email || 'Client Applicant',
-      user_email: signup.email || '',
-      action: 'Client Signup',
-      module: 'Clients',
-      details: `${signup.business_name || signup.company_name || signup.name || 'Client'} • ${statusText(signup.status || signup.approval_status || 'Pending')}`,
-      ip_address: signup.ip_address || '—',
-      severity: 'info',
-      status: 'success',
-      category: 'data',
-      raw: signup
-    }, idx));
-  });
-  (state.properties || []).slice(0, 150).forEach((property, idx) => {
-    rows.push(normalizeActivityRow({
-      id: activitySafeId('property', property, idx),
-      timestamp: property.updated_at || property.created_at,
-      user_name: clientById(property.client_id).name || clientById(property.client_id).email || 'Client',
-      user_email: clientById(property.client_id).email || property.client_email || '',
-      action: property.updated_at && property.created_at && property.updated_at !== property.created_at ? 'Property Updated' : 'Property Created',
-      module: 'Properties',
-      details: `${propertyDisplayName(property)} • ${propertyDisplayAddress(property)}`,
-      ip_address: property.ip_address || '—',
-      severity: 'low',
-      status: 'success',
-      category: 'data',
-      raw: property
-    }, idx));
-  });
-  return rows
-    .filter(row => row.timestamp && !isNaN(new Date(row.timestamp).getTime()))
-    .sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-}
-function activityLogCounts() {
-  const rows = activityLogRows();
-  const now = new Date();
-  const today = rows.filter(row => new Date(row.timestamp).toDateString() === now.toDateString());
-  const weekStart = new Date();
-  weekStart.setDate(now.getDate() - 7);
-  const thisWeek = rows.filter(row => new Date(row.timestamp) >= weekStart);
-  const critical = rows.filter(row => ['high','critical'].includes(activitySeverity(row)));
-  const users = new Set(rows.map(row => row.user_email || row.user_name).filter(Boolean));
-  const successful = rows.filter(row => activityStatus(row) === 'success');
-  return {
-    total: rows.length,
-    today: today.length,
-    thisWeek: thisWeek.length,
-    critical: critical.length,
-    usersActive: users.size,
-    successRate: rows.length ? Math.round((successful.length / rows.length) * 1000) / 10 : 100
-  };
-}
-function activityLogKpi(icon, label, value, subtext, tone = 'blue') {
-  return `<article class="activity-log-kpi ${esc(tone)}"><div class="activity-log-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
-}
-function activityLogKpiRow() {
-  const c = activityLogCounts();
-  return `<section class="activity-log-kpis">
-    ${activityLogKpi('👥','Total Activities',c.total,'All time','blue')}
-    ${activityLogKpi('▣','Today',c.today,'Current day','green')}
-    ${activityLogKpi('▤','This Week',c.thisWeek,'Last 7 days','purple')}
-    ${activityLogKpi('⚠','Critical Events',c.critical,'Requires attention','red')}
-    ${activityLogKpi('👥','Users Active',c.usersActive,'Across activity log','cyan')}
-    ${activityLogKpi('✓','Success Rate',`${c.successRate}%`,'All activities','green')}
-  </section>`;
-}
-function activityLogTabButton(key, label, count) {
-  const active = (state.activityLogTab || 'all') === key;
-  return `<button type="button" class="${active ? 'active' : ''}" data-activity-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
-}
-function activityLogTabs() {
-  const rows = activityLogRows();
-  const counts = {
-    all: rows.length,
-    user: rows.filter(row => activityCategory(row) === 'user').length,
-    system: rows.filter(row => activityCategory(row) === 'system').length,
-    security: rows.filter(row => activityCategory(row) === 'security').length,
-    data: rows.filter(row => activityCategory(row) === 'data').length
-  };
-  return `<nav class="activity-log-tabs">
-    ${activityLogTabButton('all','All Activities',counts.all)}
-    ${activityLogTabButton('user','User Actions',counts.user)}
-    ${activityLogTabButton('system','System Events',counts.system)}
-    ${activityLogTabButton('security','Security Events',counts.security)}
-    ${activityLogTabButton('data','Data Changes',counts.data)}
-  </nav>`;
-}
-function activityUserOptions() {
-  const users = [...new Map(activityLogRows().map(row => {
-    const key = row.user_email || row.user_name;
-    return [key, { key, label: row.user_name || row.user_email || 'System' }];
-  }).filter(([key]) => key)).values()].sort((a,b) => a.label.localeCompare(b.label));
-  return users.map(user => `<option value="${esc(user.key)}" ${state.activityLogFilters?.user === user.key ? 'selected' : ''}>${esc(user.label)}</option>`).join('');
-}
-function activityLogFilterBar() {
-  const filters = state.activityLogFilters || {};
-  return `<section class="activity-log-filter-bar">
-    <select data-activity-filter="user"><option value="all">All Users</option>${activityUserOptions()}</select>
-    <select data-activity-filter="action">
-      <option value="all">All Actions</option>
-      <option value="login" ${filters.action === 'login' ? 'selected' : ''}>Login</option>
-      <option value="create" ${filters.action === 'create' ? 'selected' : ''}>Create</option>
-      <option value="update" ${filters.action === 'update' ? 'selected' : ''}>Update</option>
-      <option value="approve" ${filters.action === 'approve' ? 'selected' : ''}>Approve</option>
-      <option value="delete" ${filters.action === 'delete' ? 'selected' : ''}>Delete</option>
-      <option value="alert" ${filters.action === 'alert' ? 'selected' : ''}>Alert</option>
-    </select>
-    <select data-activity-filter="module">
-      <option value="all">All Modules</option>
-      ${['Authentication','Patrols','Pending Dispatch','Scheduled Queue','Clients','Properties','Guard Approvals','Live GPS','Proof Review','Reports','Messages','System'].map(m => `<option value="${esc(m)}" ${filters.module === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
-    </select>
-    <select data-activity-filter="severity"><option value="all">All Severity</option>${['low','info','medium','high','critical'].map(x => `<option value="${esc(x)}" ${filters.severity === x ? 'selected' : ''}>${esc(statusText(x))}</option>`).join('')}</select>
-    <select data-activity-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option></select>
-    <button type="button" data-action="activity-clear-filters">× Clear Filters</button>
-  </section>`;
-}
-function filteredActivityLogRows() {
-  let rows = activityLogRows();
-  const q = String(state.activityLogSearch || '').trim().toLowerCase();
-  const filters = state.activityLogFilters || {};
-  const tab = state.activityLogTab || 'all';
-  if (tab !== 'all') rows = rows.filter(row => activityCategory(row) === tab);
-  if (q) rows = rows.filter(row => [row.user_name, row.user_email, row.action, row.module, row.details, row.ip_address, row.location].join(' ').toLowerCase().includes(q));
-  if (filters.user && filters.user !== 'all') rows = rows.filter(row => row.user_email === filters.user || row.user_name === filters.user);
-  if (filters.action && filters.action !== 'all') rows = rows.filter(row => String(row.action || '').toLowerCase().includes(filters.action));
-  if (filters.module && filters.module !== 'all') rows = rows.filter(row => row.module === filters.module);
-  if (filters.severity && filters.severity !== 'all') rows = rows.filter(row => activitySeverity(row) === filters.severity);
-  const now = new Date();
-  if (filters.dateRange === 'today') rows = rows.filter(row => new Date(row.timestamp).toDateString() === now.toDateString());
-  if (filters.dateRange === 'week') {
-    const d = new Date();
-    d.setDate(now.getDate() - 7);
-    rows = rows.filter(row => new Date(row.timestamp) >= d);
-  }
-  if (filters.dateRange === 'month') {
-    const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    rows = rows.filter(row => new Date(row.timestamp) >= d);
-  }
-  return rows;
-}
-function selectedActivityLogRow() {
-  const rows = filteredActivityLogRows();
-  return rows.find(row => String(row.id) === String(state.selectedActivityId)) || rows[0] || null;
-}
-function activityLogRow(row = {}) {
-  const selected = String(state.selectedActivityId || '') === String(row.id);
-  return `<div class="activity-log-row ${selected ? 'selected' : ''}">
-    <button type="button" class="activity-log-row-main" data-action="select-activity" data-activity-id="${esc(row.id)}">
-      <div class="activity-time-cell"><strong>${esc(fmtDate(row.timestamp))}</strong><small>${esc(fmtTime(row.timestamp))}</small></div>
-      <div class="activity-user-cell">${avatar(row.user_name, row.user_photo)}<span><strong>${esc(row.user_name || 'System')}</strong><small>${esc(row.user_email || 'system@copilot.com')}</small></span></div>
-      <div class="activity-action-cell">${activityActionBadge(row.action)}<small>${esc(activityStatus(row))}</small></div>
-      <div class="activity-module-cell"><i>${esc(activityModuleIcon(row.module))}</i><span>${esc(row.module || 'System')}</span></div>
-      <div class="activity-details-cell">${esc(row.details || '—')}</div>
-      <div class="activity-ip-cell">${esc(row.ip_address || '—')}</div>
-      <div>${activitySeverityBadge(row)}</div>
-    </button>
-    <div class="activity-row-actions"><button type="button" data-action="activity-menu" data-activity-id="${esc(row.id)}">⋮</button></div>
-  </div>`;
-}
-function activityLogTable() {
-  const rows = filteredActivityLogRows();
-  const per = Number(state.activityLogPerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.activityLogPage = Math.min(Math.max(1, state.activityLogPage || 1), maxPage);
-  const start = (state.activityLogPage - 1) * per;
-  const visible = rows.slice(start, start + per);
-  return `<section class="activity-log-table-wrap"><div class="activity-log-table-head"><span>Time</span><span>User</span><span>Action</span><span>Module</span><span>Details</span><span>IP Address</span><span>Severity</span><span></span></div><div class="activity-log-table-body">${visible.length ? visible.map(activityLogRow).join('') : '<div class="activity-log-empty">No activity records match your filters.</div>'}</div></section>`;
-}
-function activityLogPagination() {
-  const rows = filteredActivityLogRows();
-  const per = Number(state.activityLogPerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.activityLogPage = Math.min(Math.max(1, state.activityLogPage || 1), maxPage);
-  const start = rows.length ? (state.activityLogPage - 1) * per + 1 : 0;
-  const end = Math.min(rows.length, (state.activityLogPage || 1) * per);
-  return `<footer class="activity-log-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} activities</span><div class="activity-log-pagination"><button type="button" data-action="activity-page-prev">‹</button><strong>${esc(state.activityLogPage || 1)}</strong><button type="button" data-action="activity-page-next">›</button></div><label>Rows per page:<select data-activity-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
-}
-function activityQuickFilters() {
-  const rows = activityLogRows();
-  const mineEmail = String(state.profile?.email || '').toLowerCase();
-  return `<section class="panel panel-pad activity-quick-filters"><h2>Quick Filters</h2>
-    <button type="button" data-activity-quick-filter="mine"><span>♙ My Activities</span><b>${esc(rows.filter(row => String(row.user_email || '').toLowerCase() === mineEmail).length)}</b></button>
-    <button type="button" data-activity-quick-filter="failed"><span>⌖ Failed Activities</span><b>${esc(rows.filter(row => activityStatus(row) === 'failed').length)}</b></button>
-    <button type="button" data-activity-quick-filter="critical"><span>⚠ Critical Events</span><b>${esc(rows.filter(row => ['high','critical'].includes(activitySeverity(row))).length)}</b></button>
-    <button type="button" data-activity-quick-filter="data"><span>▣ Data Changes</span><b>${esc(rows.filter(row => activityCategory(row) === 'data').length)}</b></button>
-    <button type="button" data-activity-quick-filter="login"><span>⌂ Login Activities</span><b>${esc(rows.filter(row => String(row.action || '').toLowerCase().includes('login')).length)}</b></button>
-    <button type="button" class="wide" data-action="activity-save-filter">▯ Save Current Filter</button>
-  </section>`;
-}
-function activityLogDetailRail() {
-  const row = selectedActivityLogRow();
-  if (!row) return `<aside class="activity-log-detail-rail"><section class="panel panel-pad activity-detail-card"><div class="empty">Select an activity.</div></section>${activityQuickFilters()}</aside>`;
-  return `<aside class="activity-log-detail-rail"><section class="panel panel-pad activity-detail-card">
-    <div class="panel-head"><div><h2>Activity Details</h2><p>Selected audit record</p></div></div>
-    <div class="activity-detail-title">${activityActionBadge(row.action)}<strong>${esc(row.details || row.action || 'Activity')}</strong></div>
-    <dl class="activity-detail-list">
-      <dt>User</dt><dd>${esc(row.user_name || 'System')}</dd>
-      <dt>Email</dt><dd>${esc(row.user_email || 'system@copilot.com')}</dd>
-      <dt>Time</dt><dd>${esc(fmtDate(row.timestamp))}</dd>
-      <dt>IP Address</dt><dd>${esc(row.ip_address || '—')}</dd>
-      <dt>User Agent</dt><dd>${esc(row.user_agent || 'Chrome / Browser')}</dd>
-      <dt>Session ID</dt><dd>${esc(row.session_id || '—')}</dd>
-      <dt>Location</dt><dd>${esc(row.location || '—')}</dd>
-      <dt>Severity</dt><dd>${activitySeverityBadge(row)}</dd>
-      <dt>Status</dt><dd>${activityStatusBadge(row)}</dd>
-    </dl>
-  </section>${activityQuickFilters()}</aside>`;
-}
-function activityLogHeader() {
-  return `<header class="dashboard-header activity-log-header"><div class="title-block"><h1>Activity Log</h1><p>Complete audit trail of all system activities and user actions.</p></div><div class="activity-log-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="activity-search"><input type="search" placeholder="Search activity..." value="${esc(state.activityLogSearch || '')}" data-activity-search><b>⌕</b></label><button type="button" data-action="activity-toggle-filters">⌁ Filters</button><button type="button" data-action="activity-export">⇩ Export</button></div></header>`;
-}
-function activityLogCommandCenterView() {
-  return `<div class="dashboard activity-log-shell">
-    ${activityLogHeader()}
-    ${activityLogKpiRow()}
-    <section class="activity-log-layout"><main class="activity-log-main panel">${activityLogTabs()}${activityLogFilterBar()}${activityLogTable()}${activityLogPagination()}</main>${activityLogDetailRail()}</section>
-  </div>`;
-}
-function setActivityQuickFilter(kind = '') {
-  if (kind === 'mine') {
-    state.activityLogTab = 'all';
-    state.activityLogFilters = { ...(state.activityLogFilters || {}), user: state.profile?.email || state.profile?.display_name || 'all' };
-  }
-  if (kind === 'failed') {
-    state.activityLogTab = 'all';
-    state.activityLogFilters = { ...(state.activityLogFilters || {}), severity: 'all' };
-    state.activityLogSearch = 'failed';
-  }
-  if (kind === 'critical') {
-    state.activityLogTab = 'all';
-    state.activityLogFilters = { ...(state.activityLogFilters || {}), severity: 'critical' };
-  }
-  if (kind === 'data') {
-    state.activityLogTab = 'data';
-  }
-  if (kind === 'login') {
-    state.activityLogTab = 'all';
-    state.activityLogFilters = { ...(state.activityLogFilters || {}), action: 'login' };
-  }
-  state.activityLogPage = 1;
-  state.selectedActivityId = '';
-}
-function exportActivityLogCsv() {
-  const rows = filteredActivityLogRows();
-  const cols = ['timestamp','user_name','user_email','action','module','details','ip_address','severity','status'];
-  const csv = [cols.join(',')].concat(rows.map(row => cols.map(col => `"${String(row[col] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `co-pilot-activity-log-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-
-
-/* v3.0.63 Proof Review Command Center */
-function proofReviewStateKey() {
-  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
-  return `cp_security_proof_review_state_${who}`;
-}
-function readProofReviewState() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(proofReviewStateKey()) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function writeProofReviewState(map = {}) {
-  try { localStorage.setItem(proofReviewStateKey(), JSON.stringify(map)); } catch {}
-}
-function saveLocalProofReviewState(id, patch = {}) {
-  if (!id) return;
-  const map = readProofReviewState();
-  map[String(id)] = { ...(map[String(id)] || {}), ...patch };
-  writeProofReviewState(map);
-}
-function proofReviewApplyLocalState(row = {}) {
-  const id = String(row.id || '');
-  const local = readProofReviewState()[id] || {};
-  if (!Object.keys(local).length) return row;
-  return {
-    ...row,
-    status: local.status || local.review_status || row.status,
-    included: typeof local.include_in_report === 'boolean' ? local.include_in_report : typeof local.included_in_report === 'boolean' ? local.included_in_report : typeof local.selected_for_report === 'boolean' ? local.selected_for_report : row.included,
-    internalNote: local.internal_note || local.review_note || row.internalNote || '',
-    reviewedAt: local.reviewed_at || row.reviewedAt || '',
-    reviewedBy: local.reviewed_by || row.reviewedBy || ''
-  };
-}
-function proofReviewAllProofItems() {
-  const combined = [...(state.proofItems || []), ...readLocalProofItems()];
-  const seen = new Set();
-  return combined.filter(item => {
-    const key = proofIdentity(item);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-function proofReviewGuardName(guard = {}) {
-  return guard.name || guard.display_name || guard.full_name || guard.email || 'Guard';
-}
-function proofReviewClientName(client = {}) {
-  return client.business_name || client.company_name || client.name || client.display_name || client.email || 'Client';
-}
-function proofReviewRequestForProof(proof = {}) {
-  const id = proofRequestIdValue(proof);
-  return requestById(id) || {};
-}
-function proofReviewPropertyForProof(proof = {}, request = {}) {
-  return propertyById(request.property_id || proof.property_id || proof.propertyId || proof.property?.id) || {};
-}
-function proofReviewGuardForProof(proof = {}, request = {}) {
-  return guardById(proof.guard_id || proof.uploaded_by || proof.guardId || request.guard_id || request.assigned_guard_id) || {};
-}
-function proofReviewClientForProof(proof = {}, request = {}, property = {}) {
-  return clientById(request.client_id || proof.client_id || property.client_id || property.owner_id) || {};
-}
-function proofReviewRows() {
-  return proofReviewAllProofItems().map((proof, index) => {
-    const request = proofReviewRequestForProof(proof);
-    const property = proofReviewPropertyForProof(proof, request);
-    const guard = proofReviewGuardForProof(proof, request);
-    const client = proofReviewClientForProof(proof, request, property);
-    const uploadedAt = proof.uploaded_at || proof.created_at || proof.updated_at || proof.inserted_at || request.completed_at || request.updated_at || request.created_at || new Date().toISOString();
-    const id = String(proof.id || proof.object_path || proof.public_url || proof.file_url || `proof-${index}`);
-    const row = {
-      id,
-      proof,
-      request,
-      property,
-      guard,
-      client,
-      title: proof.title || proof.caption || proof.file_name || proof.name || proof.object_path || 'Proof item',
-      fileName: proof.file_name || proof.name || proof.object_path || proof.storage_path || 'proof-item',
-      fileType: proof.file_type || proof.mime_type || proof.type || '',
-      mediaUrl: proofUrlValue(proof),
-      uploadedAt,
-      status: proof.review_status || proof.status || 'pending',
-      included: proof.include_in_report === true || proof.included_in_report === true || proof.selected_for_report === true,
-      note: proof.note || proof.notes || proof.guard_note || proof.description || '',
-      internalNote: proof.internal_note || proof.review_note || '',
-      reviewedAt: proof.reviewed_at || '',
-      reviewedBy: proof.reviewed_by || '',
-      fileSize: proof.file_size || proof.size || 0,
-      duration: proof.duration || proof.video_duration || proof.duration_seconds || ''
-    };
-    return proofReviewApplyLocalState(row);
-  }).sort((a,b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-}
-function proofMediaType(row = {}) {
-  const raw = `${row.fileType || ''} ${row.fileName || ''} ${row.mediaUrl || ''}`.toLowerCase();
-  if (raw.includes('video') || raw.endsWith('.mp4') || raw.endsWith('.mov') || raw.endsWith('.webm') || raw.endsWith('.m4v')) return 'video';
-  return 'photo';
-}
-function proofStatus(row = {}) {
-  return String(row.status || 'pending').toLowerCase();
-}
-function proofIsLockedByReport(row = {}) {
-  return Boolean(proofLockedByPublishedReport(row));
-}
-function proofDisplayStatus(row = {}) {
-  return proofIsLockedByReport(row) ? 'locked' : proofStatus(row);
-}
-function proofCanBeReviewed(row = {}) {
-  return proofStatus(row) === 'pending' && !proofIsLockedByReport(row);
-}
-function proofCanBeIncluded(row = {}) {
-  return !proofIsLockedByReport(row) && proofStatus(row) !== 'rejected';
-}
-function proofDisplayStatusText(row = {}) {
-  const display = proofDisplayStatus(row);
-  if (display === 'locked') return 'Report Published';
-  if (display === 'approved') return 'Approved';
-  if (display === 'rejected') return 'Rejected';
-  return 'Pending Review';
-}
-function proofIncludedInReport(row = {}) {
-  return row.included === true || row.proof?.include_in_report === true || row.proof?.included_in_report === true || row.proof?.selected_for_report === true;
-}
-function proofIsExpired(row = {}) {
-  const t = new Date(row.uploadedAt || 0).getTime();
-  if (!Number.isFinite(t)) return false;
-  return (Date.now() - t) > (30 * 24 * 60 * 60 * 1000);
-}
-function proofDuration(row = {}) {
-  const raw = row.duration || row.proof?.duration || row.proof?.duration_seconds || '';
-  const num = Number(raw);
-  if (Number.isFinite(num) && num > 0) {
-    const m = Math.floor(num / 60);
-    const s = Math.round(num % 60);
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-  return proofMediaType(row) === 'video' ? '00:15' : '—';
-}
-function proofFileSize(row = {}) {
-  const size = Number(row.fileSize || row.proof?.file_size || row.proof?.size || 0);
-  if (!Number.isFinite(size) || size <= 0) return '—';
-  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-  if (size >= 1024) return `${Math.round(size / 1024)} KB`;
-  return `${size} B`;
-}
-function proofReviewCounts() {
-  const rows = proofReviewRows();
-  const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-  return {
-    pending: rows.filter(proofCanBeReviewed).length,
-    approved: rows.filter(row => proofDisplayStatus(row) === 'approved' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
-    rejected: rows.filter(row => proofDisplayStatus(row) === 'rejected' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
-    locked: rows.filter(row => proofDisplayStatus(row) === 'locked').length,
-    included: rows.filter(proofIncludedInReport).length,
-    totalMedia: rows.length,
-    expired: rows.filter(proofIsExpired).length
-  };
-}
-function proofReviewKpi(icon, label, value, subtext, tone = 'blue') {
-  return `<article class="proof-review-kpi ${esc(tone)}"><div class="proof-review-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
-}
-function proofReviewKpiRow() {
-  const c = proofReviewCounts();
-  return `<section class="proof-review-kpis">
-    ${proofReviewKpi('🖼','Pending Review',c.pending,'Unreviewed items','blue')}
-    ${proofReviewKpi('✓','Approved',c.approved,'This week','green')}
-    ${proofReviewKpi('×','Rejected',c.rejected,'This week','purple')}
-    ${proofReviewKpi('▣','Included in Reports',c.included,'Selected proof','orange')}
-    ${proofReviewKpi('🎥','Total Media',c.totalMedia,'All time','cyan')}
-    ${proofReviewKpi('⚠','Expired Proofs',c.expired,'Older than 30 days','red')}
-  </section>`;
-}
-function proofReviewTabButton(key, label, count) {
-  const active = (state.proofReviewTab || 'all') === key;
-  return `<button type="button" class="${active ? 'active' : ''}" data-proof-review-tab="${esc(key)}">${esc(label)} <b>${esc(count)}</b></button>`;
-}
-function proofReviewTabs() {
-  const rows = proofReviewRows();
-  const counts = {
-    all: rows.length,
-    pending: rows.filter(proofCanBeReviewed).length,
-    approved: rows.filter(row => proofDisplayStatus(row) === 'approved').length,
-    rejected: rows.filter(row => proofDisplayStatus(row) === 'rejected').length,
-    locked: rows.filter(row => proofDisplayStatus(row) === 'locked').length,
-    included: rows.filter(proofIncludedInReport).length
-  };
-  return `<nav class="proof-review-tabs">
-    ${proofReviewTabButton('all','All Proof',counts.all)}
-    ${proofReviewTabButton('pending','Pending Review',counts.pending)}
-    ${proofReviewTabButton('approved','Approved',counts.approved)}
-    ${proofReviewTabButton('rejected','Rejected',counts.rejected)}
-    ${proofReviewTabButton('locked','Report Published',counts.locked)}
-    ${proofReviewTabButton('included','Included in Reports',counts.included)}
-  </nav>`;
-}
-function proofGuardOptions() {
-  const guards = [...new Map(proofReviewRows().map(row => [String(row.guard?.id || ''), row.guard]).filter(([id]) => id)).values()];
-  return guards.map(g => `<option value="${esc(g.id)}" ${state.proofReviewFilters?.guardId === String(g.id) ? 'selected' : ''}>${esc(proofReviewGuardName(g))}</option>`).join('');
-}
-function proofClientOptions() {
-  const clients = [...new Map(proofReviewRows().map(row => [String(row.client?.id || ''), row.client]).filter(([id]) => id)).values()];
-  return clients.map(c => `<option value="${esc(c.id)}" ${state.proofReviewFilters?.clientId === String(c.id) ? 'selected' : ''}>${esc(proofReviewClientName(c))}</option>`).join('');
-}
-function proofPropertyOptions() {
-  const props = [...new Map(proofReviewRows().map(row => [String(row.property?.id || ''), row.property]).filter(([id]) => id)).values()];
-  return props.map(p => `<option value="${esc(p.id)}" ${state.proofReviewFilters?.propertyId === String(p.id) ? 'selected' : ''}>${esc(propertyDisplayName(p))}</option>`).join('');
-}
-function proofReviewFilterBar() {
-  const filters = state.proofReviewFilters || {};
-  return `<section class="proof-review-filter-bar">
-    <select data-proof-filter="guardId"><option value="all">All Guards</option>${proofGuardOptions()}</select>
-    <select data-proof-filter="clientId"><option value="all">All Clients</option>${proofClientOptions()}</select>
-    <select data-proof-filter="propertyId"><option value="all">All Properties</option>${proofPropertyOptions()}</select>
-    <select data-proof-filter="type"><option value="all">All Types</option><option value="photo" ${filters.type === 'photo' ? 'selected' : ''}>Photo</option><option value="video" ${filters.type === 'video' ? 'selected' : ''}>Video</option></select>
-    <select data-proof-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option></select>
-    <select data-proof-filter="sort"><option value="newest" ${filters.sort === 'newest' ? 'selected' : ''}>Sort: Newest First</option><option value="oldest" ${filters.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option><option value="status" ${filters.sort === 'status' ? 'selected' : ''}>Sort: Status</option></select>
-    <button type="button" data-action="proof-review-clear-filters">× Clear Filters</button>
-  </section>`;
-}
-function proofTypeBadge(row = {}) {
-  const type = proofMediaType(row);
-  return `<span class="proof-type-badge ${esc(type)}">${type === 'video' ? 'Video' : 'Photo'}</span>`;
-}
-function proofStatusBadge(row = {}) {
-  const status = proofDisplayStatus(row);
-  if (status === 'locked') return `<span class="proof-status locked"><i></i>Report Published</span>`;
-  if (status === 'approved') return `<span class="proof-status approved"><i></i>Approved</span>`;
-  if (status === 'rejected') return `<span class="proof-status rejected"><i></i>Rejected</span>`;
-  return `<span class="proof-status pending"><i></i>Pending Review</span>`;
-}
-function proofThumbnail(row = {}) {
-  const type = proofMediaType(row);
-  const url = row.mediaUrl || '';
-  if (!url) return `<div class="proof-thumb empty"><span>${type === 'video' ? '🎥' : '🖼'}</span></div>`;
-  if (type === 'video') return `<div class="proof-thumb video"><video src="${esc(url)}" muted playsinline></video><span class="proof-play">▶</span><b>${esc(proofDuration(row))}</b></div>`;
-  return `<div class="proof-thumb photo"><img src="${esc(url)}" alt="${esc(row.title)}"><span class="proof-image-icon">🖼</span></div>`;
-}
-function proofLargePreview(row = {}) {
-  const type = proofMediaType(row);
-  const url = row.mediaUrl || '';
-  if (!url) return `<div class="proof-large-preview empty"><span>${type === 'video' ? '🎥' : '🖼'}</span><p>No media preview available.</p></div>`;
-  if (type === 'video') return `<div class="proof-large-preview"><video src="${esc(url)}" controls playsinline></video></div>`;
-  return `<div class="proof-large-preview"><img src="${esc(url)}" alt="${esc(row.title)}"></div>`;
-}
-function filteredProofReviewRows() {
-  let rows = proofReviewRows();
-  const q = String(state.proofReviewSearch || '').trim().toLowerCase();
-  const tab = state.proofReviewTab || 'all';
-  const filters = state.proofReviewFilters || {};
-  if (tab === 'pending') rows = rows.filter(proofCanBeReviewed);
-  if (tab === 'approved') rows = rows.filter(row => proofDisplayStatus(row) === 'approved');
-  if (tab === 'rejected') rows = rows.filter(row => proofDisplayStatus(row) === 'rejected');
-  if (tab === 'locked') rows = rows.filter(row => proofDisplayStatus(row) === 'locked');
-  if (tab === 'included') rows = rows.filter(proofIncludedInReport);
-  if (q) rows = rows.filter(row => [
-    row.title, row.fileName, propertyDisplayName(row.property), propertyDisplayAddress(row.property),
-    proofReviewGuardName(row.guard), proofReviewClientName(row.client), requestTitle(row.request), row.note
-  ].join(' ').toLowerCase().includes(q));
-  if (filters.guardId && filters.guardId !== 'all') rows = rows.filter(row => String(row.guard?.id || '') === String(filters.guardId));
-  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(row => String(row.client?.id || '') === String(filters.clientId));
-  if (filters.propertyId && filters.propertyId !== 'all') rows = rows.filter(row => String(row.property?.id || '') === String(filters.propertyId));
-  if (filters.type && filters.type !== 'all') rows = rows.filter(row => proofMediaType(row) === filters.type);
-  const now = new Date();
-  if (filters.dateRange === 'today') rows = rows.filter(row => new Date(row.uploadedAt).toDateString() === now.toDateString());
-  if (filters.dateRange === 'week') {
-    const d = new Date(); d.setDate(now.getDate() - 7);
-    rows = rows.filter(row => new Date(row.uploadedAt) >= d);
-  }
-  if (filters.dateRange === 'month') {
-    const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    rows = rows.filter(row => new Date(row.uploadedAt) >= d);
-  }
-  if (filters.sort === 'oldest') rows.sort((a,b) => new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0));
-  else if (filters.sort === 'status') rows.sort((a,b) => proofDisplayStatus(a).localeCompare(proofDisplayStatus(b)) || (new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0)));
-  else rows.sort((a,b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-  return rows;
-}
-function selectedProofReviewRow() {
-  const rows = filteredProofReviewRows();
-  const selected = rows.find(row => String(row.id) === String(state.selectedProofId));
-  return selected || rows.find(proofCanBeReviewed) || rows[0] || null;
-}
-function isProofChecked(id) {
-  return (state.proofReviewCheckedIds || []).map(String).includes(String(id));
-}
-function proofReviewRowActions(row = {}) {
-  if (proofCanBeReviewed(row)) {
-    return `<div class="proof-row-actions reviewable"><button class="mini-approve" type="button" data-action="approve-proof" data-proof-id="${esc(row.id)}" title="Approve proof">✓ Approve</button><button class="mini-reject" type="button" data-action="reject-proof" data-proof-id="${esc(row.id)}" title="Reject proof">× Reject</button><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View proof">👁</button></div>`;
-  }
-  if (proofDisplayStatus(row) === 'approved' && proofCanBeIncluded(row)) {
-    return `<div class="proof-row-actions reviewable"><button class="mini-include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}" title="${proofIncludedInReport(row) ? 'Remove from report' : 'Include in report'}">${proofIncludedInReport(row) ? 'Remove' : 'Include'}</button><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View proof">👁</button></div>`;
-  }
-  if (proofDisplayStatus(row) === 'locked') {
-    return `<div class="proof-row-actions reviewable locked"><button class="mini-view" type="button" data-action="view-proof" data-proof-id="${esc(row.id)}" title="View locked proof">👁 View</button><button class="mini-report" type="button" data-view="report-archive" title="Open Report Archive">Report</button></div>`;
-  }
-  return `<div class="proof-row-actions"><button type="button" data-action="view-proof" data-proof-id="${esc(row.id)}">👁</button></div>`;
-}
-function proofReviewRow(row = {}) {
-  const selected = String(state.selectedProofId || '') === String(row.id);
-  return `<div class="proof-review-row ${selected ? 'selected' : ''}">
-    <label class="proof-check"><input type="checkbox" data-proof-check="${esc(row.id)}" ${isProofChecked(row.id) ? 'checked' : ''}></label>
-    <button type="button" class="proof-media-cell" data-action="select-proof" data-proof-id="${esc(row.id)}">${proofThumbnail(row)}</button>
-    <button type="button" class="proof-details-cell" data-action="select-proof" data-proof-id="${esc(row.id)}">
-      <strong>${esc(row.title)} ${proofTypeBadge(row)}</strong>
-      <span>${esc(propertyDisplayName(row.property))} • ${esc(propertyDisplayAddress(row.property))}</span>
-      <small>Guard: ${esc(proofReviewGuardName(row.guard))}</small>
-      <small>Patrol: ${esc(requestTitle(row.request))}</small>
-      <small>Patrol Time: ${esc(fmtDateTimeStamp(row.request?.started_at || row.request?.created_at || row.uploadedAt))}</small>
-    </button>
-    <div class="proof-uploaded-cell"><strong>${esc(fmtDate(row.uploadedAt))}</strong><small>${esc(fmtTime(row.uploadedAt))}</small></div>
-    <div class="proof-status-cell">${proofStatusBadge(row)}${proofIncludedInReport(row) ? '<small>Included</small>' : proofDisplayStatus(row) === 'locked' ? '<small>Locked</small>' : ''}</div>
-    ${proofReviewRowActions(row)}
-  </div>`;
-}
-function proofReviewTable() {
-  const rows = filteredProofReviewRows();
-  const per = Number(state.proofReviewPerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.proofReviewPage = Math.min(Math.max(1, state.proofReviewPage || 1), maxPage);
-  const start = (state.proofReviewPage - 1) * per;
-  const pageRows = rows.slice(start, start + per);
-  return `<section class="proof-review-table-wrap"><div class="proof-review-head"><span></span><span>Proof</span><span>Details</span><span>Uploaded</span><span>Status</span><span>Actions</span></div><div class="proof-review-rows">${pageRows.length ? pageRows.map(proofReviewRow).join('') : `<div class="proof-review-empty"><strong>No proof items match your filters.</strong><span>${proofReviewRows().length ? 'Proof exists, but current filters are hiding it.' : 'No proof has been uploaded yet.'}</span><button type="button" data-action="proof-review-clear-filters">Clear Filters</button></div>`}</div></section>`;
-}
-function proofReviewPagination() {
-  const rows = filteredProofReviewRows();
-  const per = Number(state.proofReviewPerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.proofReviewPage = Math.min(Math.max(1, state.proofReviewPage || 1), maxPage);
-  const start = rows.length ? (state.proofReviewPage - 1) * per + 1 : 0;
-  const end = Math.min(rows.length, (state.proofReviewPage || 1) * per);
-  return `<footer class="proof-review-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} proof items</span><div class="proof-review-pagination"><button type="button" data-action="proof-review-page-prev">‹</button><strong>${esc(state.proofReviewPage || 1)}</strong><button type="button" data-action="proof-review-page-next">›</button></div><label>Rows per page:<select data-proof-review-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
-}
-function proofReviewActions(row = {}) {
-  const status = proofStatus(row);
-  const lockedByReport = proofIsLockedByReport(row);
-  if (lockedByReport) {
-    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is locked because the final report for this patrol has already been published. It no longer needs approval and will not show as Pending Review.')}<button class="include" type="button" data-view="report-archive">View Report Archive</button></section>`;
-  }
-  if (status === 'approved') {
-    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof approved', 'Approve / Reject controls are locked. You can still choose whether this approved proof is included before publishing the report.')}<button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
-  }
-  if (status === 'rejected') {
-    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof rejected', 'This proof is locked and cannot be included in the client-facing report.', 'danger')}</section>`;
-  }
-  return `<section class="proof-review-actions"><h3>Review Actions</h3><div class="proof-review-action-grid"><button class="approve" type="button" data-action="approve-proof" data-proof-id="${esc(row.id)}">✓ Approve</button><button class="reject" type="button" data-action="reject-proof" data-proof-id="${esc(row.id)}">× Reject</button></div><button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;
-}
-function proofInternalNoteBox(row = {}) {
-  return `<section class="proof-internal-note"><label>Add Internal Note <span>(optional)</span></label><textarea data-proof-internal-note="${esc(row.id)}" placeholder="Add a note about this proof...">${esc(row.internalNote || '')}</textarea><button type="button" data-action="save-proof-note" data-proof-id="${esc(row.id)}">Save Note</button></section>`;
-}
-function proofReviewDetailRail() {
-  const row = selectedProofReviewRow();
-  if (!row) return `<aside class="proof-review-detail-rail"><section class="panel panel-pad proof-detail-card"><div class="empty">Select a proof item.</div></section></aside>`;
-  return `<aside class="proof-review-detail-rail"><section class="panel panel-pad proof-detail-card">
-    <button class="rail-close" type="button" data-action="clear-selected-proof">×</button>
-    <h2>Selected Proof</h2>
-    ${proofLargePreview(row)}
-    <div class="proof-detail-title">${proofTypeBadge(row)}<strong>${esc(row.title)}</strong></div>
-    <dl class="proof-detail-list">
-      <dt>Property</dt><dd>${esc(propertyDisplayName(row.property))}</dd>
-      <dt>Address</dt><dd>${esc(propertyDisplayAddress(row.property))}</dd>
-      <dt>Guard</dt><dd>${esc(proofReviewGuardName(row.guard))}</dd>
-      <dt>Patrol</dt><dd>${esc(requestTitle(row.request))}</dd>
-      <dt>Patrol Time</dt><dd>${esc(fmtDateTimeStamp(row.request?.started_at || row.request?.created_at || row.uploadedAt))}</dd>
-      <dt>Uploaded</dt><dd>${esc(fmtDateTimeStamp(row.uploadedAt))}</dd>
-      <dt>File</dt><dd>${esc(row.fileName)}</dd>
-      <dt>File Size</dt><dd>${esc(proofFileSize(row))}</dd>
-      <dt>Duration</dt><dd>${esc(proofDuration(row))}</dd>
-      <dt>Type</dt><dd>${esc(statusText(proofMediaType(row)))}</dd>
-      <dt>Notes</dt><dd>${esc(row.note || 'No notes submitted.')}</dd>
-    </dl>
-    ${proofReviewActions(row)}
-    ${proofInternalNoteBox(row)}
-  </section></aside>`;
-}
-function proofReviewHeader() {
-  return `<header class="dashboard-header proof-review-header"><div class="title-block"><h1>Proof Review</h1><p>Review, approve, and manage proof submitted by guards for client reports.</p></div><div class="proof-review-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="proof-search"><input type="search" placeholder="Search proof, guard, property..." value="${esc(state.proofReviewSearch || '')}" data-proof-review-search><b>⌕</b></label><button type="button" data-action="proof-review-filters">⌁ Filters</button><button type="button" data-action="proof-review-export">⇩ Export</button></div></header>`;
-}
-function proofReviewCommandCenterView() {
-  return `<div class="dashboard proof-review-shell">${proofReviewHeader()}${proofReviewKpiRow()}<section class="proof-review-layout"><main class="proof-review-main panel">${proofReviewTabs()}${proofReviewFilterBar()}${proofReviewTable()}${proofReviewPagination()}</main>${proofReviewDetailRail()}</section></div>`;
-}
-async function updateProofReviewStatus(id, status) {
-  const row = proofReviewRows().find(p => String(p.id) === String(id));
-  if (!row) throw new Error('Proof item not found.');
-  if (proofLockedByPublishedReport(row)) throw new Error('This proof is locked because the report has already been published.');
-  const current = proofStatus(row);
-  if (current === status) {
-    toast(`Proof is already ${status}.`, 'success');
-    return;
-  }
-  if (current === 'rejected' && status === 'approved') throw new Error('Rejected proof is locked. Reopen workflow is not enabled yet.');
-  const now = new Date().toISOString();
-  const patch = { status, review_status: status, reviewed_at: now, reviewed_by: state.profile?.email || 'Dispatch' };
-  if (status === 'rejected') {
-    patch.include_in_report = false;
-    patch.included_in_report = false;
-    patch.selected_for_report = false;
-  }
-  saveLocalProofReviewState(id, patch);
-  saveWorkflowActionLock('proof-review', id, { status, finished_at: now });
-  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
-  if (item) Object.assign(item, patch);
-  state.proofReviewCheckedIds = (state.proofReviewCheckedIds || []).filter(x => String(x) !== String(id));
-}
-async function toggleProofReportInclusion(id) {
-  const row = proofReviewRows().find(p => String(p.id) === String(id));
-  if (!row) throw new Error('Proof item not found.');
-  if (proofLockedByPublishedReport(row)) throw new Error('This proof is locked because the report has already been published.');
-  if (proofStatus(row) === 'rejected') throw new Error('Rejected proof cannot be included in reports.');
-  const next = !proofIncludedInReport(row || {});
-  saveLocalProofReviewState(id, { include_in_report: next, included_in_report: next, selected_for_report: next });
-  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
-  if (item) {
-    item.include_in_report = next;
-    item.included_in_report = next;
-    item.selected_for_report = next;
-  }
-}
-async function saveProofInternalNote(id, note = '') {
-  saveLocalProofReviewState(id, { internal_note: note, review_note: note, note_saved_at: new Date().toISOString() });
-  const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
-  if (item) {
-    item.internal_note = note;
-    item.review_note = note;
-  }
-}
-function exportProofReviewCsv() {
-  const rows = filteredProofReviewRows();
-  const cols = ['uploadedAt','title','fileName','type','status','included','property','address','guard','client','request','note'];
-  const csv = [cols.join(',')].concat(rows.map(row => [
-    row.uploadedAt,
-    row.title,
-    row.fileName,
-    proofMediaType(row),
-    proofDisplayStatusText(row),
-    proofIncludedInReport(row) ? 'yes' : 'no',
-    propertyDisplayName(row.property),
-    propertyDisplayAddress(row.property),
-    proofReviewGuardName(row.guard),
-    proofReviewClientName(row.client),
-    requestTitle(row.request),
-    row.note || ''
-  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `co-pilot-proof-review-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-
-
-/* v3.0.63 Report Builder Command Center */
-function reportBuilderStorageKey() {
-  const who = state.profile?.id || state.profile?.auth_user_id || state.profile?.email || 'local';
-  return `cp_security_report_builder_records_${who}`;
-}
-function readLocalReportBuilderRecords() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(reportBuilderStorageKey()) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-function writeLocalReportBuilderRecords(records = []) {
-  try { localStorage.setItem(reportBuilderStorageKey(), JSON.stringify(records.slice(0, 500))); } catch {}
-}
-function saveLocalReportBuilderRecord(record = {}) {
-  const now = new Date().toISOString();
-  let records = readLocalReportBuilderRecords();
-  const requestId = String(record.request_id || record.patrol_request_id || '');
-  const publishing = String(record.status || record.report_status || '').toLowerCase().includes('publish') || Boolean(record.released_at || record.published_at);
-  if (publishing && requestId) {
-    records = records.filter(item => String(item.id) === String(record.id) || String(item.request_id || item.patrol_request_id || '') !== requestId);
-  }
-  const idx = records.findIndex(item => String(item.id) === String(record.id));
-  if (idx >= 0) records[idx] = { ...records[idx], ...record, updated_at: now };
-  else records.unshift({ ...record, updated_at: record.updated_at || now });
-  writeLocalReportBuilderRecords(records);
-}
-function createReportBuilderId(prefix = 'rpt') {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-function reportStatus(report = {}) {
-  const raw = String(report.status || report.report_status || '').toLowerCase();
-  if (report.released_at || report.published_at) return 'published';
-  if (/publish|release|complete/.test(raw)) return 'published';
-  if (/ready|review/.test(raw)) return 'ready';
-  if (/draft/.test(raw)) return 'draft';
-  return raw || 'draft';
-}
-function reportBuilderAllReports() {
-  const fromState = (state.patrolReports || []).map(report => ({ ...report, _source: 'state' }));
-  const local = readLocalReportBuilderRecords().map(report => ({ ...report, _source: 'local' }));
-  const seen = new Set();
-  return [...local, ...fromState].filter(report => {
-    const key = String(report.id || report.request_id || report.patrol_request_id || report.title || Math.random());
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-function proofMediaTypeFromItem(item = {}) {
-  const raw = `${item.file_type || item.mime_type || item.type || ''} ${item.file_name || item.name || item.object_path || ''} ${proofUrlValue(item) || ''}`.toLowerCase();
-  if (raw.includes('video') || raw.endsWith('.mp4') || raw.endsWith('.mov') || raw.endsWith('.webm') || raw.endsWith('.m4v')) return 'video';
-  return 'photo';
-}
-function reportBuilderCounts() {
-  const reports = reportBuilderAllReports();
-  const proofRows = typeof proofReviewRows === 'function' ? proofReviewRows() : proofReviewAllProofItems().map((proof, idx) => ({ id: proof.id || idx, proof, fileType: proof.file_type, fileName: proof.file_name, mediaUrl: proofUrlValue(proof) }));
-  return {
-    drafts: reports.filter(r => reportStatus(r) === 'draft').length,
-    ready: reports.filter(r => reportStatus(r) === 'ready').length,
-    published: reports.filter(r => reportStatus(r) === 'published').length,
-    total: reports.length,
-    photos: proofRows.filter(row => proofMediaType(row) === 'photo').length,
-    videos: proofRows.filter(row => proofMediaType(row) === 'video').length
-  };
-}
-function reportBuilderKpi(icon, label, value, subtext, tone = 'blue') {
-  return `<article class="report-builder-kpi ${esc(tone)}"><div class="report-builder-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
-}
-function reportBuilderKpiRow() {
-  const c = reportBuilderCounts();
-  return `<section class="report-builder-kpis">
-    ${reportBuilderKpi('▤','Draft Reports',c.drafts,'In progress','blue')}
-    ${reportBuilderKpi('✓','Ready To Publish',c.ready,'Awaiting release','green')}
-    ${reportBuilderKpi('▣','Published Reports',c.published,'Released to clients','purple')}
-    ${reportBuilderKpi('⚙','Total Reports',c.total,'All time','orange')}
-    ${reportBuilderKpi('🖼','Photos Included',c.photos,'Available proof','cyan')}
-    ${reportBuilderKpi('🎥','Videos Included',c.videos,'Available proof','red')}
-  </section>`;
-}
-function completedReportRequests() {
-  const q = String(state.reportBuilderSearch || '').trim().toLowerCase();
-  let rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
-  if (!rows.length) rows = completedRequests();
-  rows = rows.filter(req => !requestHasPublishedReport(req.id));
-  if (state.reportBuilderClientFilter && state.reportBuilderClientFilter !== 'all') {
-    rows = rows.filter(req => String(req.client_id || '') === String(state.reportBuilderClientFilter));
-  }
-  if (state.reportBuilderPropertyFilter && state.reportBuilderPropertyFilter !== 'all') {
-    rows = rows.filter(req => String(req.property_id || '') === String(state.reportBuilderPropertyFilter));
-  }
-  if (q) {
-    rows = rows.filter(req => {
-      const property = propertyById(req.property_id) || {};
-      const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
-      const client = clientById(req.client_id || property.client_id) || {};
-      return [requestTitle(req), propertyDisplayName(property), propertyDisplayAddress(property), guardDisplayName(guard), client.business_name, client.name, req.status, req.request_type, req.patrol_type, req.instructions, req.notes].join(' ').toLowerCase().includes(q);
-    });
-  }
-  return rows.sort((a,b) => new Date(b.completed_at || b.updated_at || b.created_at || 0) - new Date(a.completed_at || a.updated_at || a.created_at || 0));
-}
-function selectedReportRequest() {
-  const rows = completedReportRequests();
-  const selected = rows.find(req => String(req.id) === String(state.selectedReportRequestId));
-  const fallback = selected || rows[0] || null;
-  if (fallback && !state.selectedReportRequestId) state.selectedReportRequestId = fallback.id;
-  return fallback;
-}
-function reportBuilderClientOptions() {
-  const rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
-  const clients = [...new Map(rows.map(req => {
-    const property = propertyById(req.property_id) || {};
-    const client = clientById(req.client_id || property.client_id) || {};
-    return [String(client.id || req.client_id || ''), client];
-  }).filter(([id]) => id)).values()];
-  return `<option value="all">All Clients</option>${clients.map(client => `<option value="${esc(client.id)}" ${String(state.reportBuilderClientFilter) === String(client.id) ? 'selected' : ''}>${esc(client.business_name || client.company_name || client.name || client.email || 'Client')}</option>`).join('')}`;
-}
-function reportBuilderPropertyOptions() {
-  const rows = (state.patrolRequests || []).filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()));
-  const props = [...new Map(rows.map(req => {
-    const property = propertyById(req.property_id) || {};
-    return [String(property.id || req.property_id || ''), property];
-  }).filter(([id]) => id)).values()];
-  return `<option value="all">All Properties</option>${props.map(property => `<option value="${esc(property.id)}" ${String(state.reportBuilderPropertyFilter) === String(property.id) ? 'selected' : ''}>${esc(propertyDisplayName(property))}</option>`).join('')}`;
-}
-function reportBuilderJobOptions() {
-  const rows = completedReportRequests();
-  if (!rows.length) return `<option value="">No completed patrols available</option>`;
-  return rows.map(req => `<option value="${esc(req.id)}" ${String(req.id) === String(selectedReportRequest()?.id) ? 'selected' : ''}>${esc(requestTitle(req))} • ${esc(propertyLabel(req))}</option>`).join('');
-}
-function reportBuilderSteps() {
-  const step = Number(state.reportBuilderStep || 1);
-  const steps = [[1,'Select Patrol'],[2,'Select Proof'],[3,'Build Report'],[4,'Review & Publish']];
-  return `<nav class="report-builder-steps">${steps.map(([num,label]) => `<button type="button" class="${step >= num ? 'active' : ''}" data-report-step="${esc(num)}"><b>${esc(num)}</b><span>${esc(label)}</span></button>`).join('')}</nav>`;
-}
-function reportRequestTimeRange(req = {}) {
-  const start = req.started_at || req.accepted_at || req.created_at;
-  const end = req.completed_at || req.updated_at || req.closed_at;
-  if (!start && !end) return '—';
-  return `${fmtTime(start || end)} – ${fmtTime(end || start)}`;
-}
-function reportRequestDuration(req = {}) {
-  const start = new Date(req.started_at || req.accepted_at || req.created_at || 0).getTime();
-  const end = new Date(req.completed_at || req.updated_at || req.closed_at || 0).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || !start || !end || end <= start) {
-    const raw = req.estimated_duration || req.duration_minutes || req.duration || '';
-    if (raw) return String(raw).match(/min|hour|hr/i) ? String(raw) : `${raw} min`;
-    return '60 min';
-  }
-  const mins = Math.max(1, Math.round((end - start) / 60000));
-  if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m`;
-  return `${mins} min`;
-}
-function reportNumber(req = {}) {
-  return `RPT-${String(req.request_number || req.id || Date.now()).replace(/[^a-z0-9]/gi, '').slice(0, 10).toUpperCase()}`;
-}
-function reportPropertyImage(property = {}) {
-  return property.photo_url || property.image_url || property.property_photo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80';
-}
-function selectedReportJobCard() {
-  const req = selectedReportRequest();
-  if (!req) return `<div class="report-builder-empty">Select a completed patrol.</div>`;
-  const property = propertyById(req.property_id) || {};
-  const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
-  const client = clientById(req.client_id || property.client_id) || {};
-  return `<article class="selected-report-job-card">
-    <img src="${esc(reportPropertyImage(property))}" alt="Property">
-    <div>
-      <h3>${esc(requestTitle(req))}<span>Completed</span></h3>
-      <dl>
-        <dt>Client</dt><dd>${esc(client.business_name || client.company_name || client.name || client.email || 'Client')}</dd>
-        <dt>Property</dt><dd>${esc(propertyDisplayName(property))}</dd>
-        <dt>Patrol Type</dt><dd>${esc(statusText(req.request_type || req.patrol_type || req.type || 'Patrol'))}</dd>
-        <dt>Guard</dt><dd>${esc(guardDisplayName(guard))}</dd>
-        <dt>Date</dt><dd>${esc(fmtDate(req.completed_at || req.updated_at || req.created_at))}</dd>
-        <dt>Time</dt><dd>${esc(reportRequestTimeRange(req))}</dd>
-        <dt>Duration</dt><dd>${esc(reportRequestDuration(req))}</dd>
-      </dl>
-    </div>
-  </article>`;
-}
-function reportBuilderSelectJob() {
-  return `<section class="report-builder-section">
-    <div class="report-builder-section-head"><div><h2>Select Patrol / Job</h2><p>Choose the completed patrol this report will be built from.</p></div><span class="report-builder-route">Guard → Proof → Dispatch → Client</span></div>
-    <div class="report-builder-select-grid">
-      <label><span>Client</span><select data-report-builder-filter="client">${reportBuilderClientOptions()}</select></label>
-      <label><span>Property</span><select data-report-builder-filter="property">${reportBuilderPropertyOptions()}</select></label>
-      <label><span>Patrol / Job</span><select data-report-builder-request>${reportBuilderJobOptions()}</select></label>
-      <button type="button" data-action="refresh-report-builder">⟳</button>
-    </div>
-    ${selectedReportJobCard()}
-  </section>`;
-}
-function reportBuilderProofRows() {
-  const req = selectedReportRequest();
-  if (!req) return [];
-  const requestId = String(req.id);
-  const rows = typeof proofReviewRows === 'function' ? proofReviewRows() : [];
-  return rows.filter(row => String(proofRequestIdValue(row.proof)) === requestId || String(row.request?.id || '') === requestId);
-}
-function selectedReportProofRows() {
-  const ids = new Set((state.selectedReportProofIds || []).map(String));
-  return reportBuilderProofRows().filter(row => ids.has(String(row.id)));
-}
-function isReportProofSelected(id) {
-  return (state.selectedReportProofIds || []).map(String).includes(String(id));
-}
-function toggleReportProofSelection(id) {
-  const set = new Set((state.selectedReportProofIds || []).map(String));
-  const key = String(id || '');
-  if (!key) return;
-  if (set.has(key)) set.delete(key);
-  else set.add(key);
-  state.selectedReportProofIds = [...set];
-  state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
-}
-function pagedReportBuilderProofRows() {
-  const rows = reportBuilderProofRows();
-  const per = Number(state.reportBuilderPerPage || 8);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.reportBuilderPage = Math.min(Math.max(1, state.reportBuilderPage || 1), maxPage);
-  const start = (state.reportBuilderPage - 1) * per;
-  return rows.slice(start, start + per);
-}
-function reportBuilderProofCard(row = {}) {
-  const selected = isReportProofSelected(row.id);
-  const type = proofMediaType(row);
-  return `<button type="button" class="report-proof-card ${selected ? 'selected' : ''}" data-action="toggle-report-proof" data-proof-id="${esc(row.id)}">
-    <span class="proof-checkmark">${selected ? '✓' : ''}</span>
-    ${proofThumbnail(row)}
-    <strong>${esc(row.title)}</strong>
-    <small>${esc(statusText(type))} • ${esc(fmtDate(row.uploadedAt))}, ${esc(fmtTime(row.uploadedAt))}</small>
-  </button>`;
-}
-function reportBuilderProofPagination() {
-  const rows = reportBuilderProofRows();
-  const per = Number(state.reportBuilderPerPage || 8);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.reportBuilderPage = Math.min(Math.max(1, state.reportBuilderPage || 1), maxPage);
-  const start = rows.length ? (state.reportBuilderPage - 1) * per + 1 : 0;
-  const end = Math.min(rows.length, (state.reportBuilderPage || 1) * per);
-  return `<footer class="report-proof-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} proof items</span><div class="report-proof-pagination"><button type="button" data-action="report-proof-page-prev">‹</button><strong>${esc(state.reportBuilderPage || 1)}</strong><button type="button" data-action="report-proof-page-next">›</button></div><label>Items per page:<select data-report-proof-per-page><option value="4" ${per === 4 ? 'selected' : ''}>4</option><option value="8" ${per === 8 ? 'selected' : ''}>8</option><option value="12" ${per === 12 ? 'selected' : ''}>12</option></select></label></footer>`;
-}
-function reportBuilderProofGrid() {
-  const rows = pagedReportBuilderProofRows();
-  const allRows = reportBuilderProofRows();
-  const allSelected = allRows.length && allRows.every(row => isReportProofSelected(row.id));
-  return `<section class="report-builder-section">
-    <div class="report-builder-section-head"><div><h2>Select Proof To Include</h2><p>Choose photos and videos for the client-facing final report.</p></div><label class="select-all-proof"><input type="checkbox" data-report-proof-select-all ${allSelected ? 'checked' : ''}> Select All</label></div>
-    <div class="report-proof-grid">${rows.length ? rows.map(reportBuilderProofCard).join('') : `<div class="report-builder-empty">No proof uploaded for this patrol yet. You can still publish a report without proof after confirmation.</div>`}</div>
-    ${reportBuilderProofPagination()}
-  </section>`;
-}
-function defaultReportTitle() {
-  const req = selectedReportRequest();
-  const property = req ? propertyById(req.property_id) : {};
-  return `${propertyDisplayName(property || {})} Patrol Report`;
-}
-function reportSummaryText(req = {}) {
-  return state.reportBuilderIncludeSummary
-    ? (req.summary || req.final_summary || req.details || req.instructions || 'Patrol was completed and reviewed by Dispatch.')
-    : 'Dispatch reviewed the completed patrol and prepared this client-facing report.';
-}
-function reportGuardNotes(req = {}) {
-  if (state.reportBuilderIncludeGuardNotes === false) return 'Guard notes hidden by report settings.';
-  return req.guard_notes || req.notes || req.final_notes || req.instructions || 'No guard notes submitted.';
-}
-function reportPaperProofThumb(row = {}) {
-  const type = proofMediaType(row);
-  const url = row.mediaUrl || '';
-  if (!url) return `<div class="paper-proof-thumb empty">${type === 'video' ? '🎥' : '🖼'}</div>`;
-  if (type === 'video') return `<div class="paper-proof-thumb video"><video src="${esc(url)}" muted playsinline></video><span>▶</span></div>`;
-  return `<div class="paper-proof-thumb"><img src="${esc(url)}" alt="${esc(row.title)}"></div>`;
-}
-function reportPaperPreview(req, proofRows = []) {
-  if (!req) return `<div class="report-paper-empty">Select a patrol to preview report.</div>`;
-  const property = propertyById(req.property_id) || {};
-  const guard = guardById(req.guard_id || req.assigned_guard_id) || {};
-  const client = clientById(req.client_id || property.client_id) || {};
-  return `<article class="report-paper">
-    <header><div><strong>Co Pilot Security</strong><span>Patrol Report</span></div><small>REPORT ID: ${esc(reportNumber(req))}<br>Generated: ${esc(fmtDateTimeStamp(new Date().toISOString()))}</small></header>
-    <h3>${esc(state.reportBuilderTitle || defaultReportTitle())}</h3>
-    <p>${esc(propertyDisplayName(property))} • ${esc(propertyDisplayAddress(property))}</p>
-    <table><tbody>
-      <tr><td>Client</td><td>${esc(client.business_name || client.company_name || client.name || 'Client')}</td></tr>
-      <tr><td>Patrol / Job</td><td>${esc(requestTitle(req))}</td></tr>
-      <tr><td>Guard</td><td>${esc(guardDisplayName(guard))}</td></tr>
-      <tr><td>Duration</td><td>${esc(reportRequestDuration(req))}</td></tr>
-      <tr><td>Patrol Type</td><td>${esc(statusText(req.request_type || req.patrol_type || 'Patrol'))}</td></tr>
-    </tbody></table>
-    <h4>Patrol Summary</h4><p>${esc(reportSummaryText(req))}</p>
-    <h4>Proof Included (${proofRows.length})</h4><div class="report-paper-proof-grid">${proofRows.length ? proofRows.slice(0, 6).map(reportPaperProofThumb).join('') : '<span>No photos/videos selected.</span>'}</div>
-    <h4>Guard Notes</h4><p>${esc(reportGuardNotes(req))}</p>
-    <footer><span>Guard Signature</span><span>Dispatch Review</span></footer>
-  </article>`;
-}
-function reportOptionsPanel() {
-  const req = selectedReportRequest();
-  const proofRows = selectedReportProofRows();
-  const published = req ? publishedReportForRequestId(req.id) : null;
-  if (published) {
-    return `<section class="report-options-card locked">${workflowFinishedPanel('Report already published', 'This patrol has already been finalized. It has been moved to Report Archive and cannot be published again.')}<div class="report-publish-actions"><button type="button" class="publish" data-action="open-published-archive" data-report-id="${esc(published.id || '')}">Open in Report Archive</button><button type="button" data-action="new-report">Start Another Report</button></div></section>`;
-  }
-  return `<section class="report-options-card">
-    <h2>Report Options</h2>
-    <div class="report-options-grid">
-      <label><span>Template</span><select data-report-template><option value="standard" ${state.reportBuilderTemplate === 'standard' ? 'selected' : ''}>Standard Patrol Report</option><option value="incident" ${state.reportBuilderTemplate === 'incident' ? 'selected' : ''}>Incident Report</option><option value="executive" ${state.reportBuilderTemplate === 'executive' ? 'selected' : ''}>Executive Summary</option></select></label>
-      <label><span>Report Title</span><input type="text" value="${esc(state.reportBuilderTitle || defaultReportTitle())}" data-report-title></label>
-    </div>
-    <label class="report-checkbox"><input type="checkbox" data-report-include-guard-notes ${state.reportBuilderIncludeGuardNotes !== false ? 'checked' : ''}> Include guard notes</label>
-    <label class="report-checkbox"><input type="checkbox" data-report-include-summary ${state.reportBuilderIncludeSummary ? 'checked' : ''}> Include patrol summary</label>
-    <div class="report-selection-summary"><span>ⓘ ${esc(proofRows.length)} photos/videos selected</span><button type="button" data-action="change-proof-selection">Change Selection</button></div>
-    <div class="report-publish-actions"><button type="button" data-action="save-report-draft">Save as Draft</button><button type="button" class="publish" data-action="review-and-publish-report">Review & Publish</button></div>
-  </section>`;
-}
-function reportPreviewPanel() {
-  const req = selectedReportRequest();
-  const proofRows = selectedReportProofRows();
-  return `<aside class="report-builder-preview-rail"><section class="report-preview-card"><div class="report-preview-head"><h2>Report Preview</h2><button type="button" data-action="preview-full-report">Preview Full Report ↗</button></div><div class="report-paper-preview">${reportPaperPreview(req, proofRows)}</div></section>${reportOptionsPanel()}</aside>`;
-}
-function reportBuilderHeader() {
-  return `<header class="dashboard-header report-builder-header"><div class="title-block"><h1>Report Builder</h1><p>Create, customize, and publish client patrol reports.</p></div><div class="report-builder-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-builder-search"><input type="search" placeholder="Search reports, clients, guards..." value="${esc(state.reportBuilderSearch || '')}" data-report-builder-search><b>⌕</b></label><button type="button" data-action="report-template-panel">▣ Templates</button><button type="button" data-action="report-settings-panel">⚙ Settings</button><button type="button" class="primary-button" data-action="new-report">＋ New Report</button></div></header>`;
-}
-function reportBuilderCommandCenterView() {
-  return `<div class="dashboard report-builder-shell">${reportBuilderHeader()}${reportBuilderKpiRow()}<section class="report-builder-layout"><main class="report-builder-main panel">${reportBuilderSteps()}${reportBuilderSelectJob()}${reportBuilderProofGrid()}</main>${reportPreviewPanel()}</section></div>`;
-}
-function resetReportBuilderState() {
-  state.reportBuilderSearch = '';
-  state.reportBuilderStep = 1;
-  state.selectedReportRequestId = '';
-  state.selectedReportProofIds = [];
-  state.reportBuilderTemplate = 'standard';
-  state.reportBuilderTitle = '';
-  state.reportBuilderIncludeGuardNotes = true;
-  state.reportBuilderIncludeSummary = true;
-  state.currentReportDraftId = '';
-  state.reportBuilderClientFilter = 'all';
-  state.reportBuilderPropertyFilter = 'all';
-  state.reportBuilderPage = 1;
-}
-function reportBuilderPayload(status = 'draft') {
-  const req = selectedReportRequest();
-  if (!req) return null;
-  const property = propertyById(req.property_id) || {};
-  return {
-    id: state.currentReportDraftId || createReportBuilderId('report'),
-    request_id: req.id,
-    client_id: req.client_id || property.client_id || '',
-    property_id: req.property_id || '',
-    guard_id: req.guard_id || req.assigned_guard_id || '',
-    title: state.reportBuilderTitle || defaultReportTitle(),
-    template: state.reportBuilderTemplate || 'standard',
-    selected_proof_ids: state.selectedReportProofIds || [],
-    include_guard_notes: state.reportBuilderIncludeGuardNotes !== false,
-    include_summary: state.reportBuilderIncludeSummary === true,
-    status,
-    report_number: reportNumber(req),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-}
-async function saveReportDraft() {
-  const draft = reportBuilderPayload('draft');
-  if (!draft) {
-    toast('Select a completed patrol first.', 'error');
-    return;
-  }
-  state.currentReportDraftId = draft.id;
-  saveLocalReportBuilderRecord(draft);
-  toast('Report saved as draft.', 'success');
-}
-async function publishClientReport() {
-  const req = selectedReportRequest();
-  if (!req) {
-    toast('Select a completed patrol first.', 'error');
-    return;
-  }
-  const existing = publishedReportForRequestId(req.id);
-  if (existing) {
-    state.view = 'report-archive';
-    state.selectedArchiveReportId = String(existing.id || '');
-    toast('This report is already published. Opening Report Archive.', 'success');
-    return;
-  }
-  const report = reportBuilderPayload('published');
-  if (!report) {
-    toast('Select a completed patrol first.', 'error');
-    return;
-  }
-  if (!(state.selectedReportProofIds || []).length) {
-    const confirmed = confirm('No proof selected. Publish report without photos/videos?');
-    if (!confirmed) return;
-  }
-  report.released_at = new Date().toISOString();
-  report.released_by = state.profile?.email || 'Dispatch';
-  state.currentReportDraftId = report.id;
-  saveLocalReportBuilderRecord(report);
-  saveWorkflowActionLock('report-publish', req.id, { status: 'published', report_id: report.id, finished_at: report.released_at });
-  state.selectedArchiveReportId = String(report.id);
-  resetReportBuilderState();
-  state.view = 'report-archive';
-  toast('Report published to client and moved to Report Archive.', 'success');
-}
-
-function exportReportBuilderPreview() {
-  const report = reportBuilderPayload('preview');
-  if (!report) {
-    toast('Select a completed patrol first.', 'error');
-    return;
-  }
-  const req = selectedReportRequest();
-  const property = propertyById(req.property_id) || {};
-  const proofRows = selectedReportProofRows();
-  const text = [
-    `Report: ${report.title}`,
-    `Report ID: ${reportNumber(req)}`,
-    `Property: ${propertyDisplayName(property)}`,
-    `Address: ${propertyDisplayAddress(property)}`,
-    `Generated: ${fmtDateTimeStamp(new Date().toISOString())}`,
-    `Proof Selected: ${proofRows.length}`,
-    '',
-    reportSummaryText(req),
-    '',
-    'Guard Notes:',
-    reportGuardNotes(req)
-  ].join('\n');
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${reportNumber(req)}-preview.txt`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-
-
-/* v3.0.63 Report Archive Command Center */
-function reportArchiveClientName(client = {}) {
-  return client.business_name || client.company_name || client.name || client.display_name || client.email || 'Client';
-}
-function reportArchiveSourceReports() {
-  const saved = [
-    ...(state.patrolReports || []).map(report => ({ ...report, _source: 'patrolReports' })),
-    ...(typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords().map(report => ({ ...report, _source: 'localReportBuilder' })) : [])
-  ];
-  const savedRequestIds = new Set(saved.map(report => String(report.request_id || report.patrol_request_id || '')).filter(Boolean));
-  const completedDrafts = (state.patrolRequests || [])
-    .filter(req => ['completed','closed','finished'].includes(String(req.status || '').toLowerCase()))
-    .filter(req => !savedRequestIds.has(String(req.id)))
-    .map((req, index) => ({
-      id: `completed-request-${req.id || index}`,
-      request_id: req.id,
-      client_id: req.client_id,
-      property_id: req.property_id,
-      guard_id: req.guard_id || req.assigned_guard_id,
-      title: `${requestTitle(req)} Report`,
-      report_number: typeof reportNumber === 'function' ? reportNumber(req) : `RPT-${String(req.id || index).slice(0,8)}`,
-      template: 'Standard Patrol Report',
-      status: 'draft',
-      summary: req.summary || req.final_summary || req.details || req.instructions || 'Completed patrol ready for final report archive.',
-      created_at: req.completed_at || req.updated_at || req.created_at,
-      updated_at: req.updated_at || req.completed_at || req.created_at,
-      _source: 'completedRequest'
-    }));
-  const seen = new Set();
-  return [...saved, ...completedDrafts].filter(report => {
-    const key = String(report.id || report.report_id || report.request_id || report.patrol_request_id || `${report.title}-${report.created_at}`);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-function reportArchiveStatus(row = {}) {
-  const report = row.report || row;
-  const status = String(row.status || report.status || report.report_status || 'draft').toLowerCase();
-  if (row.publishedAt || report.released_at || report.published_at) return 'published';
-  if (status.includes('schedule')) return 'scheduled';
-  if (status.includes('publish') || status.includes('release')) return 'published';
-  if (status.includes('ready')) return 'scheduled';
-  if (status.includes('draft')) return 'draft';
-  return status || 'draft';
-}
-function reportArchiveStatusBadge(row = {}) {
-  const status = reportArchiveStatus(row);
-  if (status === 'published') return `<span class="archive-status published">Published</span>`;
-  if (status === 'scheduled') return `<span class="archive-status scheduled">Scheduled</span>`;
-  return `<span class="archive-status draft">Draft</span>`;
-}
-function reportArchiveRows() {
-  const proofRowsAll = typeof proofReviewRows === 'function' ? proofReviewRows() : [];
-  return reportArchiveSourceReports().map((report, index) => {
-    const requestId = report.request_id || report.patrol_request_id;
-    const request = requestById(requestId) || {};
-    const property = propertyById(report.property_id || request.property_id) || {};
-    const guard = guardById(report.guard_id || request.guard_id || request.assigned_guard_id) || {};
-    const client = clientById(report.client_id || request.client_id || property.client_id) || {};
-    const rawProofIds = report.selected_proof_ids || report.proof_ids || report.included_proof_ids || [];
-    const proofIds = Array.isArray(rawProofIds) ? rawProofIds.map(String) : String(rawProofIds || '').split(',').map(x => x.trim()).filter(Boolean);
-    let proofRows = proofRowsAll.filter(row => proofIds.includes(String(row.id)));
-    if (!proofRows.length && requestId) {
-      proofRows = proofRowsAll.filter(row => String(proofRequestIdValue(row.proof)) === String(requestId) || String(row.request?.id || '') === String(requestId));
-    }
-    const publishedAt = report.released_at || report.published_at || report.publishedAt || report.updated_at || report.created_at || request.completed_at || request.updated_at || request.created_at || new Date().toISOString();
-    const title = report.title || report.report_title || requestTitle(request) || 'Patrol Report';
-    const reportNum = report.report_number || report.report_id || (typeof reportNumber === 'function' ? reportNumber(request) : `RPT-${index + 1}`);
-    return {
-      id: String(report.id || report.report_id || `archive-report-${index}`),
-      report,
-      request,
-      property,
-      guard,
-      client,
-      title,
-      reportNumber: reportNum,
-      template: report.template || report.report_template || 'Standard Patrol Report',
-      status: report.status || report.report_status || (report.released_at || report.published_at ? 'published' : 'draft'),
-      createdAt: report.created_at || request.created_at || publishedAt,
-      publishedAt,
-      publishedBy: report.released_by || report.published_by || report.created_by || 'Owner Admin',
-      summary: report.summary || report.final_summary || request.summary || request.final_summary || request.details || request.instructions || 'All areas of the property were checked. No issues or suspicious activity observed.',
-      photoCount: proofRows.filter(row => proofMediaType(row) === 'photo').length,
-      videoCount: proofRows.filter(row => proofMediaType(row) === 'video').length,
-      proofRows
-    };
-  }).sort((a,b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-}
-function reportArchiveCounts() {
-  const reports = reportArchiveRows();
-  return {
-    total: reports.length,
-    published: reports.filter(r => reportArchiveStatus(r) === 'published').length,
-    drafts: reports.filter(r => reportArchiveStatus(r) === 'draft').length,
-    scheduled: reports.filter(r => reportArchiveStatus(r) === 'scheduled').length,
-    photos: reports.reduce((sum, r) => sum + Number(r.photoCount || 0), 0),
-    videos: reports.reduce((sum, r) => sum + Number(r.videoCount || 0), 0)
-  };
-}
-function reportArchiveKpi(icon, label, value, subtext, tone = 'blue') {
-  return `<article class="report-archive-kpi ${esc(tone)}"><div class="report-archive-kpi-icon">${esc(icon)}</div><div><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(subtext)}</small></div></article>`;
-}
-function reportArchiveKpiRow() {
-  const c = reportArchiveCounts();
-  return `<section class="report-archive-kpis">
-    ${reportArchiveKpi('▣','Total Reports',c.total,'All time','purple')}
-    ${reportArchiveKpi('✓','Published',c.published,'Released reports','green')}
-    ${reportArchiveKpi('◷','Drafts',c.drafts,'In progress','blue')}
-    ${reportArchiveKpi('▤','Scheduled',c.scheduled,'Upcoming','orange')}
-    ${reportArchiveKpi('🖼','Photos Included',c.photos,'All time','cyan')}
-    ${reportArchiveKpi('🎥','Videos Included',c.videos,'All time','red')}
-  </section>`;
-}
-function reportArchiveClientOptions() {
-  const clients = [...new Map(reportArchiveRows().map(row => [String(row.client?.id || ''), row.client]).filter(([id]) => id)).values()];
-  return clients.map(client => `<option value="${esc(client.id)}" ${String(state.reportArchiveFilters?.clientId) === String(client.id) ? 'selected' : ''}>${esc(reportArchiveClientName(client))}</option>`).join('');
-}
-function reportArchivePropertyOptions() {
-  const properties = [...new Map(reportArchiveRows().map(row => [String(row.property?.id || ''), row.property]).filter(([id]) => id)).values()];
-  return properties.map(property => `<option value="${esc(property.id)}" ${String(state.reportArchiveFilters?.propertyId) === String(property.id) ? 'selected' : ''}>${esc(propertyDisplayName(property))}</option>`).join('');
-}
-function reportArchiveGuardOptions() {
-  const guards = [...new Map(reportArchiveRows().map(row => [String(row.guard?.id || ''), row.guard]).filter(([id]) => id)).values()];
-  return guards.map(guard => `<option value="${esc(guard.id)}" ${String(state.reportArchiveFilters?.guardId) === String(guard.id) ? 'selected' : ''}>${esc(guardDisplayName(guard))}</option>`).join('');
-}
-function reportArchiveFilterBar() {
-  const filters = state.reportArchiveFilters || {};
-  return `<section class="report-archive-filter-bar">
-    <select data-report-archive-filter="clientId"><option value="all">All Clients</option>${reportArchiveClientOptions()}</select>
-    <select data-report-archive-filter="propertyId"><option value="all">All Properties</option>${reportArchivePropertyOptions()}</select>
-    <select data-report-archive-filter="guardId"><option value="all">All Guards</option>${reportArchiveGuardOptions()}</select>
-    <select data-report-archive-filter="status"><option value="all">All Status</option><option value="published" ${filters.status === 'published' ? 'selected' : ''}>Published</option><option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>Draft</option><option value="scheduled" ${filters.status === 'scheduled' ? 'selected' : ''}>Scheduled</option></select>
-    <select data-report-archive-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option><option value="year" ${filters.dateRange === 'year' ? 'selected' : ''}>This Year</option></select>
-    <select data-report-archive-filter="sort"><option value="newest" ${filters.sort === 'newest' ? 'selected' : ''}>Sort: Newest First</option><option value="oldest" ${filters.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option><option value="client" ${filters.sort === 'client' ? 'selected' : ''}>Sort: Client</option><option value="status" ${filters.sort === 'status' ? 'selected' : ''}>Sort: Status</option></select>
-    <button type="button" data-action="report-archive-clear-filters">× Clear Filters</button>
-  </section>`;
-}
-function filteredReportArchiveRows() {
-  let rows = reportArchiveRows();
-  const q = String(state.reportArchiveSearch || '').trim().toLowerCase();
-  const filters = state.reportArchiveFilters || {};
-  if (q) {
-    rows = rows.filter(row => [
-      row.title, row.reportNumber, row.template, reportArchiveClientName(row.client), propertyDisplayName(row.property),
-      propertyDisplayAddress(row.property), guardDisplayName(row.guard), requestTitle(row.request), row.summary
-    ].join(' ').toLowerCase().includes(q));
-  }
-  if (filters.clientId && filters.clientId !== 'all') rows = rows.filter(row => String(row.client?.id || '') === String(filters.clientId));
-  if (filters.propertyId && filters.propertyId !== 'all') rows = rows.filter(row => String(row.property?.id || '') === String(filters.propertyId));
-  if (filters.guardId && filters.guardId !== 'all') rows = rows.filter(row => String(row.guard?.id || '') === String(filters.guardId));
-  if (filters.status && filters.status !== 'all') rows = rows.filter(row => reportArchiveStatus(row) === filters.status);
-  const now = new Date();
-  if (filters.dateRange === 'today') rows = rows.filter(row => new Date(row.publishedAt).toDateString() === now.toDateString());
-  if (filters.dateRange === 'week') {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    rows = rows.filter(row => new Date(row.publishedAt) >= weekAgo);
-  }
-  if (filters.dateRange === 'month') {
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    rows = rows.filter(row => new Date(row.publishedAt) >= monthStart);
-  }
-  if (filters.dateRange === 'year') {
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    rows = rows.filter(row => new Date(row.publishedAt) >= yearStart);
-  }
-  if (filters.sort === 'oldest') rows.sort((a,b) => new Date(a.publishedAt || 0) - new Date(b.publishedAt || 0));
-  else if (filters.sort === 'client') rows.sort((a,b) => reportArchiveClientName(a.client).localeCompare(reportArchiveClientName(b.client)));
-  else if (filters.sort === 'status') rows.sort((a,b) => reportArchiveStatus(a).localeCompare(reportArchiveStatus(b)) || (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)));
-  else rows.sort((a,b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-  return rows;
-}
-function selectedArchiveReport() {
-  const rows = filteredReportArchiveRows();
-  const selected = rows.find(row => String(row.id) === String(state.selectedArchiveReportId));
-  return selected || rows[0] || null;
-}
-function isArchiveReportChecked(id) {
-  return (state.reportArchiveCheckedIds || []).map(String).includes(String(id));
-}
-function reportArchiveRow(row = {}) {
-  const selected = String(state.selectedArchiveReportId || '') === String(row.id);
-  return `<div class="report-archive-row ${selected ? 'selected' : ''}">
-    <label class="archive-check"><input type="checkbox" data-report-archive-check="${esc(row.id)}" ${isArchiveReportChecked(row.id) ? 'checked' : ''}></label>
-    <button type="button" class="archive-report-cell" data-action="select-archive-report" data-report-id="${esc(row.id)}"><span class="archive-pdf-icon">pdf</span><span><strong>${esc(row.title)}</strong><small>${esc(row.reportNumber)}</small><small>${esc(row.template)}</small></span></button>
-    <div class="archive-client-cell"><strong>${esc(reportArchiveClientName(row.client))}</strong><small>${esc(propertyDisplayName(row.property))}</small><small>${esc(propertyDisplayAddress(row.property))}</small></div>
-    <div class="archive-job-cell"><strong>${esc(requestTitle(row.request))}</strong><small>${esc(guardDisplayName(row.guard))}</small></div>
-    <div class="archive-date-cell"><strong>${esc(fmtDate(row.publishedAt))}</strong><small>${esc(fmtTime(row.publishedAt))}</small></div>
-    <div class="archive-status-cell">${reportArchiveStatusBadge(row)}<small>${esc(fmtDate(row.publishedAt))}</small></div>
-    <div class="archive-included-cell"><span class="archive-media-count photo">🖼 ${esc(row.photoCount)}</span><span class="archive-media-count video">🎥 ${esc(row.videoCount)}</span></div>
-    <div class="archive-row-actions"><button type="button" data-action="view-archive-report" data-report-id="${esc(row.id)}">👁</button><button type="button" data-action="archive-report-menu" data-report-id="${esc(row.id)}">⋯</button></div>
-  </div>`;
-}
-function reportArchiveTable() {
-  const rows = filteredReportArchiveRows();
-  const per = Number(state.reportArchivePerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.reportArchivePage = Math.min(Math.max(1, state.reportArchivePage || 1), maxPage);
-  const start = (state.reportArchivePage - 1) * per;
-  const pageRows = rows.slice(start, start + per);
-  return `<section class="report-archive-table-wrap"><div class="report-archive-head"><span></span><span>Report</span><span>Client / Property</span><span>Patrol / Job</span><span>Date</span><span>Status</span><span>Included</span><span>Actions</span></div><div class="report-archive-rows">${pageRows.length ? pageRows.map(reportArchiveRow).join('') : '<div class="report-archive-empty">No reports match your filters.</div>'}</div></section>`;
-}
-function reportArchivePagination() {
-  const rows = filteredReportArchiveRows();
-  const per = Number(state.reportArchivePerPage || 10);
-  const maxPage = Math.max(1, Math.ceil(rows.length / per));
-  state.reportArchivePage = Math.min(Math.max(1, state.reportArchivePage || 1), maxPage);
-  const start = rows.length ? (state.reportArchivePage - 1) * per + 1 : 0;
-  const end = Math.min(rows.length, (state.reportArchivePage || 1) * per);
-  return `<footer class="report-archive-footer"><span>Showing ${esc(start)} to ${esc(end)} of ${esc(rows.length)} reports</span><div class="report-archive-pagination"><button type="button" data-action="report-archive-page-prev">‹</button><strong>${esc(state.reportArchivePage || 1)}</strong><button type="button" data-action="report-archive-page-next">›</button></div><label>Rows per page:<select data-report-archive-per-page><option value="10" ${per === 10 ? 'selected' : ''}>10</option><option value="25" ${per === 25 ? 'selected' : ''}>25</option><option value="50" ${per === 50 ? 'selected' : ''}>50</option></select></label></footer>`;
-}
-function reportArchivePreviewCard(row = {}) {
-  const property = row.property || {};
-  return `<article class="archive-preview-card">
-    <header><div><b>🛡</b><span><strong>Co Pilot Security</strong><small>Patrol Report</small></span></div><small>REPORT ID<br>${esc(row.reportNumber)}</small></header>
-    <img src="${esc(typeof reportPropertyImage === 'function' ? reportPropertyImage(property) : (property.photo_url || ''))}" alt="Property">
-    <footer><strong>${esc(propertyDisplayName(property))}</strong><small>${esc(propertyDisplayAddress(property))}</small></footer>
-  </article>`;
-}
-function reportArchiveDetailRail() {
-  const row = selectedArchiveReport();
-  if (!row) return `<aside class="report-archive-detail-rail"><section class="panel panel-pad archive-detail-card"><div class="empty">Select a report.</div></section></aside>`;
-  return `<aside class="report-archive-detail-rail"><section class="panel panel-pad archive-detail-card">
-    <button class="rail-close" type="button" data-action="clear-selected-archive-report">×</button>
-    <h2>Selected Report</h2>
-    ${reportArchivePreviewCard(row)}
-    <dl class="archive-detail-list">
-      <dt>Patrol / Job</dt><dd>${esc(requestTitle(row.request))}</dd>
-      <dt>Guard</dt><dd>${esc(guardDisplayName(row.guard))}</dd>
-      <dt>Patrol Type</dt><dd>${esc(statusText(row.request?.request_type || row.request?.patrol_type || 'Patrol'))}</dd>
-      <dt>Date / Time</dt><dd>${esc(fmtDateTimeStamp(row.publishedAt))}</dd>
-      <dt>Duration</dt><dd>${esc(typeof reportRequestDuration === 'function' ? reportRequestDuration(row.request) : '60 min')}</dd>
-      <dt>Status</dt><dd>${reportArchiveStatusBadge(row)}</dd>
-      <dt>Published By</dt><dd>${esc(row.publishedBy)}</dd>
-      <dt>Published On</dt><dd>${esc(fmtDate(row.publishedAt))}</dd>
-      <dt>Template</dt><dd>${esc(row.template)}</dd>
-    </dl>
-    <section class="archive-summary-card"><h3>Summary</h3><p>${esc(row.summary)}</p></section>
-    <section class="archive-media-summary"><h3>Included Media</h3><div><span class="photo">🖼 ${esc(row.photoCount)} Photos</span><span class="video">🎥 ${esc(row.videoCount)} Videos</span></div></section>
-    <div class="archive-detail-actions"><button class="primary" type="button" data-action="view-full-archive-report" data-report-id="${esc(row.id)}">↗ View Full Report</button><button type="button" data-action="download-archive-report" data-report-id="${esc(row.id)}">⇩ Download PDF</button><button type="button" data-action="share-archive-report" data-report-id="${esc(row.id)}">⤴ Share Report</button><button class="danger" type="button" data-action="delete-archive-report" data-report-id="${esc(row.id)}">🗑 Delete Report</button></div>
-  </section></aside>`;
-}
-function reportArchiveHeader() {
-  return `<header class="dashboard-header report-archive-header"><div class="title-block"><h1>Report Archive</h1><p>View, search, and manage all published reports.</p></div><div class="report-archive-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-archive-search"><input type="search" placeholder="Search reports, clients, properties..." value="${esc(state.reportArchiveSearch || '')}" data-report-archive-search><b>⌕</b></label><button type="button" data-action="report-archive-filters">⌁ Filters</button><button type="button" data-action="report-archive-export">⇩ Export</button></div></header>`;
-}
-function reportArchiveCommandCenterView() {
-  return `<div class="dashboard report-archive-shell">${reportArchiveHeader()}${reportArchiveKpiRow()}<section class="report-archive-layout"><main class="report-archive-main panel">${reportArchiveFilterBar()}${reportArchiveTable()}${reportArchivePagination()}</main>${reportArchiveDetailRail()}</section></div>`;
-}
-function archiveReportText(row = {}) {
-  return [
-    `Co Pilot Security - Patrol Report`,
-    `Report ID: ${row.reportNumber}`,
-    `Title: ${row.title}`,
-    `Status: ${statusText(reportArchiveStatus(row))}`,
-    `Client: ${reportArchiveClientName(row.client)}`,
-    `Property: ${propertyDisplayName(row.property)}`,
-    `Address: ${propertyDisplayAddress(row.property)}`,
-    `Guard: ${guardDisplayName(row.guard)}`,
-    `Patrol: ${requestTitle(row.request)}`,
-    `Date/Time: ${fmtDateTimeStamp(row.publishedAt)}`,
-    `Duration: ${typeof reportRequestDuration === 'function' ? reportRequestDuration(row.request) : '60 min'}`,
-    `Template: ${row.template}`,
-    `Photos: ${row.photoCount}`,
-    `Videos: ${row.videoCount}`,
-    '',
-    'Summary:',
-    row.summary || ''
-  ].join('\n');
-}
-function downloadArchiveReportPdf(id) {
-  const row = reportArchiveRows().find(r => String(r.id) === String(id)) || selectedArchiveReport();
-  if (!row) {
-    toast('Select a report first.', 'error');
-    return;
-  }
-  const blob = new Blob([archiveReportText(row)], { type: 'text/plain;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${String(row.reportNumber || 'report').replace(/[^a-z0-9-]/gi, '_')}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-function exportReportArchiveCsv() {
-  const rows = filteredReportArchiveRows();
-  const cols = ['reportNumber','title','client','property','address','guard','status','publishedAt','photos','videos','template'];
-  const csv = [cols.join(',')].concat(rows.map(row => [
-    row.reportNumber,
-    row.title,
-    reportArchiveClientName(row.client),
-    propertyDisplayName(row.property),
-    propertyDisplayAddress(row.property),
-    guardDisplayName(row.guard),
-    reportArchiveStatus(row),
-    row.publishedAt,
-    row.photoCount,
-    row.videoCount,
-    row.template
-  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `co-pilot-report-archive-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-}
-function deleteArchiveReport(id) {
-  const local = typeof readLocalReportBuilderRecords === 'function' ? readLocalReportBuilderRecords() : [];
-  const next = local.filter(item => String(item.id) !== String(id));
-  if (next.length !== local.length && typeof writeLocalReportBuilderRecords === 'function') {
-    writeLocalReportBuilderRecords(next);
-    toast('Report deleted from local archive.', 'success');
-  } else {
-    toast('This report is from system records and cannot be deleted locally.', 'error');
-  }
-  if (String(state.selectedArchiveReportId) === String(id)) state.selectedArchiveReportId = '';
-}
-function shareArchiveReport(id) {
-  const row = reportArchiveRows().find(r => String(r.id) === String(id)) || selectedArchiveReport();
-  if (!row) return toast('Select a report first.', 'error');
-  const text = `${row.title} • ${row.reportNumber}`;
-  if (navigator.share) {
-    navigator.share({ title: row.title, text }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(text);
-    toast('Report share text copied.', 'success');
-  }
-}
-
 function renderRoleView() {
   if (state.role === 'admin') {
     if (state.view === 'dashboard') return adminDashboard();
@@ -9114,10 +6947,10 @@ function renderRoleView() {
     if (state.view === 'guards') return guardsCommandCenterView();
     if (state.view === 'guard-approvals') return guardApprovalsCommandCenterView();
     if (state.view === 'clients') return adminClientsCommandCenterView();
-    if (state.view === 'activity-log') return activityLogCommandCenterView();
-    if (state.view === 'proof-review') return proofReviewCommandCenterView();
-    if (state.view === 'report-builder') return reportBuilderCommandCenterView();
-    if (state.view === 'report-archive') return reportArchiveCommandCenterView();
+    if (state.view === 'activity-log') return cardsView('Activity Log', 'Patrol activity events.', state.patrolActivity.map(x => ({ title: x.title || x.event_type, message: x.details || x.message })));
+    if (state.view === 'proof-review') return cardsView('Proof Review', 'Proof uploaded by guards.', state.proofItems.map(x => ({ title: x.file_name || 'Proof item', message: x.note || x.file_type })));
+    if (state.view === 'report-builder') return tableView('Report Builder', 'Completed patrols ready for reports.', completedRequests());
+    if (state.view === 'report-archive') return cardsView('Report Archive', 'Released report records.', state.patrolReports);
   }
   if (state.role === 'guard') {
     if (state.view === 'dashboard') return guardDashboardMockup302();
@@ -9330,10 +7163,6 @@ async function initialize() {
 document.addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button) return;
-  if (button.disabled || button.dataset.busy === '1') return;
-  const lockableActions = new Set(['approve-guard','reject-guard','request-guard-info','schedule-guard-interview','approve-proof','reject-proof','toggle-proof-include','save-proof-note','assign-pending-request','pending-auto-assign','pending-assign-selected','admin-assign-now','review-and-publish-report','save-report-draft']);
-  const shouldLockButton = lockableActions.has(button.dataset.action || '') || button.dataset.approve || button.dataset.reject;
-  if (shouldLockButton) setActionButtonBusy(button);
   try {
     if (button.dataset.publicView) {
       state.publicView = button.dataset.publicView;
@@ -9644,14 +7473,6 @@ document.addEventListener('click', async event => {
       render();
       return;
     }
-    if (button.dataset.action === 'view-approved-guard') {
-      const app = guardApprovalRows().find(a => String(a.id) === String(button.dataset.approvalId));
-      const guard = state.guards.find(g => String(g.id) === String(app?.id) || String(g.email || '').toLowerCase() === String(app?.email || '').toLowerCase());
-      if (guard) state.selectedGuardId = guard.id || '';
-      state.view = 'guards';
-      render();
-      return;
-    }
     if (button.dataset.action === 'approve-guard') {
       await approveGuardApplication(button.dataset.approvalId);
       return;
@@ -9788,274 +7609,6 @@ document.addEventListener('click', async event => {
       toast('Column controls selected.', 'success');
       return;
     }
-    if (button.dataset.activityTab) {
-      state.activityLogTab = button.dataset.activityTab || 'all';
-      state.activityLogPage = 1;
-      state.selectedActivityId = '';
-      render();
-      return;
-    }
-    if (button.dataset.activityQuickFilter) {
-      setActivityQuickFilter(button.dataset.activityQuickFilter);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'select-activity') {
-      state.selectedActivityId = button.dataset.activityId || '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'activity-menu') {
-      state.selectedActivityId = button.dataset.activityId || state.selectedActivityId;
-      render();
-      toast('Activity action menu selected.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'activity-clear-filters') {
-      state.activityLogSearch = '';
-      state.activityLogTab = 'all';
-      state.activityLogFilters = { user: 'all', action: 'all', module: 'all', severity: 'all', dateRange: 'all' };
-      state.activityLogPage = 1;
-      state.selectedActivityId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'activity-toggle-filters') {
-      toast('Filters are visible below the tabs.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'activity-export') {
-      exportActivityLogCsv();
-      toast('Activity log exported.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'activity-save-filter') {
-      toast('Current activity filter saved for this development session.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'activity-page-prev') {
-      state.activityLogPage = Math.max(1, (state.activityLogPage || 1) - 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'activity-page-next') {
-      const maxPage = Math.max(1, Math.ceil(filteredActivityLogRows().length / Number(state.activityLogPerPage || 10)));
-      state.activityLogPage = Math.min(maxPage, (state.activityLogPage || 1) + 1);
-      render();
-      return;
-    }
-    if (button.dataset.proofReviewTab) {
-      state.proofReviewTab = button.dataset.proofReviewTab || 'all';
-      state.proofReviewPage = 1;
-      state.selectedProofId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'select-proof' || button.dataset.action === 'view-proof') {
-      state.selectedProofId = button.dataset.proofId || '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'clear-selected-proof') {
-      state.selectedProofId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'approve-proof') {
-      await updateProofReviewStatus(button.dataset.proofId, 'approved');
-      render();
-      toast('Proof approved.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'reject-proof') {
-      await updateProofReviewStatus(button.dataset.proofId, 'rejected');
-      render();
-      toast('Proof rejected.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'toggle-proof-include') {
-      await toggleProofReportInclusion(button.dataset.proofId);
-      render();
-      toast('Report inclusion updated.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'save-proof-note') {
-      const selector = `[data-proof-internal-note="${String(button.dataset.proofId || '').replace(/"/g, '\\"')}"]`;
-      const textarea = document.querySelector(selector);
-      await saveProofInternalNote(button.dataset.proofId, textarea?.value || '');
-      render();
-      toast('Proof note saved.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'proof-review-clear-filters') {
-      state.proofReviewSearch = '';
-      state.proofReviewTab = 'all';
-      state.proofReviewFilters = { guardId: 'all', clientId: 'all', propertyId: 'all', type: 'all', dateRange: 'all', sort: 'newest' };
-      state.proofReviewPage = 1;
-      state.selectedProofId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'proof-review-filters') {
-      toast('Proof filters are visible below the tabs.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'proof-review-export') {
-      exportProofReviewCsv();
-      toast('Proof review exported.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'proof-menu') {
-      state.selectedProofId = button.dataset.proofId || state.selectedProofId;
-      render();
-      toast('Proof action menu selected.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'proof-review-page-prev') {
-      state.proofReviewPage = Math.max(1, (state.proofReviewPage || 1) - 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'proof-review-page-next') {
-      const maxPage = Math.max(1, Math.ceil(filteredProofReviewRows().length / Number(state.proofReviewPerPage || 10)));
-      state.proofReviewPage = Math.min(maxPage, (state.proofReviewPage || 1) + 1);
-      render();
-      return;
-    }
-    if (button.dataset.reportStep) {
-      state.reportBuilderStep = Number(button.dataset.reportStep || 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'toggle-report-proof') {
-      toggleReportProofSelection(button.dataset.proofId);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'report-proof-page-prev') {
-      state.reportBuilderPage = Math.max(1, (state.reportBuilderPage || 1) - 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'report-proof-page-next') {
-      const maxPage = Math.max(1, Math.ceil(reportBuilderProofRows().length / Number(state.reportBuilderPerPage || 8)));
-      state.reportBuilderPage = Math.min(maxPage, (state.reportBuilderPage || 1) + 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'change-proof-selection') {
-      state.reportBuilderStep = 2;
-      render();
-      return;
-    }
-    if (button.dataset.action === 'save-report-draft') {
-      await saveReportDraft();
-      render();
-      return;
-    }
-    if (button.dataset.action === 'review-and-publish-report') {
-      state.reportBuilderStep = 4;
-      await publishClientReport();
-      render();
-      return;
-    }
-    if (button.dataset.action === 'preview-full-report') {
-      exportReportBuilderPreview();
-      toast('Report preview exported.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'new-report') {
-      resetReportBuilderState();
-      render();
-      toast('New report builder started.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'refresh-report-builder') {
-      await loadData();
-      render();
-      toast('Report Builder refreshed.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'report-template-panel') {
-      toast('Template controls are available in Report Options.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'report-settings-panel') {
-      toast('Report settings are available in the right rail.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'open-published-archive') {
-      state.view = 'report-archive';
-      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
-      render();
-      return;
-    }
-    if (button.dataset.action === 'select-archive-report' || button.dataset.action === 'view-archive-report') {
-      state.selectedArchiveReportId = button.dataset.reportId || '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'clear-selected-archive-report') {
-      state.selectedArchiveReportId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'report-archive-clear-filters') {
-      state.reportArchiveSearch = '';
-      state.reportArchiveFilters = { clientId: 'all', propertyId: 'all', guardId: 'all', status: 'all', dateRange: 'all', sort: 'newest' };
-      state.reportArchivePage = 1;
-      state.selectedArchiveReportId = '';
-      render();
-      return;
-    }
-    if (button.dataset.action === 'view-full-archive-report') {
-      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
-      downloadArchiveReportPdf(button.dataset.reportId);
-      toast('Full report preview downloaded.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'download-archive-report') {
-      downloadArchiveReportPdf(button.dataset.reportId);
-      toast('Report download prepared.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'share-archive-report') {
-      shareArchiveReport(button.dataset.reportId);
-      return;
-    }
-    if (button.dataset.action === 'delete-archive-report') {
-      if (confirm('Delete this report from the local archive?')) {
-        deleteArchiveReport(button.dataset.reportId);
-        render();
-      }
-      return;
-    }
-    if (button.dataset.action === 'archive-report-menu') {
-      state.selectedArchiveReportId = button.dataset.reportId || state.selectedArchiveReportId;
-      render();
-      toast('Report action menu selected.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'report-archive-filters') {
-      toast('Report Archive filters are visible above the table.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'report-archive-export') {
-      exportReportArchiveCsv();
-      toast('Report Archive exported.', 'success');
-      return;
-    }
-    if (button.dataset.action === 'report-archive-page-prev') {
-      state.reportArchivePage = Math.max(1, (state.reportArchivePage || 1) - 1);
-      render();
-      return;
-    }
-    if (button.dataset.action === 'report-archive-page-next') {
-      const maxPage = Math.max(1, Math.ceil(filteredReportArchiveRows().length / Number(state.reportArchivePerPage || 10)));
-      state.reportArchivePage = Math.min(maxPage, (state.reportArchivePage || 1) + 1);
-      render();
-      return;
-    }
     if (button.dataset.action === 'save-settings') {
       toast('Settings saved for this development session.', 'success');
       return;
@@ -10069,34 +7622,23 @@ document.addEventListener('click', async event => {
       return;
     }
     if (button.dataset.action === 'export-client-reports') {
-      exportClientReportsCsv();
-      toast('Client reports exported.', 'success');
+      toast('Reports export is queued for the next reporting build.', 'success');
       return;
     }
     if (button.dataset.action === 'view-client-report') {
-      const row = clientReportById(button.dataset.reportId);
-      if (!row) { toast('Report not found.', 'error'); return; }
-      state.selectedClientReportId = row.id;
-      render();
-      toast('Report opened in the preview panel.', 'success');
+      const row = clientReportSourceRows().find(r => String(r.id) === String(button.dataset.reportId));
+      if (row?.url) window.open(row.url, '_blank', 'noopener');
+      else toast('Report preview panel is the next reports feature to build.', 'success');
       return;
     }
     if (button.dataset.action === 'download-client-report') {
-      downloadClientReportFile(button.dataset.reportId);
-      return;
-    }
-    if (button.dataset.action === 'clear-selected-client-report') {
-      state.selectedClientReportId = '';
-      render();
+      const row = clientReportSourceRows().find(r => String(r.id) === String(button.dataset.reportId));
+      if (row?.url) window.open(row.url, '_blank', 'noopener');
+      else toast('Download will be available when the final report PDF is generated.', 'success');
       return;
     }
     if (button.dataset.action === 'view-all-report-activity') {
-      state.clientReportSearch = '';
-      state.clientReportStatusFilter = 'all';
-      state.clientReportPropertyFilter = 'all';
-      state.clientReportPage = 1;
-      render();
-      toast('Showing all report activity.', 'success');
+      toast('Full report activity timeline coming next.', 'success');
       return;
     }
     if (button.dataset.action === 'client-report-page-prev') {
@@ -10260,16 +7802,6 @@ document.addEventListener('click', async event => {
       await confirmInlineProofUpload();
       return;
     }
-    if (button.dataset.action === 'complete-without-proof') {
-      const req = state.patrolRequests.find(r => String(r.id) === String(button.dataset.requestId));
-      closeCompleteWithoutProofModal();
-      await finishGuardJob(req, { withoutProof: true });
-      return;
-    }
-    if (button.dataset.action === 'cancel-complete-without-proof') {
-      closeCompleteWithoutProofModal();
-      return;
-    }
     if (button.dataset.action === 'select-client-property') {
       state.clientSelectedPropertyId = button.dataset.propertyId || '';
       state.clientPropertyTab = 'overview';
@@ -10330,8 +7862,6 @@ document.addEventListener('click', async event => {
     }
   } catch (err) {
     toast(friendly(err));
-  } finally {
-    if (shouldLockButton && document.body.contains(button)) clearActionButtonBusy(button);
   }
 });
 
@@ -10339,9 +7869,6 @@ document.addEventListener('submit', async event => {
   const form = event.target;
   if (!form.dataset.form) return;
   event.preventDefault();
-  const submitButton = form.querySelector('button[type="submit"], button:not([type])');
-  if (submitButton?.dataset.busy === '1') return;
-  setActionButtonBusy(submitButton, 'Saving...');
   try {
     if (form.dataset.form === 'login') await login(form);
     if (form.dataset.form === 'owner-setup') await ownerSetup(form);
@@ -10364,46 +7891,11 @@ document.addEventListener('submit', async event => {
     }
   } catch (err) {
     toast(friendly(err));
-  } finally {
-    if (submitButton && document.body.contains(submitButton)) clearActionButtonBusy(submitButton);
   }
 });
 
 document.addEventListener('input', event => {
   const input = event.target;
-  if (input && input.hasAttribute('data-report-archive-search')) {
-    state.reportArchiveSearch = input.value || '';
-    state.reportArchivePage = 1;
-    state.selectedArchiveReportId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-builder-search')) {
-    state.reportBuilderSearch = input.value || '';
-    state.reportBuilderPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-title')) {
-    state.reportBuilderTitle = input.value || '';
-    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-proof-review-search')) {
-    state.proofReviewSearch = input.value || '';
-    state.proofReviewPage = 1;
-    state.selectedProofId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-activity-search')) {
-    state.activityLogSearch = input.value || '';
-    state.activityLogPage = 1;
-    state.selectedActivityId = '';
-    render();
-    return;
-  }
   if (input && input.hasAttribute('data-admin-client-search')) {
     state.adminClientSearch = input.value || '';
     state.adminClientPage = 1;
@@ -10412,6 +7904,13 @@ document.addEventListener('input', event => {
     return;
   }
 
+  if (input && input.hasAttribute('data-guard-approval-search')) {
+    state.guardApprovalSearch = input.value || '';
+    state.guardApprovalPage = 1;
+    state.selectedGuardApprovalId = '';
+    render();
+    return;
+  }
   if (input && input.hasAttribute('data-guard-approval-search')) {
     state.guardApprovalSearch = input.value || '';
     state.guardApprovalPage = 1;
@@ -10437,6 +7936,13 @@ document.addEventListener('input', event => {
   if (input && input.hasAttribute('data-approval-per-page')) {
     state.guardApprovalPerPage = Number(input.value || 5);
     state.guardApprovalPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guards-search')) {
+    state.guardsSearch = input.value || '';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
     render();
     return;
   }
@@ -10559,140 +8065,6 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', event => {
   const input = event.target;
-  if (input && input.hasAttribute('data-report-archive-search')) {
-    state.reportArchiveSearch = input.value || '';
-    state.reportArchivePage = 1;
-    state.selectedArchiveReportId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-archive-filter')) {
-    const key = input.dataset.reportArchiveFilter;
-    state.reportArchiveFilters = { ...(state.reportArchiveFilters || {}), [key]: input.value || 'all' };
-    state.reportArchivePage = 1;
-    state.selectedArchiveReportId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-archive-per-page')) {
-    state.reportArchivePerPage = Number(input.value || 10);
-    state.reportArchivePage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-archive-check')) {
-    const id = String(input.dataset.reportArchiveCheck || '');
-    const set = new Set((state.reportArchiveCheckedIds || []).map(String));
-    if (input.checked) set.add(id);
-    else set.delete(id);
-    state.reportArchiveCheckedIds = [...set];
-    return;
-  }
-  if (input && input.hasAttribute('data-report-builder-search')) {
-    state.reportBuilderSearch = input.value || '';
-    state.reportBuilderPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-builder-filter')) {
-    const key = input.dataset.reportBuilderFilter;
-    if (key === 'client') state.reportBuilderClientFilter = input.value || 'all';
-    if (key === 'property') state.reportBuilderPropertyFilter = input.value || 'all';
-    state.selectedReportRequestId = '';
-    state.selectedReportProofIds = [];
-    state.reportBuilderPage = 1;
-    state.reportBuilderStep = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-builder-request')) {
-    state.selectedReportRequestId = input.value || '';
-    state.selectedReportProofIds = [];
-    state.reportBuilderPage = 1;
-    state.reportBuilderStep = 2;
-    state.reportBuilderTitle = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-template')) {
-    state.reportBuilderTemplate = input.value || 'standard';
-    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-include-guard-notes')) {
-    state.reportBuilderIncludeGuardNotes = input.checked;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-include-summary')) {
-    state.reportBuilderIncludeSummary = input.checked;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-proof-select-all')) {
-    const rows = reportBuilderProofRows();
-    state.selectedReportProofIds = input.checked ? rows.map(row => String(row.id)) : [];
-    state.reportBuilderStep = Math.max(Number(state.reportBuilderStep || 1), 3);
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-report-proof-per-page')) {
-    state.reportBuilderPerPage = Number(input.value || 8);
-    state.reportBuilderPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-proof-review-search')) {
-    state.proofReviewSearch = input.value || '';
-    state.proofReviewPage = 1;
-    state.selectedProofId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-proof-filter')) {
-    const key = input.dataset.proofFilter;
-    state.proofReviewFilters = { ...(state.proofReviewFilters || {}), [key]: input.value || 'all' };
-    state.proofReviewPage = 1;
-    state.selectedProofId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-proof-review-per-page')) {
-    state.proofReviewPerPage = Number(input.value || 10);
-    state.proofReviewPage = 1;
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-proof-check')) {
-    const id = String(input.dataset.proofCheck || '');
-    const set = new Set((state.proofReviewCheckedIds || []).map(String));
-    if (input.checked) set.add(id);
-    else set.delete(id);
-    state.proofReviewCheckedIds = [...set];
-    return;
-  }
-  if (input && input.hasAttribute('data-activity-search')) {
-    state.activityLogSearch = input.value || '';
-    state.activityLogPage = 1;
-    state.selectedActivityId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-activity-filter')) {
-    const key = input.dataset.activityFilter;
-    state.activityLogFilters = { ...(state.activityLogFilters || {}), [key]: input.value || 'all' };
-    state.activityLogPage = 1;
-    state.selectedActivityId = '';
-    render();
-    return;
-  }
-  if (input && input.hasAttribute('data-activity-per-page')) {
-    state.activityLogPerPage = Number(input.value || 10);
-    state.activityLogPage = 1;
-    render();
-    return;
-  }
   if (input && input.hasAttribute('data-admin-client-search')) {
     state.adminClientSearch = input.value || '';
     state.adminClientPage = 1;
@@ -10711,6 +8083,13 @@ document.addEventListener('change', event => {
   if (input && input.hasAttribute('data-admin-client-per-page')) {
     state.adminClientPerPage = Number(input.value || 10);
     state.adminClientPage = 1;
+    render();
+    return;
+  }
+  if (input && input.hasAttribute('data-guards-search')) {
+    state.guardsSearch = input.value || '';
+    state.guardsPage = 1;
+    state.selectedGuardId = '';
     render();
     return;
   }

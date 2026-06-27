@@ -1,20 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.69",
-  "buildName": "PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX",
-  "type": "proof-review-approval-lock-status-fix",
+  "version": "3.0.58",
+  "buildName": "CLIENTS COMMAND CENTER",
+  "type": "clients-command-center",
   "sql_required": false,
-  "file_count": 14,
   "features": [
-    "Fixes Proof Review row/detail mismatch where a proof row said Pending Review while the detail rail was locked by a published report",
-    "Adds row-level Approve and Reject buttons for proof that is truly pending and reviewable",
-    "Shows Report Published locked status for proof attached to an already-published report",
-    "Adds Report Published tab and removes locked proof from Pending Review counts",
-    "Keeps approved proof include/remove controls available until the report is published",
-    "Keeps rejected proof locked and blocked from report inclusion",
-    "Adds View Report Archive action for locked proof",
-    "Preserves v3.0.68 Client Report preview and download fixes",
-    "No URL inputs added",
+    "Rebuilt Dispatch/Admin Clients page using the generated command-center blueprint",
+    "Added KPI row for total clients, active clients, active contracts, monthly revenue, expiring contracts, and past due clients",
+    "Added tabs: All Clients, Active, Inactive, Prospects, On Hold",
+    "Added filters for status, client type, service type, region, and sorting",
+    "Added client roster table with logo/avatar, type, contact, sites, contract, status, revenue, and actions",
+    "Added selected client right rail with profile, tabs, contact info, revenue, services, site/request/report stats, and profile/edit actions",
+    "Added search, pagination, rows-per-page, clear filters, add client placeholder, columns placeholder, and export placeholder",
+    "Preserved global sidebar fix from v3.0.57",
     "No new SQL required"
   ]
 }

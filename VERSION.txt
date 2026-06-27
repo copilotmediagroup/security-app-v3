@@ -1,22 +1,22 @@
 Co Pilot Security
-Version: 3.0.69
-Build Name: PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
-Date: 2026-06-26
+Version: 3.0.58
+Build Name: CLIENTS COMMAND CENTER
+Date: 2026-06-25
 
 Summary:
-- Built from v3.0.68.
-- Fixed Proof Review status mismatch where rows could show Pending Review while the detail rail was locked because the report was already published.
-- Added row-level Approve and Reject actions for proof that is truly pending and reviewable.
-- Added a Report Published / Locked display state for proof attached to patrols with already-published final reports.
-- Added a Report Published tab in Proof Review so locked proof is easy to find and no longer counted as pending review.
-- Preserved right-rail Approve, Reject, Include in Report, Save Note, and report lock behavior.
-- Added View Report Archive action for locked proof.
-- Preserved v3.0.68 Client Report preview/download fixes.
-- No URL inputs were added.
+- Built from v3.0.57.
+- Rebuilt Dispatch/Admin Clients page into a full command-center management page.
+- Added KPI row: Total Clients, Active Clients, Active Contracts, Monthly Revenue, Contracts Expiring, Past Due.
+- Added tabs: All Clients, Active, Inactive, Prospects, On Hold.
+- Added filters: Status, Client Type, Service Type, Region, Sort.
+- Added client roster table with client logo, client type, contact, sites, contract, status, revenue, and actions.
+- Added selected client right rail with profile, overview tabs, contact data, revenue, service tags, site/request/report stats, View Full Profile, and Edit Client.
+- Added search, pagination, rows per page, clear filters, export placeholder, columns placeholder, and Add Client placeholder.
+- Preserved sidebar profile/nav stack fix from v3.0.57.
 - No new SQL required.
 
 Badge:
-v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
+v3.0.58 CLIENTS COMMAND CENTER
 
 SQL:
 No new SQL required.
