@@ -12932,3 +12932,142 @@ button.is-busy {
 @media (max-width: 1180px) {
   .workflow-stage-legend { grid-template-columns: repeat(10, 120px); }
 }
+
+/* v3.0.75 Job Timeline / Audit Trail */
+.job-timeline-card {
+  display: grid;
+  gap: 12px;
+  border-color: rgba(86, 158, 255, .24);
+}
+.job-timeline-card.compact {
+  box-shadow: none;
+}
+.job-timeline-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.job-timeline-head h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.job-timeline-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.job-timeline-score {
+  min-width: 70px;
+  height: 48px;
+  border: 1px solid rgba(114,171,233,.18);
+  border-radius: 10px;
+  background: rgba(4, 15, 27, .74);
+  display: grid;
+  place-items: center;
+  align-content: center;
+}
+.job-timeline-score b {
+  color: #fff;
+  line-height: 1;
+  font-size: 16px;
+}
+.job-timeline-score span {
+  color: #82c9ff;
+  font-size: 11px;
+  font-weight: 900;
+}
+.job-timeline-progress {
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(114,171,233,.12);
+}
+.job-timeline-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--cyan), var(--green));
+}
+.job-timeline-list {
+  display: grid;
+  gap: 9px;
+}
+.job-timeline-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 11px;
+  border: 1px solid rgba(114,171,233,.12);
+  border-radius: 10px;
+  background: rgba(8, 22, 38, .54);
+}
+.job-timeline-row > i {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 0 5px rgba(46,125,255,.12);
+}
+.job-timeline-row.amber > i { background: var(--amber); box-shadow: 0 0 0 5px rgba(255,181,61,.12); }
+.job-timeline-row.cyan > i { background: var(--cyan); box-shadow: 0 0 0 5px rgba(49,200,255,.12); }
+.job-timeline-row.green > i { background: var(--green); box-shadow: 0 0 0 5px rgba(55,220,114,.12); }
+.job-timeline-row.purple > i { background: var(--purple); box-shadow: 0 0 0 5px rgba(176,92,255,.12); }
+.job-timeline-row.blue > i { background: var(--blue); }
+.job-timeline-row strong {
+  display: block;
+  color: #f6fbff;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.job-timeline-row p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.job-timeline-row small {
+  color: #75a7d9;
+  font-size: 11px;
+}
+.job-timeline-row > span {
+  white-space: nowrap;
+  border: 1px solid rgba(114,171,233,.16);
+  background: rgba(255,255,255,.04);
+  color: #cfe9ff;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.job-timeline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+.job-timeline-actions small {
+  color: var(--muted-2);
+  font-weight: 800;
+  font-size: 11px;
+}
+.client-report-preview-card .job-timeline-card,
+.archive-detail-card .job-timeline-card,
+.report-builder-preview-rail .job-timeline-card,
+.completed-detail-rail .job-timeline-card {
+  margin: 12px 0;
+  border-radius: 10px;
+}
+@media (max-width: 860px) {
+  .job-timeline-row { grid-template-columns: 12px minmax(0, 1fr); }
+  .job-timeline-row > span { grid-column: 2; width: max-content; }
+  .job-timeline-actions { align-items: flex-start; flex-direction: column; }
+}

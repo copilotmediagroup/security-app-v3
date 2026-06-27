@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-global-data-logic-sync-dashboard-fix",
-  "version": "3.0.74",
+  "name": "co-pilot-security-job-timeline-audit-trail",
+  "version": "3.0.75",
   "private": true,
-  "description": "Centralizes report/proof metrics and dashboard widgets so Dispatch Dashboard, Client Dashboard, Proof Review, Report Builder, Report Archive, and Client Reports use the same data logic.",
+  "description": "Adds job timeline and audit trail panels across patrol jobs, report builder, report archive, and client reports while preserving v3.0.74 dashboard/report/proof data logic.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

@@ -1,22 +1,22 @@
 Co Pilot Security
-Version: 3.0.74
-Build Name: GLOBAL DATA LOGIC SYNC + DASHBOARD FIX
+Version: 3.0.75
+Build Name: JOB TIMELINE / AUDIT TRAIL
 Date: 2026-06-27
 
 Summary:
-- Built from v3.0.73.
-- Added shared dashboard/report/proof metrics helpers so top-level dashboards use the same proof and report logic as Proof Review, Report Builder, Report Archive, and Client Reports.
-- Fixed Dispatch Dashboard Proof Waiting Review count so published/locked proof is not counted as needing review.
-- Fixed Dispatch Priority Queue Review Proof count to match Proof Review Needs Review.
-- Fixed Client Dashboard Recent Reports to use the same normalized published report source as Client Reports.
-- Fixed Client Dashboard Recent Reports cards so they show report title, property name, property address, proof count, and published time instead of incomplete Address unavailable records.
-- Fixed Client Dashboard Recent Activity status labels so Guard accepted/started/proof uploaded/completed events show the correct workflow stage instead of everything showing Completed.
+- Built from v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX.
+- Added shared job timeline / audit trail logic for patrol requests and reports.
+- Timeline now shows client request, Dispatch assignment, guard acceptance, patrol start, proof upload, job completion, Dispatch proof review, report publishing, and client view/download events.
+- Added timeline panels to Guard Active Job, Guard Completed Jobs, Report Builder, Report Archive, and Client Reports preview.
+- Added local audit capture for key workflow actions without requiring new database tables.
+- Added Export Timeline CSV for selected jobs.
+- Preserved v3.0.74 dashboard/report/proof count sync.
 - Preserved v3.0.73 workflow stage unification and v3.0.72 report/proof count clarity.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX
+v3.0.75 JOB TIMELINE / AUDIT TRAIL
 
 SQL:
 No new SQL required.

@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-27T00-45-v3074';
+const CP_DEV_CACHE_BUST = '2026-06-27T01-20-v3075';
 const BUILD = {
-  version: '3.0.74',
-  label: 'v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX'
+  version: '3.0.75',
+  label: 'v3.0.75 JOB TIMELINE / AUDIT TRAIL'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -765,6 +765,213 @@ function displayStatusChip(status = '') {
   if (key === 'pending_dispatch') return workflowStageChip('pending_dispatch');
   if (key === 'completed') return workflowStageChip('completed');
   return statusChip(status || 'completed');
+}
+
+
+/* v3.0.75 Job Timeline / Audit Trail helpers */
+function auditTrailStorageKey() {
+  return 'cp_security_job_audit_trail_v3075';
+}
+function readLocalAuditTrail() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(auditTrailStorageKey()) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function writeLocalAuditTrail(rows = []) {
+  try { localStorage.setItem(auditTrailStorageKey(), JSON.stringify(rows.slice(0, 900))); } catch {}
+}
+function auditActorLabel(role = state.role) {
+  if (role === 'admin') return state.profile?.email || 'Dispatch';
+  if (role === 'guard') return activeGuardName?.() || state.profile?.email || 'Guard';
+  if (role === 'client') return activeClientName?.() || state.profile?.email || 'Client';
+  return state.profile?.email || 'System';
+}
+function auditStageLabel(stage = '') {
+  return ({
+    client_request: 'Client Requested',
+    assigned: 'Guard Assigned',
+    accepted: 'Guard Accepted',
+    in_progress: 'Patrol Started',
+    proof_uploaded: 'Proof Uploaded',
+    completed: 'Job Completed',
+    proof_review: 'Proof Reviewed',
+    report_builder: 'Report Builder',
+    published: 'Report Published',
+    client_viewed: 'Client Viewed',
+    client_downloaded: 'Client Downloaded'
+  })[String(stage || '').toLowerCase()] || statusText(stage || 'Audit Event');
+}
+function auditStageTone(stage = '') {
+  return ({
+    client_request: 'blue', assigned: 'amber', accepted: 'cyan', in_progress: 'green',
+    proof_uploaded: 'purple', completed: 'green', proof_review: 'amber', report_builder: 'purple',
+    published: 'green', client_viewed: 'cyan', client_downloaded: 'blue'
+  })[String(stage || '').toLowerCase()] || 'blue';
+}
+function recordJobAuditEvent(requestId = '', stage = '', title = '', details = '', extra = {}) {
+  const id = String(requestId || extra.request_id || '').trim();
+  if (!id) return null;
+  const now = extra.created_at || new Date().toISOString();
+  const key = extra.key || `${id}:${stage}:${extra.proof_id || extra.report_id || ''}:${title}:${details}`.toLowerCase();
+  const existing = readLocalAuditTrail();
+  const found = existing.find(row => String(row.key || '') === String(key));
+  if (found) return found;
+  const row = {
+    id: extra.id || `audit-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    key,
+    request_id: id,
+    stage: stage || 'audit',
+    title: title || auditStageLabel(stage),
+    details: details || '',
+    actor: extra.actor || auditActorLabel(extra.role || state.role),
+    role: extra.role || state.role || 'system',
+    created_at: now,
+    source: extra.source || 'local',
+    report_id: extra.report_id || '',
+    proof_id: extra.proof_id || ''
+  };
+  const rows = [row, ...existing].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  writeLocalAuditTrail(rows);
+  return row;
+}
+function proofReviewRowsForRequestId(requestId = '') {
+  const target = String(requestId || '');
+  if (!target) return [];
+  if (typeof proofReviewRows === 'function') {
+    try { return proofReviewRows().filter(row => String(row.request?.id || proofRequestIdValue(row.proof || row) || '') === target); } catch {}
+  }
+  return proofForRequest(target).map(item => ({ ...item, proof: item, request: requestById(target) || {} }));
+}
+function publishedReportRecordForRequest(requestId = '') {
+  return publishedReportForRequestId(requestId) || reportByRequestId(requestId) || null;
+}
+function timelinePush(rows, seen, row = {}) {
+  if (!row.created_at && !row.timestamp) return;
+  const requestId = String(row.request_id || row.requestId || '');
+  const key = String(row.key || `${requestId}:${row.stage || ''}:${row.title || ''}:${row.created_at || row.timestamp || ''}:${row.proof_id || ''}:${row.report_id || ''}`);
+  if (seen.has(key)) return;
+  seen.add(key);
+  rows.push({
+    ...row,
+    key,
+    created_at: row.created_at || row.timestamp,
+    stage: row.stage || 'audit',
+    title: row.title || auditStageLabel(row.stage),
+    actor: row.actor || 'System',
+    details: row.details || row.message || ''
+  });
+}
+function jobTimelineRowsForRequest(reqOrId = {}) {
+  const req = typeof reqOrId === 'object' ? reqOrId : requestById(reqOrId);
+  if (!req?.id) return [];
+  const requestId = String(req.id);
+  const rows = [];
+  const seen = new Set();
+  const report = publishedReportRecordForRequest(requestId);
+  const reportPublishedAt = report?.released_at || report?.published_at || report?.publishedAt || (report?.status === 'published' ? report?.updated_at || report?.created_at : '');
+
+  timelinePush(rows, seen, { request_id: requestId, stage: 'client_request', title: 'Client requested patrol', details: `${propertyLabel(req)} · ${propertyAddress(req)}`, actor: requestClientName(req), role: 'client', created_at: req.requested_at || req.created_at, source: 'request' });
+  timelinePush(rows, seen, { request_id: requestId, stage: 'assigned', title: 'Dispatch assigned guard', details: `${requestGuardName(req)} assigned to ${propertyLabel(req)}`, actor: 'Dispatch', role: 'admin', created_at: req.assigned_at || (['assigned','accepted','in_progress','completed'].includes(String(req.status || '')) ? req.updated_at || req.created_at : ''), source: 'request' });
+  timelinePush(rows, seen, { request_id: requestId, stage: 'accepted', title: 'Guard accepted patrol', details: `${requestGuardName(req)} accepted assignment`, actor: requestGuardName(req), role: 'guard', created_at: req.accepted_at || (['accepted','in_progress','completed'].includes(String(req.status || '')) ? req.updated_at || req.assigned_at : ''), source: 'request' });
+  timelinePush(rows, seen, { request_id: requestId, stage: 'in_progress', title: 'Guard started patrol', details: `${propertyLabel(req)} patrol in progress`, actor: requestGuardName(req), role: 'guard', created_at: req.started_at || (['in_progress','completed'].includes(String(req.status || '')) ? req.updated_at || req.accepted_at : ''), source: 'request' });
+
+  proofForRequest(requestId).forEach((proof, idx) => {
+    timelinePush(rows, seen, {
+      request_id: requestId,
+      stage: 'proof_uploaded',
+      title: `Proof uploaded${proof.file_name ? ': ' + proof.file_name : ''}`,
+      details: proof.note || proof.file_type || 'Photo/video proof attached',
+      actor: proof.uploaded_by_name || requestGuardName(req),
+      role: 'guard',
+      created_at: proof.uploaded_at || proof.created_at,
+      source: 'proof',
+      proof_id: proof.id || proof.object_path || `proof-${idx}`
+    });
+  });
+
+  timelinePush(rows, seen, { request_id: requestId, stage: 'completed', title: 'Guard completed job', details: proofForRequest(requestId).length ? 'Completed with proof ready for Dispatch review' : 'Completed without photo/video proof', actor: requestGuardName(req), role: 'guard', created_at: req.completed_at || req.closed_at || (String(req.status || '') === 'completed' ? req.updated_at || req.created_at : ''), source: 'request' });
+
+  proofReviewRowsForRequestId(requestId).forEach((row, idx) => {
+    const reviewedAt = row.reviewed_at || row.reviewedAt || row.note_saved_at || row.proof?.reviewed_at || row.proof?.reviewedAt;
+    const status = proofStatus(row);
+    if (!reviewedAt && !['approved','rejected'].includes(status)) return;
+    timelinePush(rows, seen, {
+      request_id: requestId,
+      stage: 'proof_review',
+      title: `Dispatch ${status === 'rejected' ? 'rejected' : 'reviewed'} proof`,
+      details: row.fileName || row.file_name || row.note || 'Proof reviewed for report inclusion',
+      actor: row.reviewed_by || row.proof?.reviewed_by || 'Dispatch',
+      role: 'admin',
+      created_at: reviewedAt || row.updated_at || row.uploadedAt || row.created_at,
+      source: 'proof-review',
+      proof_id: row.id || row.proof?.id || `review-${idx}`
+    });
+  });
+
+  if (report) {
+    timelinePush(rows, seen, { request_id: requestId, stage: 'published', title: 'Report published', details: report.title || report.report_number || 'Final report released to Client Reports', actor: report.released_by || report.published_by || 'Dispatch', role: 'admin', created_at: reportPublishedAt || report.updated_at || report.created_at, source: 'report', report_id: report.id || '' });
+  }
+
+  (state.patrolActivity || []).filter(item => String(item.request_id || item.patrol_request_id || '') === requestId).forEach((item, idx) => {
+    timelinePush(rows, seen, {
+      request_id: requestId,
+      stage: clientActivityStatusFromText(`${item.title || item.event_type || ''} ${item.details || item.message || ''}`, item.stage || item.status || 'audit'),
+      title: item.title || item.event_type || 'Activity event',
+      details: item.details || item.message || '',
+      actor: item.actor_name || item.actor || item.user_name || 'System',
+      role: item.actor_role || 'system',
+      created_at: item.created_at || item.timestamp,
+      source: 'activity',
+      key: item.id || `activity-${requestId}-${idx}-${item.created_at || item.timestamp || ''}`
+    });
+  });
+
+  readLocalAuditTrail().filter(item => String(item.request_id || '') === requestId).forEach(item => timelinePush(rows, seen, item));
+
+  return rows.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+}
+function jobTimelineCompletionStats(rows = []) {
+  const done = new Set(rows.map(row => String(row.stage || '')));
+  const hasProof = done.has('proof_uploaded');
+  const required = hasProof
+    ? ['client_request','assigned','accepted','in_progress','proof_uploaded','completed','proof_review','published']
+    : ['client_request','assigned','accepted','in_progress','completed','report_builder','published'];
+  const completed = required.filter(stage => done.has(stage)).length;
+  return { completed, total: required.length, pct: Math.round((completed / required.length) * 100) };
+}
+function jobTimelinePanel(reqOrId = {}, options = {}) {
+  const req = typeof reqOrId === 'object' ? reqOrId : requestById(reqOrId);
+  if (!req?.id) return '';
+  const rows = jobTimelineRowsForRequest(req);
+  const stats = jobTimelineCompletionStats(rows);
+  const limit = Number(options.limit || 12);
+  const viewRows = options.full ? rows : rows.slice(-limit);
+  const title = options.title || 'Job Timeline / Audit Trail';
+  return `<section class="panel panel-pad job-timeline-card ${options.compact ? 'compact' : ''}">
+    <div class="job-timeline-head"><div><h2>${esc(title)}</h2><p>${esc(requestTitle(req))} · ${esc(propertyLabel(req))}</p></div><div class="job-timeline-score"><b>${esc(stats.completed)}/${esc(stats.total)}</b><span>${esc(stats.pct)}%</span></div></div>
+    <div class="job-timeline-progress"><i style="width:${esc(stats.pct)}%"></i></div>
+    <div class="job-timeline-list">${viewRows.length ? viewRows.map(row => `<article class="job-timeline-row ${esc(auditStageTone(row.stage))}"><i></i><div><strong>${esc(row.title || auditStageLabel(row.stage))}</strong><p>${esc(row.details || 'No details recorded.')}</p><small>${esc(fmtDate(row.created_at))} · ${esc(row.actor || 'System')}</small></div><span>${esc(auditStageLabel(row.stage))}</span></article>`).join('') : '<div class="empty">No audit events recorded yet.</div>'}</div>
+    <div class="job-timeline-actions"><button type="button" class="ghost-button" data-action="export-job-timeline" data-request-id="${esc(req.id)}">⇩ Export Timeline</button><small>${esc(rows.length)} audit event${rows.length === 1 ? '' : 's'} recorded</small></div>
+  </section>`;
+}
+function exportJobTimelineCsv(requestId = '') {
+  const req = requestById(requestId);
+  if (!req) { toast('Select a job first.', 'error'); return; }
+  const rows = jobTimelineRowsForRequest(req);
+  const cols = ['time','stage','title','details','actor','source'];
+  const csv = [cols.join(',')].concat(rows.map(row => [
+    fmtDateTimeStamp(row.created_at), auditStageLabel(row.stage), row.title, row.details, row.actor, row.source
+  ].map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `co-pilot-job-timeline-${String(requestId).slice(0,8) || 'job'}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
 function requestIsPendingDispatch(req = {}) {
@@ -1597,6 +1804,8 @@ async function assignPatrolNow(requestId) {
   });
   if (!result?.ok) throw new Error(result?.message || 'Patrol request could not be assigned.');
   saveWorkflowActionLock('dispatch-assign', requestId, { status: 'assigned', guard_id: selectedGuardId, finished_at: new Date().toISOString() });
+  const assignedGuardNameForAudit = result.guard?.name || result.guard?.display_name || result.guard?.email || guardDisplayName(guardById(selectedGuardId));
+  recordJobAuditEvent(requestId, 'assigned', 'Dispatch assigned guard', `${assignedGuardNameForAudit} assigned to ${propertyLabel(req)}`, { actor: state.profile?.email || 'Dispatch', role: 'admin', source: 'dispatch-assignment', key: `dispatch-assigned-${requestId}` });
   await loadData();
   state.selectedPendingRequestId = '';
   state.pendingDispatchSelectedIds = (state.pendingDispatchSelectedIds || []).filter(x => String(x) !== String(requestId));
@@ -1750,6 +1959,10 @@ async function submitClientPatrolRequest(form) {
   await loadData();
   if (!submittedRequestId) submittedRequestId = findRecentlySubmittedRequestId(propertyId);
   rememberSubmittedScheduleMetadata(submittedRequestId, scheduleMetadata);
+  if (submittedRequestId) {
+    const submittedReq = state.patrolRequests.find(r => String(r.id) === String(submittedRequestId)) || returnedRequest || {};
+    recordJobAuditEvent(submittedRequestId, 'client_request', 'Client requested patrol', `${propertyLabel(submittedReq)} · ${propertyAddress(submittedReq)}`, { actor: activeClientName(), role: 'client', source: 'client-request', key: `client-request-${submittedRequestId}` });
+  }
   state.view = 'patrol-requests';
   render();
   toast('Patrol request submitted to Dispatch.', 'success');
@@ -3381,6 +3594,7 @@ async function finishGuardJob(req, options = {}) {
   if (String(latest.status) !== 'completed') await callGuardStatusRpc(latest, 'completed');
   setGuardWorkflowLocalStage(req, 'complete');
   addGuardWorkflowLocalLog(req, options.withoutProof ? 'Guard completed job without proof' : 'Guard completed job', `${propertyLabel(req)} · patrol completed`);
+  recordJobAuditEvent(req.id, 'completed', options.withoutProof ? 'Guard completed job without proof' : 'Guard completed job', `${propertyLabel(req)} · patrol completed`, { actor: activeGuardName(), role: 'guard', source: 'guard-completion', key: `guard-completed-${req.id}` });
   clearProofUploadStatus(req.id);
   liveGps.propertyLat = null;
   liveGps.propertyLng = null;
@@ -3579,6 +3793,7 @@ async function confirmInlineProofUpload() {
     const uploaded = await uploadProofFiles(req.id, files, note);
     setGuardWorkflowLocalStage(req, 'upload_proof');
     addGuardWorkflowLocalLog(req, 'Proof uploaded', note || `${uploaded.length} proof item${uploaded.length === 1 ? '' : 's'} uploaded`);
+    recordJobAuditEvent(req.id, 'proof_uploaded', 'Guard uploaded proof', note || `${uploaded.length} proof item${uploaded.length === 1 ? '' : 's'} uploaded`, { actor: activeGuardName(), role: 'guard', source: 'proof-upload', key: `proof-upload-${req.id}-${uploaded.map(item => item.id || item.object_path || item.file_name).join('|')}` });
     closeInlineProofModal();
     await loadData();
     state.view = 'active-job';
@@ -3629,18 +3844,21 @@ async function updateGuardWorkflowStep(requestId, step) {
     if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
     setGuardWorkflowLocalStage(req, 'on_way');
     addGuardWorkflowLocalLog(req, 'Guard marked On The Way', `${propertyLabel(req)} · route started`);
+    recordJobAuditEvent(req.id, 'accepted', 'Guard accepted patrol', `${activeGuardName()} accepted and started route to ${propertyLabel(req)}`, { actor: activeGuardName(), role: 'guard', source: 'guard-workflow', key: `guard-accepted-${req.id}` });
   } else if (step === 'arrived') {
     if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
     const latest = state.patrolRequests.find(r => String(r.id) === String(requestId)) || req;
     if (String(latest.status || beforeStatus) !== 'in_progress') await callGuardStatusRpc(latest, 'in_progress');
     setGuardWorkflowLocalStage(req, 'arrived');
     addGuardWorkflowLocalLog(req, 'Guard marked Arrived', `${propertyLabel(req)} · on site`);
+    recordJobAuditEvent(req.id, 'in_progress', 'Guard arrived on site', `${propertyLabel(req)} · patrol started`, { actor: activeGuardName(), role: 'guard', source: 'guard-workflow', key: `guard-arrived-${req.id}` });
   } else if (step === 'checking') {
     if (beforeStatus === 'assigned') await callGuardStatusRpc(req, 'accepted');
     const latest = state.patrolRequests.find(r => String(r.id) === String(requestId)) || req;
     if (String(latest.status || beforeStatus) !== 'in_progress') await callGuardStatusRpc(latest, 'in_progress');
     setGuardWorkflowLocalStage(req, 'checking');
     addGuardWorkflowLocalLog(req, 'Started Property Check', `${propertyLabel(req)} · checking property`);
+    recordJobAuditEvent(req.id, 'in_progress', 'Guard started property check', `${propertyLabel(req)} · checking property`, { actor: activeGuardName(), role: 'guard', source: 'guard-workflow', key: `guard-checking-${req.id}` });
   } else if (step === 'complete') {
     const uploadState = readProofUploadStatus(req.id);
     if (uploadState.status === 'uploading') {
@@ -3920,7 +4138,7 @@ function guardCompletedJobsView() {
           <div class="active-rail-head completed-detail-head"><h2>Job Details</h2><button class="ghost-button" data-view="active-job">Open Active Job</button></div>
           <div class="completed-detail-summary"><div class="completed-detail-photo">${(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url) ? `<img src="${esc(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url)}" alt="${esc(propertyLabel(selected))}">` : `<div>${esc(propertyLabel(selected).slice(0,1) || 'P')}</div>`}</div><div><strong>${esc(requestTitle(selected))}</strong><span>${esc(propertyLabel(selected))}</span><small>${esc(propertyAddress(selected))}</small></div>${requestWorkflowChip(selected)}</div>
           <div class="active-detail-list completed-detail-list"><span>Completed</span><strong>${esc(fmtDate(requestCompletedAt(selected)))}</strong><span>Duration</span><strong>${esc(guardCompletedDurationMinutes(selected) ? guardCompletedDurationMinutes(selected) + ' min' : '—')}</strong><span>Patrol Type</span><strong>${esc(selected.patrol_type || selected.request_type || 'Patrol Check')}</strong><span>Priority</span><strong>${esc(statusText(selected.priority || 'Normal'))}</strong><span>Client</span><strong>${esc(requestClientName(selected))}</strong><span>Assigned Guard</span><strong>${esc(requestGuardName(selected))}</strong></div>
-          <div class="completed-timeline"><h3>Job Timeline</h3><div>${['accepted','on_the_way','arrived','checking_property','upload_proof','completed'].map(step => `<div><i>✓</i><span>${esc(guardWorkflowStageText(step))}</span></div>`).join('')}</div></div>
+          ${jobTimelinePanel(selected, { compact: true, title: 'Completed Job Audit Trail', limit: 8 })}
           <div class="completed-proof-section"><div class="active-rail-head"><h2>Proof Files (${esc(proofs.length)})</h2></div><div class="completed-proof-grid">${proofs.length ? proofs.slice(0, 4).map(completedProofPreview).join('') : `<div class="empty">No proof files uploaded.</div>`}</div></div>
         ` : `<div class="empty"><strong>No job selected.</strong><br>Select a completed job on the left to see its details.</div>`}
       </aside>
@@ -3938,6 +4156,7 @@ function guardActiveJobWorkflowView() {
       <div class="active-job-main-col">
         ${activeJobSummaryCard(req)}
         ${activeJobWorkflowPanel(req)}
+        ${jobTimelinePanel(req, { compact: true, title: 'Live Job Timeline / Audit Trail', limit: 8 })}
         ${activeJobLogPanel(req)}
       </div>
       <aside class="active-job-right-col">
@@ -5520,6 +5739,7 @@ function downloadClientReportFile(id) {
     toast('Select a report first.', 'error');
     return;
   }
+  if (state.role === 'client' && row.requestId) recordJobAuditEvent(row.requestId, 'client_downloaded', 'Client downloaded report', row.reportNumber || row.title || 'Client report downloaded', { actor: activeClientName(), role: 'client', source: 'client-reports', report_id: row.id, key: `client-downloaded-${row.id}-${Date.now()}` });
   if (row.url) {
     const a = document.createElement('a');
     a.href = row.url;
@@ -5585,6 +5805,7 @@ function clientReportPreviewPanel() {
     </dl>
     <section class="client-report-preview-summary"><h3>Summary</h3><p>${esc(clientReportSummaryText(row))}</p></section>
     ${proofRows.length ? `<section class="client-report-preview-summary"><h3>Included Proof</h3><p>${esc(proofRows.length)} proof item${proofRows.length === 1 ? '' : 's'} attached to this patrol.</p></section>` : `<section class="client-report-preview-summary"><h3>Included Proof</h3><p>No proof was attached to this report.</p></section>`}
+    ${jobTimelinePanel(req, { compact: true, title: 'Report Timeline / Audit Trail', limit: 7 })}
     <div class="client-report-preview-actions"><button type="button" class="primary-button" data-action="download-client-report" data-report-id="${esc(row.id)}">⇩ Download Report</button><button type="button" class="ghost-button" data-view="properties">View Property</button></div>
   </section>`;
 }
@@ -8553,6 +8774,8 @@ async function updateProofReviewStatus(id, status) {
   saveWorkflowActionLock('proof-review', id, { status, finished_at: now });
   const item = (state.proofItems || []).find(p => String(p.id || p.object_path || proofUrlValue(p)) === String(id));
   if (item) Object.assign(item, patch);
+  const requestId = row.request?.id || proofRequestIdValue(row.proof || row) || item?.request_id || '';
+  if (requestId) recordJobAuditEvent(requestId, 'proof_review', `Dispatch ${status === 'rejected' ? 'rejected' : 'approved'} proof`, row.fileName || row.file_name || row.note || 'Proof reviewed for report inclusion', { actor: state.profile?.email || 'Dispatch', role: 'admin', source: 'proof-review', proof_id: id, key: `proof-review-${id}-${status}` });
   state.proofReviewCheckedIds = (state.proofReviewCheckedIds || []).filter(x => String(x) !== String(id));
 }
 async function toggleProofReportInclusion(id) {
@@ -8929,7 +9152,7 @@ function reportOptionsPanel() {
 function reportPreviewPanel() {
   const req = selectedReportRequest();
   const proofRows = selectedReportProofRows();
-  return `<aside class="report-builder-preview-rail"><section class="report-preview-card"><div class="report-preview-head"><h2>Report Preview</h2><button type="button" data-action="preview-full-report">Preview Full Report ↗</button></div><div class="report-paper-preview">${reportPaperPreview(req, proofRows)}</div></section>${reportOptionsPanel()}</aside>`;
+  return `<aside class="report-builder-preview-rail"><section class="report-preview-card"><div class="report-preview-head"><h2>Report Preview</h2><button type="button" data-action="preview-full-report">Preview Full Report ↗</button></div><div class="report-paper-preview">${reportPaperPreview(req, proofRows)}</div></section>${req ? jobTimelinePanel(req, { compact: true, title: 'Builder Audit Trail', limit: 6 }) : ''}${reportOptionsPanel()}</aside>`;
 }
 function reportBuilderHeader() {
   return `<header class="dashboard-header report-builder-header"><div class="title-block"><h1>Report Builder</h1><p>Create, customize, and publish client patrol reports.</p></div><div class="report-builder-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-builder-search"><input type="search" placeholder="Search reports, clients, guards..." value="${esc(state.reportBuilderSearch || '')}" data-report-builder-search><b>⌕</b></label><button type="button" data-action="report-template-panel">▣ Templates</button><button type="button" data-action="report-settings-panel">⚙ Settings</button><button type="button" class="primary-button" data-action="new-report">＋ New Report</button></div></header>`;
@@ -8980,6 +9203,7 @@ async function saveReportDraft() {
   }
   state.currentReportDraftId = draft.id;
   saveLocalReportBuilderRecord(draft);
+  recordJobAuditEvent(draft.request_id, 'report_builder', 'Dispatch saved report draft', draft.title || 'Report draft saved', { actor: state.profile?.email || 'Dispatch', role: 'admin', source: 'report-builder', report_id: draft.id, key: `report-draft-${draft.id}` });
   toast('Report saved as draft.', 'success');
 }
 async function publishClientReport() {
@@ -9009,6 +9233,7 @@ async function publishClientReport() {
   state.currentReportDraftId = report.id;
   saveLocalReportBuilderRecord(report);
   saveWorkflowActionLock('report-publish', req.id, { status: 'published', report_id: report.id, finished_at: report.released_at });
+  recordJobAuditEvent(req.id, 'published', 'Report published', report.title || 'Final report released to client', { actor: state.profile?.email || 'Dispatch', role: 'admin', source: 'report-publish', report_id: report.id, created_at: report.released_at, key: `report-published-${req.id}` });
   state.selectedArchiveReportId = String(report.id);
   resetReportBuilderState();
   state.view = 'report-archive';
@@ -9318,6 +9543,7 @@ function reportArchiveDetailRail() {
     </dl>
     <section class="archive-summary-card"><h3>Summary</h3><p>${esc(row.summary)}</p></section>
     <section class="archive-media-summary"><h3>Included Media</h3><div><span class="photo">🖼 ${esc(row.photoCount)} Photos</span><span class="video">🎥 ${esc(row.videoCount)} Videos</span></div></section>
+    ${jobTimelinePanel(row.request, { compact: true, title: 'Report Audit Trail', limit: 8 })}
     <div class="archive-detail-actions"><button class="primary" type="button" data-action="view-full-archive-report" data-report-id="${esc(row.id)}">↗ View Full Report</button><button type="button" data-action="download-archive-report" data-report-id="${esc(row.id)}">⇩ Download PDF</button><button type="button" data-action="share-archive-report" data-report-id="${esc(row.id)}">⤴ Share Report</button><button class="danger" type="button" data-action="delete-archive-report" data-report-id="${esc(row.id)}">🗑 Delete Report</button></div>
   </section></aside>`;
 }
@@ -10373,6 +10599,11 @@ document.addEventListener('click', async event => {
       toast('Settings action queued for the next build.', 'success');
       return;
     }
+    if (button.dataset.action === 'export-job-timeline') {
+      exportJobTimelineCsv(button.dataset.requestId);
+      toast('Job timeline exported.', 'success');
+      return;
+    }
     if (button.dataset.action === 'export-client-reports') {
       exportClientReportsCsv();
       toast('Client reports exported.', 'success');
@@ -10382,6 +10613,7 @@ document.addEventListener('click', async event => {
       const row = clientReportById(button.dataset.reportId);
       if (!row) { toast('Report not found.', 'error'); return; }
       state.selectedClientReportId = row.id;
+      if (row.requestId) recordJobAuditEvent(row.requestId, 'client_viewed', 'Client viewed report', row.reportNumber || row.title || 'Client report opened', { actor: activeClientName(), role: 'client', source: 'client-reports', report_id: row.id, key: `client-viewed-${row.id}-${Date.now()}` });
       render();
       toast('Report opened in the preview panel.', 'success');
       return;

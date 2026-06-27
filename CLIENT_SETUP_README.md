@@ -1,16 +1,16 @@
-# Co Pilot Security v3.0.74 — Global Data Logic Sync + Dashboard Fix
+# Co Pilot Security v3.0.75 — Job Timeline / Audit Trail
 
 ## What changed
-This build centralizes report/proof/dashboard logic so dashboard widgets stop disagreeing with the detailed pages.
+This build adds a timeline/audit layer across patrol jobs and reports while preserving the v3.0.74 global data logic sync.
 
-## Fixed
-- Dispatch Dashboard `Proof Waiting Review` now matches Proof Review `Needs Review`.
-- Dispatch Priority Queue no longer counts published/locked proof as waiting review.
-- Client Dashboard `Recent Reports` now uses the same normalized published report source as Client Reports.
-- Client Dashboard Recent Reports cards now show title, property name, address, proof count, and published time.
-- Client Dashboard Recent Activity status chips now show correct workflow stages for accepted/started/uploaded/completed events.
+## Added
+- Job timeline / audit trail panels for active jobs, completed jobs, Report Builder, Report Archive, and Client Reports preview.
+- Timeline events for client request, Dispatch assignment, guard acceptance, patrol start, proof upload, job completion, proof review, report publishing, and client view/download.
+- Local audit event capture for key workflow actions.
+- Export Timeline CSV button for selected jobs.
 
 ## Preserved
+- v3.0.74 dashboard/report/proof count consistency.
 - v3.0.73 full workflow status unification.
 - v3.0.72 report/proof count clarity.
 - No URL inputs.
