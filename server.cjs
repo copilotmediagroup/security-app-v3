@@ -5,6 +5,24 @@ const path = require('path');
 const root = fs.existsSync(path.join(__dirname, 'dist', 'index.html')) ? path.join(__dirname, 'dist') : __dirname;
 const port = process.env.PORT || 5173;
 
+function readBuildLabel() {
+  try {
+    const versionPath = path.join(root, 'VERSION.txt');
+    if (fs.existsSync(versionPath)) {
+      const text = fs.readFileSync(versionPath, 'utf8');
+      const version = (text.match(/Version:\s*([^\n]+)/) || [])[1]?.trim();
+      const build = (text.match(/Build Name:\s*([^\n]+)/) || [])[1]?.trim();
+      if (version && build) return `v${version} ${build}`;
+      if (version) return `v${version}`;
+    }
+  } catch {}
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    if (pkg?.version) return `v${pkg.version}`;
+  } catch {}
+  return 'current build';
+}
+
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -48,4 +66,4 @@ http.createServer((req, res) => {
     });
     res.end(data);
   });
-}).listen(port, () => console.log(`Co Pilot Security v3.0.7 running on http://localhost:${port}`));
+}).listen(port, () => console.log(`Co Pilot Security ${readBuildLabel()} running on http://localhost:${port}`));
