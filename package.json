@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-full-workflow-status-unification",
-  "version": "3.0.73",
+  "name": "co-pilot-security-global-data-logic-sync-dashboard-fix",
+  "version": "3.0.74",
   "private": true,
-  "description": "Unifies workflow status labels and stage language across Client Reports, Proof Review, Report Builder, Report Archive, client requests, and guard completed jobs.",
+  "description": "Centralizes report/proof metrics and dashboard widgets so Dispatch Dashboard, Client Dashboard, Proof Review, Report Builder, Report Archive, and Client Reports use the same data logic.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",

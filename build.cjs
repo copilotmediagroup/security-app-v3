@@ -32,4 +32,4 @@ for (const file of files) {
   }
 }
 
-console.log(`Co Pilot Security v3.0.73 full workflow status unification build complete. Copied ${count} files to dist/.`);
+console.log(`Co Pilot Security v3.0.74 global data logic sync dashboard fix build complete. Copied ${count} files to dist/.`);

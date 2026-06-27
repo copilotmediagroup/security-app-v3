@@ -1,24 +1,22 @@
 Co Pilot Security
-Version: 3.0.73
-Build Name: FULL WORKFLOW STATUS UNIFICATION
+Version: 3.0.74
+Build Name: GLOBAL DATA LOGIC SYNC + DASHBOARD FIX
 Date: 2026-06-27
 
 Summary:
-- Built from v3.0.72.
-- Added shared workflow stage language across Client, Guard, and Dispatch report/proof pages.
-- Added reusable workflow stage helper labels for Client Request, Pending Dispatch, Guard Assigned, Guard Accepted, Patrol In Progress, Proof Uploaded, Job Completed, Proof Review, Report Builder, and Published Report.
-- Added a workflow stage strip to Client Reports, Proof Review, Report Builder, and Report Archive so users understand where they are in the same lifecycle.
-- Changed Client Reports status language from generic Completed to Published Report.
-- Changed Proof Review pending proof label to Needs Review.
-- Changed Report Archive status badges to Published Report, Draft Report, and Scheduled Report.
-- Guard Completed jobs now show whether the job is still waiting for Report Builder, in Proof Review, or already Published.
-- Client request rows now use the same workflow-stage labels as Dispatch and Guard.
-- Preserved v3.0.72 global report/proof count clarity.
+- Built from v3.0.73.
+- Added shared dashboard/report/proof metrics helpers so top-level dashboards use the same proof and report logic as Proof Review, Report Builder, Report Archive, and Client Reports.
+- Fixed Dispatch Dashboard Proof Waiting Review count so published/locked proof is not counted as needing review.
+- Fixed Dispatch Priority Queue Review Proof count to match Proof Review Needs Review.
+- Fixed Client Dashboard Recent Reports to use the same normalized published report source as Client Reports.
+- Fixed Client Dashboard Recent Reports cards so they show report title, property name, property address, proof count, and published time instead of incomplete Address unavailable records.
+- Fixed Client Dashboard Recent Activity status labels so Guard accepted/started/proof uploaded/completed events show the correct workflow stage instead of everything showing Completed.
+- Preserved v3.0.73 workflow stage unification and v3.0.72 report/proof count clarity.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.73 FULL WORKFLOW STATUS UNIFICATION
+v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX
 
 SQL:
 No new SQL required.

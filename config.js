@@ -1,5 +1,5 @@
 window.COPILOT_SECURITY_CONFIG = {
   supabaseUrl: 'https://riysdcczjdsmxtyqceuj.supabase.co',
   supabaseAnonKey: 'sb_publishable_UewIFGu15bJTr6PPRCLDlg_hHDbu8xO',
-  appVersion: '3.0.73-full-workflow-status-unification'
+  appVersion: '3.0.74-global-data-logic-sync-dashboard-fix'
 };

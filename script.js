@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-27T00-18-v3073';
+const CP_DEV_CACHE_BUST = '2026-06-27T00-45-v3074';
 const BUILD = {
-  version: '3.0.73',
-  label: 'v3.0.73 FULL WORKFLOW STATUS UNIFICATION'
+  version: '3.0.74',
+  label: 'v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -691,6 +691,82 @@ function workflowStageLegend(activeStage = '') {
   return `<section class="workflow-stage-legend" aria-label="Workflow stage legend">${WORKFLOW_STAGE_ORDER.map(([key, label], idx) => `<span class="${active === key ? 'active' : ''}"><i>${esc(idx + 1)}</i>${esc(label)}</span>`).join('')}</section>`;
 }
 
+
+/* v3.0.74 Global Data Logic Sync helpers */
+function appProofMetrics() {
+  if (typeof proofReviewCounts === 'function') {
+    try {
+      const c = proofReviewCounts();
+      return {
+        needsReview: Number(c.pending || 0),
+        approvedReady: Number(c.approvedReady || c.approved || 0),
+        publishedLocked: Number(c.publishedLocked || c.locked || 0),
+        approvedTotal: Number(c.approvedTotal || 0),
+        included: Number(c.included || 0),
+        rejected: Number(c.rejected || 0),
+        totalMedia: Number(c.totalMedia || 0)
+      };
+    } catch {}
+  }
+  const waiting = (state.proofItems || []).filter(p => !p.report_selected && !p.included_in_report && !p.include_in_report).length;
+  return { needsReview: waiting, approvedReady: 0, publishedLocked: 0, approvedTotal: 0, included: 0, rejected: 0, totalMedia: (state.proofItems || []).length };
+}
+function appReportMetrics() {
+  if (typeof globalReportProofCounts === 'function') {
+    try {
+      const g = globalReportProofCounts();
+      return {
+        totalReports: Number(g.reportTotal || 0),
+        publishedReports: Number(g.publishedReports || 0),
+        reportsWithProof: Number(g.reportsWithProof || 0),
+        reportsWithoutProof: Number(g.reportsWithoutProof || 0),
+        proofItems: Number(g.proofItems || 0),
+        photos: Number(g.photos || 0),
+        videos: Number(g.videos || 0)
+      };
+    } catch {}
+  }
+  const total = (state.patrolReports || []).length;
+  return { totalReports: total, publishedReports: total, reportsWithProof: 0, reportsWithoutProof: 0, proofItems: 0, photos: 0, videos: 0 };
+}
+function appDashboardMetrics() {
+  const proof = appProofMetrics();
+  const reports = appReportMetrics();
+  return {
+    proofWaitingReview: proof.needsReview,
+    proofApprovedTotal: proof.approvedTotal,
+    proofPublishedLocked: proof.publishedLocked,
+    proofTotalMedia: proof.totalMedia,
+    reportsReady: reportsReady().length,
+    totalReports: reports.totalReports,
+    publishedReports: reports.publishedReports,
+    reportsWithProof: reports.reportsWithProof,
+    reportsWithoutProof: reports.reportsWithoutProof
+  };
+}
+function clientActivityStatusFromText(text = '', fallback = 'completed') {
+  const t = String(text || '').toLowerCase();
+  if (/accepted/.test(t)) return 'accepted';
+  if (/started|progress|checking|arrived|on way|en route/.test(t)) return 'in_progress';
+  if (/uploaded|proof/.test(t)) return 'proof_uploaded';
+  if (/published|report released|final report/.test(t)) return 'published';
+  if (/completed|complete|closed|finished/.test(t)) return 'completed';
+  if (/assigned/.test(t)) return 'assigned';
+  if (/request|pending|created/.test(t)) return 'pending_dispatch';
+  return fallback || 'completed';
+}
+function displayStatusChip(status = '') {
+  const key = String(status || '').toLowerCase();
+  if (key === 'published') return workflowStageChip('published');
+  if (key === 'proof_uploaded') return workflowStageChip('proof_uploaded');
+  if (key === 'in_progress') return workflowStageChip('in_progress');
+  if (key === 'accepted') return workflowStageChip('accepted');
+  if (key === 'assigned') return workflowStageChip('assigned');
+  if (key === 'pending_dispatch') return workflowStageChip('pending_dispatch');
+  if (key === 'completed') return workflowStageChip('completed');
+  return statusChip(status || 'completed');
+}
+
 function requestIsPendingDispatch(req = {}) {
   const s = String(req.status || '').toLowerCase();
   return ['', 'pending', 'pending_dispatch', 'new', 'requested'].includes(s);
@@ -870,7 +946,12 @@ function isScheduledQueueRequest(req = {}) {
 function scheduledRequests() {
   return (state.patrolRequests || []).filter(isScheduledQueueRequest);
 }
-function proofWaiting() { return state.proofItems.filter(p => !p.report_selected); }
+function proofWaiting() {
+  if (typeof proofReviewRows === 'function' && typeof proofCanBeReviewed === 'function') {
+    try { return proofReviewRows().filter(proofCanBeReviewed); } catch {}
+  }
+  return (state.proofItems || []).filter(p => !p.report_selected && !p.included_in_report && !p.include_in_report);
+}
 function reportsReady() { return completedRequests().filter(r => !requestHasPublishedReport(r.id)); }
 function guardApprovals() { return state.guardSignups.filter(g => !g.status || String(g.status) === 'pending'); }
 function clientApprovals() { return state.clientSignups.filter(c => !c.status || String(c.status) === 'pending'); }
@@ -2291,6 +2372,7 @@ function adminDashboard() {
   const active = activeRequests();
   const unread = unreadMessagesCount();
   const alerts = activeAlertCount();
+  const metrics = appDashboardMetrics();
 
   return `<div class="dashboard">
     <header class="dashboard-header">
@@ -2312,8 +2394,8 @@ function adminDashboard() {
             <div class="panel-head"><div><h2>Dispatch Overview</h2><p>Operational readiness at a glance</p></div></div>
             <div class="overview-grid">
               ${overviewCell('●', 'Patrols Needing Assignment', pending.length, 'View queue', 'pending-dispatch', '#2f83ff')}
-              ${overviewCell('▣', 'Proof Waiting Review', proofWaiting().length, 'Review now', 'proof-review', '#b05cff')}
-              ${overviewCell('▤', 'Reports Ready', reportsReady().length, 'Release reports', 'report-builder', '#37dc72')}
+              ${overviewCell('▣', 'Proof Waiting Review', metrics.proofWaitingReview, 'Review now', 'proof-review', '#b05cff')}
+              ${overviewCell('▤', 'Reports Ready', metrics.reportsReady, 'Release reports', 'report-builder', '#37dc72')}
               ${overviewCell('◎', 'Guard Approvals', guardApprovals().length, 'Review approvals', 'guard-approvals', '#ffb53d')}
             </div>
           </section>
@@ -2322,8 +2404,8 @@ function adminDashboard() {
             <div class="panel-head"><div><h2>Priority Queue</h2><p>Next actions</p></div><button class="ghost-button" data-view="dispatch-board">View all</button></div>
             <div class="priority-list">
               ${priorityRow(`Assign ${pending.length} pending patrols`, 'High', pending.length, '#ff5973', 'pending-dispatch')}
-              ${priorityRow(`Review ${proofWaiting().length} proofs`, 'Medium', proofWaiting().length, '#ffb53d', 'proof-review')}
-              ${priorityRow(`Release ${reportsReady().length} completed reports`, 'Medium', reportsReady().length, '#ffb53d', 'report-builder')}
+              ${priorityRow(`Review ${metrics.proofWaitingReview} proofs`, 'Medium', metrics.proofWaitingReview, '#ffb53d', 'proof-review')}
+              ${priorityRow(`Release ${metrics.reportsReady} completed reports`, 'Medium', metrics.reportsReady, '#ffb53d', 'report-builder')}
               ${priorityRow(`${guardApprovals().length} guard approvals`, 'Low', guardApprovals().length, '#37dc72', 'guard-approvals')}
             </div>
           </section>
@@ -3896,15 +3978,21 @@ function clientPendingDispatchRequests() {
   return state.patrolRequests.filter(r => String(r.status || 'pending_dispatch') === 'pending_dispatch');
 }
 function clientRecentReportRecords() {
-  const reports = [...(state.patrolReports || [])].sort((a,b) => new Date(b.released_at || b.created_at || 0) - new Date(a.released_at || a.created_at || 0));
+  if (typeof clientReportSourceRows === 'function') {
+    try { return clientReportSourceRows().slice(0, 3); } catch {}
+  }
+  const reports = [...(state.patrolReports || [])].sort((a,b) => new Date(b.released_at || b.published_at || b.updated_at || b.created_at || 0) - new Date(a.released_at || a.published_at || a.updated_at || a.created_at || 0));
   if (reports.length) return reports.slice(0, 3);
-  return completedRequests().slice(0, 3).map(req => ({ request_id: req.id, title: `${propertyLabel(req)} Report`, released_at: req.updated_at || req.created_at }));
+  return completedRequests().slice(0, 3).map(req => ({ requestId: req.id, req, title: `${propertyLabel(req)} Final Patrol Report`, propertyName: propertyLabel(req), propertyAddress: propertyAddress(req), publishedAt: req.completed_at || req.updated_at || req.created_at, createdAt: req.completed_at || req.updated_at || req.created_at }));
 }
-function clientReportRow(report = {}) {
-  const req = report.request_id ? state.patrolRequests.find(r => String(r.id) === String(report.request_id)) : null;
-  const title = report.title || report.name || propertyLabel(req || {}) || 'Patrol Report';
-  const sub = req ? `${statusText(req.status)} • ${fmtDate(report.released_at || report.created_at || req.updated_at || req.created_at)}` : fmtDate(report.released_at || report.created_at);
-  return `<button type="button" class="client-report-row" data-view="reports"><i>▣</i><span><strong>${esc(title)}</strong><small>${esc(sub)}</small></span><em>${esc(fmtTime(report.released_at || report.created_at || req?.updated_at || req?.created_at))}</em></button>`;
+function clientDashboardRecentReportRow(row = {}) {
+  const req = row.req || requestById(row.requestId || row.request_id) || {};
+  const propertyName = row.propertyName || (req.id ? propertyLabel(req) : row.property_name) || 'Property';
+  const address = row.propertyAddress || (req.id ? propertyAddress(req) : row.property_address) || 'Address unavailable';
+  const title = row.title || row.reportNumber || row.report_number || `${propertyName} Patrol Report`;
+  const published = typeof clientReportPublishedAt === 'function' ? clientReportPublishedAt(row) : (row.publishedAt || row.released_at || row.published_at || row.createdAt || row.created_at || req.completed_at || req.updated_at || req.created_at);
+  const proofCount = Number(row.proofCount ?? row.proof_count ?? (req.id ? proofForRequest(req.id).length : 0) ?? 0);
+  return `<button type="button" class="client-report-row client-dashboard-report-row" data-view="reports" data-report-id="${esc(row.id || row.reportNumber || row.report_number || '')}"><i>▣</i><span><strong>${esc(title)}</strong><small>${esc(propertyName)} • ${esc(address)}</small><small>${esc(proofCount)} proof item${proofCount === 1 ? '' : 's'} • Published ${esc(timeAgo(published))}</small></span><em>${esc(fmtTime(published))}</em></button>`;
 }
 function clientMessageFeedRows(limit = 2) {
   const rows = (state.messageThreads || []).slice(0, limit);
@@ -3923,18 +4011,22 @@ function clientActivityEntries() {
     person: requestGuardName(req) !== 'Unassigned' ? requestGuardName(req) : requestClientName(req),
     status: req.status || 'pending_dispatch'
   }));
-  const alertRows = notificationsList().slice(0, 3).map(n => ({
-    type: 'notification',
-    timestamp: n._created,
-    event: n._title,
-    property: relatedRequestForNotification(n) ? propertyLabel(relatedRequestForNotification(n)) : notificationCategoryLabel(n),
-    person: n.source || 'Operations',
-    status: n._category === 'message' ? 'assigned' : 'completed'
-  }));
+  const alertRows = notificationsList().slice(0, 3).map(n => {
+    const related = relatedRequestForNotification(n);
+    const text = `${n._title || ''} ${n._body || ''}`;
+    return {
+      type: 'notification',
+      timestamp: n._created,
+      event: n._title,
+      property: related ? propertyLabel(related) : notificationCategoryLabel(n),
+      person: n.source || 'Operations',
+      status: n._category === 'message' ? 'assigned' : clientActivityStatusFromText(text, related?.status || 'completed')
+    };
+  });
   return [...reqRows, ...alertRows].sort((a,b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0)).slice(0, 5);
 }
 function clientActivityRow(entry = {}) {
-  return `<div class="client-activity-row"><span>${esc(fmtDate(entry.timestamp))}</span><strong>${esc(entry.event)}</strong><span>${esc(entry.property)}</span><span>${esc(entry.person)}</span><span>${statusChip(entry.status)}</span></div>`;
+  return `<div class="client-activity-row"><span>${esc(fmtDate(entry.timestamp))}</span><strong>${esc(entry.event)}</strong><span>${esc(entry.property)}</span><span>${esc(entry.person)}</span><span>${displayStatusChip(entry.status)}</span></div>`;
 }
 
 function clientOwnedPropertyIds() {
@@ -4205,7 +4297,7 @@ function clientDashboardView() {
   const propertiesCount = state.properties.length;
   const activePatrolsCount = clientOpenRequests().filter(r => ['assigned','accepted','in_progress'].includes(String(r.status || ''))).length;
   const openRequestsCount = clientPendingDispatchRequests().length;
-  const reportsReadyCount = reportsReady().length || state.patrolReports.length;
+  const reportsReadyCount = typeof clientReportSourceRows === 'function' ? clientReportSourceRows().length : (reportsReady().length || state.patrolReports.length);
   const reportRows = clientRecentReportRecords();
   const activityRows = clientActivityEntries();
   return `<div class="dashboard client-dashboard-shell">
@@ -4230,7 +4322,7 @@ function clientDashboardView() {
       <aside class="client-dashboard-right">
         <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Messages</h2><p>Inbox</p></div><button class="ghost-button" data-view="messages">View all</button></div><div class="client-feed-list">${clientMessageFeedRows(2)}</div></section>
         <section class="panel panel-pad client-side-card"><div class="panel-head"><div><h2>Notifications</h2><p>Alerts and updates</p></div><button class="ghost-button" data-view="notifications">View all</button></div><div class="client-feed-list">${clientNotificationFeedRows(3)}</div></section>
-        <section class="panel panel-pad client-side-card client-reports-card"><div class="panel-head"><div><h2>Recent Reports</h2><p>Latest client-facing patrol reports.</p></div><button class="ghost-button" data-view="reports">View all</button></div><div class="client-report-list">${reportRows.length ? reportRows.map(clientReportRow).join('') : '<div class="empty">No reports ready.</div>'}</div></section>
+        <section class="panel panel-pad client-side-card client-reports-card"><div class="panel-head"><div><h2>Recent Reports</h2><p>Latest client-facing patrol reports.</p></div><button class="ghost-button" data-view="reports">View all</button></div><div class="client-report-list">${reportRows.length ? reportRows.map(clientDashboardRecentReportRow).join('') : '<div class="empty">No reports ready.</div>'}</div></section>
       </aside>
     </section>
   </div>`;

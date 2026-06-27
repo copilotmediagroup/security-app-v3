@@ -1,20 +1,18 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.73",
-  "buildName": "FULL WORKFLOW STATUS UNIFICATION",
-  "type": "full-workflow-status-unification",
+  "version": "3.0.74",
+  "buildName": "GLOBAL DATA LOGIC SYNC + DASHBOARD FIX",
+  "type": "global-data-logic-sync-dashboard-fix",
   "sql_required": false,
-  "file_count": 14,
   "features": [
-    "Added shared workflow status/stage helpers for request, proof, and report screens",
-    "Added workflow stage strip to Client Reports, Proof Review, Report Builder, and Report Archive",
-    "Unified major stage names: Client Request, Pending Dispatch, Guard Assigned, Guard Accepted, Patrol In Progress, Proof Uploaded, Job Completed, Proof Review, Report Builder, Published Report",
-    "Client Reports now uses Published Report language instead of generic Completed for final reports",
-    "Proof Review now uses Needs Review wording for actionable pending proof",
-    "Report Archive badges now read Published Report, Draft Report, and Scheduled Report",
-    "Guard Completed jobs now show whether a job is waiting for report creation, proof review, or already published",
-    "Client request rows now use the same workflow-stage labels used elsewhere in the app",
-    "Preserved v3.0.72 global report/proof count clarity",
+    "Added shared dashboard/report/proof metric helpers for consistent cross-page counts",
+    "Fixed Dispatch Dashboard Proof Waiting Review count to match Proof Review Needs Review",
+    "Fixed Dispatch Dashboard Priority Queue proof count to stop counting published/locked proof as waiting review",
+    "Fixed Client Dashboard Recent Reports to use the same normalized report source as Client Reports",
+    "Recent Reports now shows report title, property name, address, proof count, and published time",
+    "Fixed Client Dashboard Recent Activity workflow statuses so accepted/started/uploaded/completed events no longer all show Completed",
+    "Preserved v3.0.73 workflow status unification",
+    "Preserved v3.0.72 report/proof count clarity",
     "No new SQL required"
   ]
 }
