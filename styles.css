@@ -12849,3 +12849,86 @@ button.is-busy {
     grid-template-columns: 1fr;
   }
 }
+
+/* v3.0.73 Full Workflow Status Unification */
+.workflow-stage-legend {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(94px, 1fr));
+  gap: 8px;
+  border: 1px solid rgba(113,169,232,.14);
+  border-radius: var(--radius);
+  background: rgba(5, 16, 29, .72);
+  padding: 10px;
+  overflow-x: auto;
+}
+.workflow-stage-legend span {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  border: 1px solid rgba(113,169,232,.12);
+  background: rgba(8,22,38,.62);
+  color: #9fb5cc;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.workflow-stage-legend span.active {
+  color: #fff;
+  border-color: rgba(55,220,114,.42);
+  background: rgba(16,78,45,.42);
+  box-shadow: 0 0 24px rgba(55,220,114,.10);
+}
+.workflow-stage-legend i {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(46,125,255,.18);
+  color: #9dceff;
+  font-style: normal;
+  font-size: 10px;
+}
+.workflow-stage-legend span.active i {
+  background: linear-gradient(180deg, #39dd7b, #159a54);
+  color: #fff;
+}
+.workflow-stage-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: max-content;
+  max-width: 190px;
+  gap: 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(113,169,232,.14);
+  padding: 6px 10px;
+  line-height: 1.05;
+  background: rgba(8,22,38,.72);
+}
+.workflow-stage-chip b {
+  font-size: 11px;
+  font-weight: 1000;
+  color: #edf7ff;
+  white-space: nowrap;
+}
+.workflow-stage-chip small {
+  font-size: 9.5px;
+  color: rgba(237,247,255,.72);
+  white-space: nowrap;
+}
+.workflow-stage-chip.green { background: rgba(33,151,79,.18); border-color: rgba(55,220,114,.28); }
+.workflow-stage-chip.blue { background: rgba(46,125,255,.16); border-color: rgba(46,125,255,.28); }
+.workflow-stage-chip.amber { background: rgba(255,181,61,.15); border-color: rgba(255,181,61,.28); }
+.workflow-stage-chip.cyan { background: rgba(0,198,255,.13); border-color: rgba(0,198,255,.26); }
+.workflow-stage-chip.purple { background: rgba(176,92,255,.15); border-color: rgba(176,92,255,.26); }
+.workflow-stage-chip.orange { background: rgba(255,121,31,.14); border-color: rgba(255,121,31,.26); }
+.workflow-stage-chip.red { background: rgba(255,89,115,.15); border-color: rgba(255,89,115,.26); }
+.completed-status-col .workflow-stage-chip { max-width: 180px; }
+.client-request-row .workflow-stage-chip { justify-self: start; }
+@media (max-width: 1180px) {
+  .workflow-stage-legend { grid-template-columns: repeat(10, 120px); }
+}

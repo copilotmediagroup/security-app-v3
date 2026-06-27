@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-26T13-50-v3068';
+const CP_DEV_CACHE_BUST = '2026-06-27T00-18-v3073';
 const BUILD = {
-  version: '3.0.72',
-  label: 'v3.0.72 GLOBAL REPORT/PROOF COUNT CLARITY FIX'
+  version: '3.0.73',
+  label: 'v3.0.73 FULL WORKFLOW STATUS UNIFICATION'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -607,6 +607,88 @@ function requestHasPublishedReport(requestId = '') { return Boolean(publishedRep
 function proofLockedByPublishedReport(row = {}) {
   const requestId = row.request?.id || proofRequestIdValue(row.proof || row) || row.request_id || '';
   return requestHasPublishedReport(requestId);
+}
+
+
+/* v3.0.73 Full Workflow Status Unification helpers */
+const WORKFLOW_STAGE_ORDER = [
+  ['client_request', 'Client Request'],
+  ['pending_dispatch', 'Pending Dispatch'],
+  ['assigned', 'Guard Assigned'],
+  ['accepted', 'Guard Accepted'],
+  ['in_progress', 'Patrol In Progress'],
+  ['proof_uploaded', 'Proof Uploaded'],
+  ['completed', 'Job Completed'],
+  ['proof_review', 'Proof Review'],
+  ['report_builder', 'Report Builder'],
+  ['published', 'Published Report']
+];
+const WORKFLOW_STAGE_COPY = {
+  client_request: { label: 'Client Request', sub: 'Client submitted request', tone: 'blue' },
+  pending_dispatch: { label: 'Pending Dispatch', sub: 'Waiting for guard assignment', tone: 'blue' },
+  assigned: { label: 'Guard Assigned', sub: 'Waiting for guard acceptance', tone: 'amber' },
+  accepted: { label: 'Guard Accepted', sub: 'Guard accepted assignment', tone: 'cyan' },
+  in_progress: { label: 'Patrol In Progress', sub: 'Guard is actively checking property', tone: 'green' },
+  proof_uploaded: { label: 'Proof Uploaded', sub: 'Proof is waiting for Dispatch review', tone: 'purple' },
+  completed: { label: 'Job Completed', sub: 'Completed patrol waiting for report', tone: 'green' },
+  proof_review: { label: 'Proof Review', sub: 'Dispatch is reviewing proof', tone: 'amber' },
+  report_builder: { label: 'Ready for Report Builder', sub: 'Final report can be created', tone: 'purple' },
+  published: { label: 'Published Report', sub: 'Released to client portal', tone: 'green' },
+  rejected: { label: 'Rejected', sub: 'Denied by Dispatch', tone: 'red' },
+  locked: { label: 'Published / Locked', sub: 'Final report is closed', tone: 'cyan' },
+  no_proof: { label: 'No-Proof Report', sub: 'Published without photo/video proof', tone: 'orange' },
+  draft: { label: 'Draft Report', sub: 'Report draft in progress', tone: 'blue' },
+  scheduled: { label: 'Scheduled Report', sub: 'Upcoming report', tone: 'amber' },
+  attention: { label: 'Attention Needed', sub: 'Needs human review', tone: 'red' }
+};
+function workflowCopy(stage = '') {
+  return WORKFLOW_STAGE_COPY[String(stage || '').toLowerCase()] || { label: statusText(stage || 'Unknown'), sub: 'Workflow status', tone: 'blue' };
+}
+function workflowStageChip(stage = '', detail = '') {
+  const copy = workflowCopy(stage);
+  const extra = detail ? `<small>${esc(detail)}</small>` : '';
+  return `<span class="workflow-stage-chip ${esc(copy.tone)}"><b>${esc(copy.label)}</b>${extra}</span>`;
+}
+function requestWorkflowStage(req = {}) {
+  const status = String(req.status || '').toLowerCase();
+  if (requestHasPublishedReport(req.id)) return 'published';
+  if (['pending_dispatch','pending','new','requested',''].includes(status)) return 'pending_dispatch';
+  if (status === 'assigned') return 'assigned';
+  if (status === 'accepted') return 'accepted';
+  if (status === 'in_progress' || status === 'active') return 'in_progress';
+  if (['completed','closed','finished'].includes(status)) {
+    const proofCount = proofForRequest(req.id).length;
+    if (proofCount > 0) return 'proof_review';
+    return 'report_builder';
+  }
+  return status || 'client_request';
+}
+function requestWorkflowLabel(req = {}) { return workflowCopy(requestWorkflowStage(req)).label; }
+function requestWorkflowSubtext(req = {}) { return workflowCopy(requestWorkflowStage(req)).sub; }
+function requestWorkflowChip(req = {}) {
+  const stage = requestWorkflowStage(req);
+  return workflowStageChip(stage, stage === 'published' ? 'Client can view report' : '');
+}
+function reportWorkflowStage(row = {}) {
+  const status = String(row.status || row.report?.status || '').toLowerCase();
+  const published = row.publishedAt || row.released_at || row.published_at || row.report?.released_at || row.report?.published_at;
+  if (published || /publish|release|complete/.test(status)) return 'published';
+  if (/schedule/.test(status)) return 'scheduled';
+  if (/ready/.test(status)) return 'report_builder';
+  return 'draft';
+}
+function reportWorkflowLabel(row = {}) { return workflowCopy(reportWorkflowStage(row)).label; }
+function proofWorkflowStage(row = {}) {
+  if (proofIsLockedByReport(row)) return 'locked';
+  if (proofIncludedInReport(row)) return 'proof_uploaded';
+  const status = proofStatus(row);
+  if (status === 'approved') return 'proof_review';
+  if (status === 'rejected') return 'rejected';
+  return 'proof_review';
+}
+function workflowStageLegend(activeStage = '') {
+  const active = String(activeStage || '').toLowerCase();
+  return `<section class="workflow-stage-legend" aria-label="Workflow stage legend">${WORKFLOW_STAGE_ORDER.map(([key, label], idx) => `<span class="${active === key ? 'active' : ''}"><i>${esc(idx + 1)}</i>${esc(label)}</span>`).join('')}</section>`;
 }
 
 function requestIsPendingDispatch(req = {}) {
@@ -3716,7 +3798,7 @@ function completedJobRow(req = {}, selected = false) {
     <div class="completed-date-col"><strong>${esc(fmtDate(completedAt))}</strong><span>${esc(timeAgo(completedAt))}</span></div>
     <div class="completed-duration-col"><strong>${esc(duration ? duration + ' min' : '—')}</strong><span>Duration</span></div>
     <div class="completed-proof-col">${completedProofStack(req)}</div>
-    <div class="completed-status-col">${statusChip('completed')}</div>
+    <div class="completed-status-col">${requestWorkflowChip(req)}</div>
   </button>`;
 }
 function completedProofPreview(item = {}) {
@@ -3754,7 +3836,7 @@ function guardCompletedJobsView() {
       <aside class="panel panel-pad completed-detail-rail">
         ${selected ? `
           <div class="active-rail-head completed-detail-head"><h2>Job Details</h2><button class="ghost-button" data-view="active-job">Open Active Job</button></div>
-          <div class="completed-detail-summary"><div class="completed-detail-photo">${(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url) ? `<img src="${esc(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url)}" alt="${esc(propertyLabel(selected))}">` : `<div>${esc(propertyLabel(selected).slice(0,1) || 'P')}</div>`}</div><div><strong>${esc(requestTitle(selected))}</strong><span>${esc(propertyLabel(selected))}</span><small>${esc(propertyAddress(selected))}</small></div>${statusChip('completed')}</div>
+          <div class="completed-detail-summary"><div class="completed-detail-photo">${(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url) ? `<img src="${esc(propertyById(selected.property_id).photo_url || propertyById(selected.property_id).image_url)}" alt="${esc(propertyLabel(selected))}">` : `<div>${esc(propertyLabel(selected).slice(0,1) || 'P')}</div>`}</div><div><strong>${esc(requestTitle(selected))}</strong><span>${esc(propertyLabel(selected))}</span><small>${esc(propertyAddress(selected))}</small></div>${requestWorkflowChip(selected)}</div>
           <div class="active-detail-list completed-detail-list"><span>Completed</span><strong>${esc(fmtDate(requestCompletedAt(selected)))}</strong><span>Duration</span><strong>${esc(guardCompletedDurationMinutes(selected) ? guardCompletedDurationMinutes(selected) + ' min' : '—')}</strong><span>Patrol Type</span><strong>${esc(selected.patrol_type || selected.request_type || 'Patrol Check')}</strong><span>Priority</span><strong>${esc(statusText(selected.priority || 'Normal'))}</strong><span>Client</span><strong>${esc(requestClientName(selected))}</strong><span>Assigned Guard</span><strong>${esc(requestGuardName(selected))}</strong></div>
           <div class="completed-timeline"><h3>Job Timeline</h3><div>${['accepted','on_the_way','arrived','checking_property','upload_proof','completed'].map(step => `<div><i>✓</i><span>${esc(guardWorkflowStageText(step))}</span></div>`).join('')}</div></div>
           <div class="completed-proof-section"><div class="active-rail-head"><h2>Proof Files (${esc(proofs.length)})</h2></div><div class="completed-proof-grid">${proofs.length ? proofs.slice(0, 4).map(completedProofPreview).join('') : `<div class="empty">No proof files uploaded.</div>`}</div></div>
@@ -4277,8 +4359,8 @@ function clientRequestCard(req) {
   const proof = proofForRequest(req.id).length;
   return `<article class="client-request-row">
     <div><strong>${esc(requestTitle(req))}</strong><span>${esc(propertyLabel(req))}</span><small>${esc(propertyAddress(req))}</small></div>
-    <p>${statusChip(req.status)}</p>
-    <div><b>${esc(clientRequestStatusLabel(req))}</b><small>${esc(fmtDate(req.created_at || req.requested_at))}</small></div>
+    <p>${requestWorkflowChip(req)}</p>
+    <div><b>${esc(requestWorkflowLabel(req))}</b><small>${esc(fmtDate(req.created_at || req.requested_at))}</small></div>
     <em>${esc(proof)} proof</em>
   </article>`;
 }
@@ -5249,7 +5331,7 @@ function clientReportStatusLabel(status = '') {
   if (status === 'pending_review') return 'Pending Review';
   if (status === 'in_progress') return 'In Progress';
   if (status === 'attention') return 'Attention';
-  return 'Completed';
+  return 'Published Report';
 }
 function filteredClientReports() {
   let rows = clientReportSourceRows();
@@ -5432,7 +5514,7 @@ function clientReportSummaryCard() {
   const completedPct = Math.round((counts.completed / total) * 100);
   const pendingPct = Math.round((counts.pending / total) * 100);
   const attentionPct = Math.round((counts.attention / total) * 100);
-  return `<section class="panel panel-pad report-summary-card"><div class="panel-head"><div><h2>Report Summary</h2></div></div><div class="report-donut-wrap"><div class="report-donut" style="--completed:${completedPct};--pending:${pendingPct};--attention:${attentionPct};"></div><div class="report-donut-legend"><span><i class="green"></i>Completed <b>${completedPct}% (${counts.completed})</b></span><span><i class="yellow"></i>Pending Review <b>${pendingPct}% (${counts.pending})</b></span><span><i class="red"></i>Attention <b>${attentionPct}% (${counts.attention})</b></span></div></div></section>`;
+  return `<section class="panel panel-pad report-summary-card"><div class="panel-head"><div><h2>Report Summary</h2></div></div><div class="report-donut-wrap"><div class="report-donut" style="--completed:${completedPct};--pending:${pendingPct};--attention:${attentionPct};"></div><div class="report-donut-legend"><span><i class="green"></i>Published <b>${completedPct}% (${counts.completed})</b></span><span><i class="yellow"></i>Pending Review <b>${pendingPct}% (${counts.pending})</b></span><span><i class="red"></i>Attention <b>${attentionPct}% (${counts.attention})</b></span></div></div></section>`;
 }
 function clientReportActivityCard() {
   const rows = clientReportSourceRows().slice(0, 3);
@@ -5460,6 +5542,7 @@ function clientReportsView() {
   const attentionPct = counts.total ? Math.round((counts.attention / counts.total) * 100) : 0;
   return `<div class="dashboard client-reports-shell">
     <header class="dashboard-header"><div class="title-block"><h1>Reports</h1><p>View and manage all security reports generated from patrols and activity.</p></div><div class="header-actions"><span class="system-pill"><i></i>System Operational</span><button class="header-button">?</button></div></header>
+    ${workflowStageLegend('published')}
     <section class="client-report-kpi-row">
       ${clientReportKpi('▤','Total Reports',counts.total,'Matches Dispatch Archive','blue')}
       ${clientReportKpi('✓','Published Reports',counts.completed,`${completedPct}% released`,'green')}
@@ -5472,7 +5555,7 @@ function clientReportsView() {
         <div class="client-report-toolbar">
           <div class="client-report-search"><span>⌕</span><input type="search" placeholder="Search reports..." value="${esc(state.clientReportSearch)}" data-client-report-search></div>
           <select data-client-report-property-filter>${clientReportPropertyOptions()}</select>
-          <select data-client-report-status-filter><option value="all">All Statuses</option><option value="completed" ${state.clientReportStatusFilter === 'completed' ? 'selected' : ''}>Completed</option><option value="pending_review" ${state.clientReportStatusFilter === 'pending_review' ? 'selected' : ''}>Pending Review</option><option value="attention" ${state.clientReportStatusFilter === 'attention' ? 'selected' : ''}>Attention</option><option value="in_progress" ${state.clientReportStatusFilter === 'in_progress' ? 'selected' : ''}>In Progress</option></select>
+          <select data-client-report-status-filter><option value="all">All Statuses</option><option value="completed" ${state.clientReportStatusFilter === 'completed' ? 'selected' : ''}>Published Report</option><option value="pending_review" ${state.clientReportStatusFilter === 'pending_review' ? 'selected' : ''}>Pending Review</option><option value="attention" ${state.clientReportStatusFilter === 'attention' ? 'selected' : ''}>Attention</option><option value="in_progress" ${state.clientReportStatusFilter === 'in_progress' ? 'selected' : ''}>In Progress</option></select>
           <button type="button" class="ghost-button report-date-range">▣ This Month</button>
           <button type="button" class="primary-button" data-action="export-client-reports">⇩ Export</button>
         </div>
@@ -7475,7 +7558,7 @@ function activityRequestAction(req = {}) {
   if (status === 'assigned') return 'Guard Assigned';
   if (status === 'accepted') return 'Guard Accepted';
   if (status === 'in_progress') return 'Patrol Started';
-  if (status === 'completed') return 'Patrol Completed';
+  if (status === 'completed') return requestHasPublishedReport(req.id) ? 'Published Report' : 'Job Completed';
   if (status === 'cancelled' || status === 'canceled') return 'Patrol Cancelled';
   return status ? statusText(status) : 'Patrol Request';
 }
@@ -8087,7 +8170,7 @@ function proofDisplayStatusText(row = {}) {
   if (display === 'locked') return 'Approved + Published';
   if (display === 'approved') return 'Approved';
   if (display === 'rejected') return 'Rejected';
-  return 'Pending Review';
+  return 'Needs Review';
 }
 function proofIncludedInReport(row = {}) {
   return row.included === true || row.proof?.include_in_report === true || row.proof?.included_in_report === true || row.proof?.selected_for_report === true;
@@ -8205,7 +8288,7 @@ function proofStatusBadge(row = {}) {
   if (status === 'locked') return `<span class="proof-status locked"><i></i>Approved + Published</span>`;
   if (status === 'approved') return `<span class="proof-status approved"><i></i>Approved</span>`;
   if (status === 'rejected') return `<span class="proof-status rejected"><i></i>Rejected</span>`;
-  return `<span class="proof-status pending"><i></i>Pending Review</span>`;
+  return `<span class="proof-status pending"><i></i>Needs Review</span>`;
 }
 function proofThumbnail(row = {}) {
   const type = proofMediaType(row);
@@ -8355,7 +8438,7 @@ function proofReviewHeader() {
   return `<header class="dashboard-header proof-review-header"><div class="title-block"><h1>Proof Review</h1><p>Review, approve, and manage proof submitted by guards for client reports.</p></div><div class="proof-review-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="proof-search"><input type="search" placeholder="Search proof, guard, property..." value="${esc(state.proofReviewSearch || '')}" data-proof-review-search><b>⌕</b></label><button type="button" data-action="proof-review-filters">⌁ Filters</button><button type="button" data-action="proof-review-export">⇩ Export</button></div></header>`;
 }
 function proofReviewCommandCenterView() {
-  return `<div class="dashboard proof-review-shell">${proofReviewHeader()}${proofReviewKpiRow()}<section class="proof-review-layout"><main class="proof-review-main panel">${proofReviewTabs()}${proofReviewFilterBar()}${proofReviewTable()}${proofReviewPagination()}</main>${proofReviewDetailRail()}</section></div>`;
+  return `<div class="dashboard proof-review-shell">${proofReviewHeader()}${workflowStageLegend('proof_review')}${proofReviewKpiRow()}<section class="proof-review-layout"><main class="proof-review-main panel">${proofReviewTabs()}${proofReviewFilterBar()}${proofReviewTable()}${proofReviewPagination()}</main>${proofReviewDetailRail()}</section></div>`;
 }
 async function updateProofReviewStatus(id, status) {
   const row = proofReviewRows().find(p => String(p.id) === String(id));
@@ -8604,7 +8687,7 @@ function selectedReportJobCard() {
   return `<article class="selected-report-job-card">
     <img src="${esc(reportPropertyImage(property))}" alt="Property">
     <div>
-      <h3>${esc(requestTitle(req))}<span>Completed</span></h3>
+      <h3>${esc(requestTitle(req))}<span>${esc(requestWorkflowLabel(req))}</span></h3>
       <dl>
         <dt>Client</dt><dd>${esc(client.business_name || client.company_name || client.name || client.email || 'Client')}</dd>
         <dt>Property</dt><dd>${esc(propertyDisplayName(property))}</dd>
@@ -8760,7 +8843,7 @@ function reportBuilderHeader() {
   return `<header class="dashboard-header report-builder-header"><div class="title-block"><h1>Report Builder</h1><p>Create, customize, and publish client patrol reports.</p></div><div class="report-builder-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-builder-search"><input type="search" placeholder="Search reports, clients, guards..." value="${esc(state.reportBuilderSearch || '')}" data-report-builder-search><b>⌕</b></label><button type="button" data-action="report-template-panel">▣ Templates</button><button type="button" data-action="report-settings-panel">⚙ Settings</button><button type="button" class="primary-button" data-action="new-report">＋ New Report</button></div></header>`;
 }
 function reportBuilderCommandCenterView() {
-  return `<div class="dashboard report-builder-shell">${reportBuilderHeader()}${reportBuilderKpiRow()}<section class="report-builder-layout"><main class="report-builder-main panel">${reportBuilderSteps()}${reportBuilderSelectJob()}${reportBuilderProofGrid()}</main>${reportPreviewPanel()}</section></div>`;
+  return `<div class="dashboard report-builder-shell">${reportBuilderHeader()}${workflowStageLegend('report_builder')}${reportBuilderKpiRow()}<section class="report-builder-layout"><main class="report-builder-main panel">${reportBuilderSteps()}${reportBuilderSelectJob()}${reportBuilderProofGrid()}</main>${reportPreviewPanel()}</section></div>`;
 }
 function resetReportBuilderState() {
   state.reportBuilderSearch = '';
@@ -8920,9 +9003,9 @@ function reportArchiveStatus(row = {}) {
 }
 function reportArchiveStatusBadge(row = {}) {
   const status = reportArchiveStatus(row);
-  if (status === 'published') return `<span class="archive-status published">Published</span>`;
-  if (status === 'scheduled') return `<span class="archive-status scheduled">Scheduled</span>`;
-  return `<span class="archive-status draft">Draft</span>`;
+  if (status === 'published') return `<span class="archive-status published">Published Report</span>`;
+  if (status === 'scheduled') return `<span class="archive-status scheduled">Scheduled Report</span>`;
+  return `<span class="archive-status draft">Draft Report</span>`;
 }
 function reportArchiveRows() {
   const proofRowsAll = typeof proofReviewRows === 'function' ? proofReviewRows() : [];
@@ -9035,7 +9118,7 @@ function reportArchiveFilterBar() {
     <select data-report-archive-filter="clientId"><option value="all">All Clients</option>${reportArchiveClientOptions()}</select>
     <select data-report-archive-filter="propertyId"><option value="all">All Properties</option>${reportArchivePropertyOptions()}</select>
     <select data-report-archive-filter="guardId"><option value="all">All Guards</option>${reportArchiveGuardOptions()}</select>
-    <select data-report-archive-filter="status"><option value="all">All Status</option><option value="published" ${filters.status === 'published' ? 'selected' : ''}>Published</option><option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>Draft</option><option value="scheduled" ${filters.status === 'scheduled' ? 'selected' : ''}>Scheduled</option></select>
+    <select data-report-archive-filter="status"><option value="all">All Status</option><option value="published" ${filters.status === 'published' ? 'selected' : ''}>Published Report</option><option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>Draft Report</option><option value="scheduled" ${filters.status === 'scheduled' ? 'selected' : ''}>Scheduled Report</option></select>
     <select data-report-archive-filter="dateRange"><option value="all">All Dates</option><option value="today" ${filters.dateRange === 'today' ? 'selected' : ''}>Today</option><option value="week" ${filters.dateRange === 'week' ? 'selected' : ''}>This Week</option><option value="month" ${filters.dateRange === 'month' ? 'selected' : ''}>This Month</option><option value="year" ${filters.dateRange === 'year' ? 'selected' : ''}>This Year</option></select>
     <select data-report-archive-filter="sort"><option value="newest" ${filters.sort === 'newest' ? 'selected' : ''}>Sort: Newest First</option><option value="oldest" ${filters.sort === 'oldest' ? 'selected' : ''}>Sort: Oldest First</option><option value="client" ${filters.sort === 'client' ? 'selected' : ''}>Sort: Client</option><option value="status" ${filters.sort === 'status' ? 'selected' : ''}>Sort: Status</option></select>
     <button type="button" data-action="report-archive-clear-filters">× Clear Filters</button>
@@ -9150,14 +9233,14 @@ function reportArchiveHeader() {
   return `<header class="dashboard-header report-archive-header"><div class="title-block"><h1>Report Archive</h1><p>View, search, and manage all published reports.</p></div><div class="report-archive-header-actions"><span class="system-pill"><i></i>System Operational</span><label class="report-archive-search"><input type="search" placeholder="Search reports, clients, properties..." value="${esc(state.reportArchiveSearch || '')}" data-report-archive-search><b>⌕</b></label><button type="button" data-action="report-archive-filters">⌁ Filters</button><button type="button" data-action="report-archive-export">⇩ Export</button></div></header>`;
 }
 function reportArchiveCommandCenterView() {
-  return `<div class="dashboard report-archive-shell">${reportArchiveHeader()}${reportArchiveKpiRow()}<section class="report-archive-layout"><main class="report-archive-main panel">${reportArchiveFilterBar()}${reportArchiveTable()}${reportArchivePagination()}</main>${reportArchiveDetailRail()}</section></div>`;
+  return `<div class="dashboard report-archive-shell">${reportArchiveHeader()}${workflowStageLegend('published')}${reportArchiveKpiRow()}<section class="report-archive-layout"><main class="report-archive-main panel">${reportArchiveFilterBar()}${reportArchiveTable()}${reportArchivePagination()}</main>${reportArchiveDetailRail()}</section></div>`;
 }
 function archiveReportText(row = {}) {
   return [
     `Co Pilot Security - Patrol Report`,
     `Report ID: ${row.reportNumber}`,
     `Title: ${row.title}`,
-    `Status: ${statusText(reportArchiveStatus(row))}`,
+    `Status: ${reportWorkflowLabel(row)}`,
     `Client: ${reportArchiveClientName(row.client)}`,
     `Property: ${propertyDisplayName(row.property)}`,
     `Address: ${propertyDisplayAddress(row.property)}`,

@@ -1,20 +1,34 @@
-# Co Pilot Security v3.0.72 — Global Report/Proof Count Clarity Fix
+# Co Pilot Security v3.0.73 — Full Workflow Status Unification
 
 ## What changed
-This build clarifies the difference between final report totals and proof/media totals across the app.
+This build standardizes workflow language across Client, Guard, and Dispatch so the same job/report/proof stages do not look like different statuses on different pages.
 
-## Why this was needed
-Some pages showed 8 published reports while Proof Review showed 6 published/locked items. The underlying workflow can be correct because reports may be published with no proof, but the labels made it look like the counts were supposed to match.
+## New shared workflow stages
+- Client Request
+- Pending Dispatch
+- Guard Assigned
+- Guard Accepted
+- Patrol In Progress
+- Proof Uploaded
+- Job Completed
+- Proof Review
+- Report Builder
+- Published Report
 
-## Fixes included
-- Report totals now stay consistent across report pages.
-- Proof Review labels now clearly say proof/media items instead of sounding like report totals.
-- Report Archive shows reports with proof and reports without proof.
-- Report Builder shows published reports, reports with proof, and no-proof reports.
-- Client Reports shows total reports, published reports, reports with proof, and no-proof reports.
-- No-proof published reports remain valid and visible.
-- No URL upload fields were added.
-- No new SQL required.
+## Pages updated
+- Client Reports
+- Client patrol request rows
+- Guard Completed jobs
+- Dispatch Proof Review
+- Dispatch Report Builder
+- Dispatch Report Archive
 
-## Badge
-v3.0.72 GLOBAL REPORT/PROOF COUNT CLARITY FIX
+## Behavior
+- Published client reports now say Published Report instead of generic Completed.
+- Pending proof now says Needs Review.
+- Report Archive status badges now say Published Report, Draft Report, or Scheduled Report.
+- Guard completed jobs now show whether they are waiting for Proof Review, ready for Report Builder, or already Published.
+- Report/proof totals from v3.0.72 were preserved.
+
+## SQL
+No new SQL required.
