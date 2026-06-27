@@ -1,8 +1,8 @@
 
 const CP_DEV_CACHE_BUST = '2026-06-26T13-50-v3068';
 const BUILD = {
-  version: '3.0.69',
-  label: 'v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX'
+  version: '3.0.70',
+  label: 'v3.0.70 PROOF REVIEW KPI STATUS CLEANUP'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -7996,7 +7996,7 @@ function proofCanBeIncluded(row = {}) {
 }
 function proofDisplayStatusText(row = {}) {
   const display = proofDisplayStatus(row);
-  if (display === 'locked') return 'Report Published';
+  if (display === 'locked') return 'Approved + Published';
   if (display === 'approved') return 'Approved';
   if (display === 'rejected') return 'Rejected';
   return 'Pending Review';
@@ -8028,13 +8028,20 @@ function proofFileSize(row = {}) {
 }
 function proofReviewCounts() {
   const rows = proofReviewRows();
-  const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  const approvedReady = rows.filter(row => proofDisplayStatus(row) === 'approved').length;
+  const publishedLocked = rows.filter(row => proofDisplayStatus(row) === 'locked').length;
+  const rejected = rows.filter(row => proofDisplayStatus(row) === 'rejected').length;
+  const pending = rows.filter(proofCanBeReviewed).length;
+  const included = rows.filter(proofIncludedInReport).length;
   return {
-    pending: rows.filter(proofCanBeReviewed).length,
-    approved: rows.filter(row => proofDisplayStatus(row) === 'approved' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
-    rejected: rows.filter(row => proofDisplayStatus(row) === 'rejected' && new Date(row.uploadedAt).getTime() >= weekAgo).length,
-    locked: rows.filter(row => proofDisplayStatus(row) === 'locked').length,
-    included: rows.filter(proofIncludedInReport).length,
+    pending,
+    approvedReady,
+    publishedLocked,
+    approvedTotal: approvedReady + publishedLocked,
+    approved: approvedReady,
+    rejected,
+    locked: publishedLocked,
+    included,
     totalMedia: rows.length,
     expired: rows.filter(proofIsExpired).length
   };
@@ -8045,12 +8052,12 @@ function proofReviewKpi(icon, label, value, subtext, tone = 'blue') {
 function proofReviewKpiRow() {
   const c = proofReviewCounts();
   return `<section class="proof-review-kpis">
-    ${proofReviewKpi('🖼','Pending Review',c.pending,'Unreviewed items','blue')}
-    ${proofReviewKpi('✓','Approved',c.approved,'This week','green')}
-    ${proofReviewKpi('×','Rejected',c.rejected,'This week','purple')}
+    ${proofReviewKpi('🖼','Needs Review',c.pending,'Unreviewed items','blue')}
+    ${proofReviewKpi('✓','Approved Total',c.approvedTotal,`${c.approvedReady} ready + ${c.publishedLocked} published`,'green')}
+    ${proofReviewKpi('×','Rejected',c.rejected,'Denied proof','purple')}
     ${proofReviewKpi('▣','Included in Reports',c.included,'Selected proof','orange')}
-    ${proofReviewKpi('🎥','Total Media',c.totalMedia,'All time','cyan')}
-    ${proofReviewKpi('⚠','Expired Proofs',c.expired,'Older than 30 days','red')}
+    ${proofReviewKpi('🔒','Published / Locked',c.publishedLocked,'Final reports closed','cyan')}
+    ${proofReviewKpi('🎥','Total Media',c.totalMedia,'All time','red')}
   </section>`;
 }
 function proofReviewTabButton(key, label, count) {
@@ -8069,10 +8076,10 @@ function proofReviewTabs() {
   };
   return `<nav class="proof-review-tabs">
     ${proofReviewTabButton('all','All Proof',counts.all)}
-    ${proofReviewTabButton('pending','Pending Review',counts.pending)}
-    ${proofReviewTabButton('approved','Approved',counts.approved)}
+    ${proofReviewTabButton('pending','Needs Review',counts.pending)}
+    ${proofReviewTabButton('approved','Approved / Ready',counts.approved)}
     ${proofReviewTabButton('rejected','Rejected',counts.rejected)}
-    ${proofReviewTabButton('locked','Report Published',counts.locked)}
+    ${proofReviewTabButton('locked','Published / Locked',counts.locked)}
     ${proofReviewTabButton('included','Included in Reports',counts.included)}
   </nav>`;
 }
@@ -8106,7 +8113,7 @@ function proofTypeBadge(row = {}) {
 }
 function proofStatusBadge(row = {}) {
   const status = proofDisplayStatus(row);
-  if (status === 'locked') return `<span class="proof-status locked"><i></i>Report Published</span>`;
+  if (status === 'locked') return `<span class="proof-status locked"><i></i>Approved + Published</span>`;
   if (status === 'approved') return `<span class="proof-status approved"><i></i>Approved</span>`;
   if (status === 'rejected') return `<span class="proof-status rejected"><i></i>Rejected</span>`;
   return `<span class="proof-status pending"><i></i>Pending Review</span>`;
@@ -8217,7 +8224,7 @@ function proofReviewActions(row = {}) {
   const status = proofStatus(row);
   const lockedByReport = proofIsLockedByReport(row);
   if (lockedByReport) {
-    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is locked because the final report for this patrol has already been published. It no longer needs approval and will not show as Pending Review.')}<button class="include" type="button" data-view="report-archive">View Report Archive</button></section>`;
+    return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Report already published', 'This proof is treated as approved because the final report for this patrol has already been published. It is now locked and cannot be changed.')}<button class="include" type="button" data-view="report-archive">View Report Archive</button></section>`;
   }
   if (status === 'approved') {
     return `<section class="proof-review-actions locked"><h3>Review Actions</h3>${workflowFinishedPanel('Proof approved', 'Approve / Reject controls are locked. You can still choose whether this approved proof is included before publishing the report.')}<button class="include" type="button" data-action="toggle-proof-include" data-proof-id="${esc(row.id)}">▣ ${proofIncludedInReport(row) ? 'Remove from Report' : 'Include in Report'}</button></section>`;

@@ -1,20 +1,20 @@
 {
   "project": "Co Pilot Security",
-  "version": "3.0.69",
-  "buildName": "PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX",
-  "type": "proof-review-approval-lock-status-fix",
+  "version": "3.0.70",
+  "buildName": "PROOF REVIEW KPI STATUS CLEANUP",
+  "type": "proof-review-kpi-status-cleanup",
   "sql_required": false,
   "file_count": 14,
   "features": [
-    "Fixes Proof Review row/detail mismatch where a proof row said Pending Review while the detail rail was locked by a published report",
-    "Adds row-level Approve and Reject buttons for proof that is truly pending and reviewable",
-    "Shows Report Published locked status for proof attached to an already-published report",
-    "Adds Report Published tab and removes locked proof from Pending Review counts",
-    "Keeps approved proof include/remove controls available until the report is published",
-    "Keeps rejected proof locked and blocked from report inclusion",
-    "Adds View Report Archive action for locked proof",
-    "Preserves v3.0.68 Client Report preview and download fixes",
-    "No URL inputs added",
+    "Cleaned up Proof Review KPI/status logic so published proof no longer looks like it skipped approval",
+    "Renamed Pending Review KPI/tab language to Needs Review where appropriate",
+    "Approved KPI now shows Approved Total with ready + published breakdown",
+    "Added Published / Locked KPI count for proof tied to finalized reports",
+    "Locked/published proof now displays as Approved + Published instead of only Report Published",
+    "Kept approved-but-not-published proof in Approved / Ready so Include in Report remains clear",
+    "Preserved row-level Approve/Reject actions for reviewable proof from v3.0.69",
+    "Preserved report-published lock behavior and View Report Archive action",
+    "Removed duplicate selected proof title rendering in the Proof Review detail rail",
     "No new SQL required"
   ]
 }

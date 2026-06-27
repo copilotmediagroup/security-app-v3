@@ -1,20 +1,24 @@
-# Co Pilot Security v3.0.69 — Proof Review Approval Button + Lock Status Fix
+# Co Pilot Security v3.0.70 — Proof Review KPI Status Cleanup
 
 ## What changed
-This build fixes the Proof Review confusion where a proof row could still show **Pending Review** while the right-side detail panel said the proof was locked because the final report was already published.
+This build cleans up the Proof Review totals and labels so the page matches the real workflow.
 
-## Fixes
-- Pending proof that can still be reviewed now shows row-level **Approve** and **Reject** buttons.
-- The right detail rail still shows the full **Approve / Reject / Include in Report / Save Note** workflow for reviewable proof.
-- Proof connected to an already-published final report now shows **Report Published** instead of **Pending Review**.
-- Locked proof is no longer counted as Pending Review.
-- A new **Report Published** tab makes locked proof easy to identify.
-- Locked proof includes a **View Report Archive** action.
-- Rejected proof remains blocked from report inclusion.
+## Main fixes
+- Published/locked proof no longer looks like it skipped approval.
+- The Approved KPI now shows the full approval picture:
+  - Approved / Ready
+  - Published / Locked
+- Pending Review language was tightened to Needs Review where appropriate.
+- Published proof rows now show Approved + Published.
+- Proof locked by a final published report stays locked and cannot be changed.
+- Approved-but-not-published proof still shows Include/Remove report controls.
+- The detail rail no longer renders the selected proof title twice.
 
-## Preserved
-- v3.0.68 Client Reports preview/download fix.
-- v3.0.67 proof upload confirmation behavior.
-- v3.0.65/v3.0.66 global action-lock behavior.
-- No URL media inputs.
-- No new SQL required.
+## Preserved from v3.0.69
+- Pending proof still shows Approve and Reject buttons on the row.
+- Reviewable proof still shows Approve / Reject / Include in the right panel.
+- Rejected proof cannot be included in reports.
+- Published proof can open Report Archive.
+
+## SQL
+No new SQL required.

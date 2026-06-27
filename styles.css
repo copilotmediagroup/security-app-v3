@@ -12697,7 +12697,7 @@ button.is-busy {
   font-weight: 900;
 }
 
-/* v3.0.69 Proof Review Approval Button + Lock Status Fix */
+/* v3.0.70 Proof Review KPI Status Cleanup */
 .client-report-row.selected {
   background: linear-gradient(90deg, rgba(46,125,255,.18), rgba(12,34,62,.36));
   box-shadow: inset 3px 0 0 #5aa8ff;

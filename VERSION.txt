@@ -1,22 +1,23 @@
 Co Pilot Security
-Version: 3.0.69
-Build Name: PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
+Version: 3.0.70
+Build Name: PROOF REVIEW KPI STATUS CLEANUP
 Date: 2026-06-26
 
 Summary:
-- Built from v3.0.68.
-- Fixed Proof Review status mismatch where rows could show Pending Review while the detail rail was locked because the report was already published.
-- Added row-level Approve and Reject actions for proof that is truly pending and reviewable.
-- Added a Report Published / Locked display state for proof attached to patrols with already-published final reports.
-- Added a Report Published tab in Proof Review so locked proof is easy to find and no longer counted as pending review.
-- Preserved right-rail Approve, Reject, Include in Report, Save Note, and report lock behavior.
-- Added View Report Archive action for locked proof.
-- Preserved v3.0.68 Client Report preview/download fixes.
+- Built from v3.0.69.
+- Cleaned up Proof Review KPI/status logic so published proof no longer looks like it skipped approval.
+- Renamed Pending Review KPI/tab language to Needs Review where appropriate.
+- Approved KPI now shows Approved Total with ready + published breakdown.
+- Added Published / Locked KPI count for final-report proof.
+- Locked/published proof now displays as Approved + Published.
+- Kept approved-but-not-published proof as Approved / Ready for include/report workflow.
+- Preserved proof row actions, right-rail review controls, lock behavior, and report archive link.
+- Removed duplicate selected-proof title rendering in the detail rail.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.69 PROOF REVIEW APPROVAL BUTTON + LOCK STATUS FIX
+v3.0.70 PROOF REVIEW KPI STATUS CLEANUP
 
 SQL:
 No new SQL required.
