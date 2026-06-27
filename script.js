@@ -1,8 +1,8 @@
 
-const CP_DEV_CACHE_BUST = '2026-06-27T01-20-v3075';
+const CP_DEV_CACHE_BUST = '2026-06-27T01-05-v3076';
 const BUILD = {
-  version: '3.0.75',
-  label: 'v3.0.75 JOB TIMELINE / AUDIT TRAIL'
+  version: '3.0.76',
+  label: 'v3.0.76 CLIENT RECENT REPORTS UI POLISH'
 };
 window.CP_ACTIVE_BUILD_LABEL = BUILD.label;
 window.CP_DEV_CACHE_BUST = CP_DEV_CACHE_BUST;
@@ -4204,14 +4204,43 @@ function clientRecentReportRecords() {
   if (reports.length) return reports.slice(0, 3);
   return completedRequests().slice(0, 3).map(req => ({ requestId: req.id, req, title: `${propertyLabel(req)} Final Patrol Report`, propertyName: propertyLabel(req), propertyAddress: propertyAddress(req), publishedAt: req.completed_at || req.updated_at || req.created_at, createdAt: req.completed_at || req.updated_at || req.created_at }));
 }
+function clientDashboardReportCleanTitle(row = {}, req = {}, propertyName = 'Property') {
+  const raw = String(row.title || row.reportTitle || row.report_name || row.reportNumber || row.report_number || '').trim();
+  const looksRawRequest = /^request\s*#/i.test(raw) || /^req[-\s#]/i.test(raw);
+  const looksUuidHeavy = /[a-f0-9]{8,}/i.test(raw) && raw.length > 18;
+  const looksGeneric = !raw || raw.toLowerCase() === 'patrol report' || raw.toLowerCase() === 'final patrol report';
+  const cleanProperty = String(propertyName || '').trim();
+  if (looksRawRequest || looksUuidHeavy || looksGeneric) {
+    return cleanProperty && cleanProperty !== 'Property' ? `${cleanProperty} Patrol Report` : 'Final Patrol Report';
+  }
+  return raw;
+}
+function clientDashboardReportReference(row = {}, req = {}) {
+  const ref = row.reportNumber || row.report_number || row.reference_id || row.id || req.id || row.requestId || row.request_id || '';
+  const clean = String(ref || '').trim();
+  if (!clean) return '';
+  if (/^RPT-/i.test(clean)) return clean;
+  return `Report ${clean.length > 10 ? '#' + clean.slice(0, 8) : '#' + clean}`;
+}
 function clientDashboardRecentReportRow(row = {}) {
   const req = row.req || requestById(row.requestId || row.request_id) || {};
   const propertyName = row.propertyName || (req.id ? propertyLabel(req) : row.property_name) || 'Property';
   const address = row.propertyAddress || (req.id ? propertyAddress(req) : row.property_address) || 'Address unavailable';
-  const title = row.title || row.reportNumber || row.report_number || `${propertyName} Patrol Report`;
+  const title = clientDashboardReportCleanTitle(row, req, propertyName);
+  const reference = clientDashboardReportReference(row, req);
   const published = typeof clientReportPublishedAt === 'function' ? clientReportPublishedAt(row) : (row.publishedAt || row.released_at || row.published_at || row.createdAt || row.created_at || req.completed_at || req.updated_at || req.created_at);
   const proofCount = Number(row.proofCount ?? row.proof_count ?? (req.id ? proofForRequest(req.id).length : 0) ?? 0);
-  return `<button type="button" class="client-report-row client-dashboard-report-row" data-view="reports" data-report-id="${esc(row.id || row.reportNumber || row.report_number || '')}"><i>▣</i><span><strong>${esc(title)}</strong><small>${esc(propertyName)} • ${esc(address)}</small><small>${esc(proofCount)} proof item${proofCount === 1 ? '' : 's'} • Published ${esc(timeAgo(published))}</small></span><em>${esc(fmtTime(published))}</em></button>`;
+  const reportId = row.id || row.reportNumber || row.report_number || row.requestId || row.request_id || req.id || '';
+  return `<button type="button" class="client-dashboard-report-row" data-view="reports" data-report-id="${esc(reportId)}">
+    <i class="client-dashboard-report-icon">▣</i>
+    <span class="client-dashboard-report-copy">
+      <strong>${esc(title)}</strong>
+      <small class="client-dashboard-report-ref">${esc(reference || 'Published report')}</small>
+      <small class="client-dashboard-report-property">${esc(propertyName)}</small>
+      <small class="client-dashboard-report-address">${esc(address)}</small>
+      <small class="client-dashboard-report-meta"><b>${esc(proofCount)} proof item${proofCount === 1 ? '' : 's'}</b><em>Published ${esc(timeAgo(published))}</em></small>
+    </span>
+  </button>`;
 }
 function clientMessageFeedRows(limit = 2) {
   const rows = (state.messageThreads || []).slice(0, limit);

@@ -1,22 +1,24 @@
 Co Pilot Security
-Version: 3.0.75
-Build Name: JOB TIMELINE / AUDIT TRAIL
+Version: 3.0.76
+Build Name: CLIENT RECENT REPORTS UI POLISH
 Date: 2026-06-27
 
 Summary:
-- Built from v3.0.74 GLOBAL DATA LOGIC SYNC + DASHBOARD FIX.
-- Added shared job timeline / audit trail logic for patrol requests and reports.
-- Timeline now shows client request, Dispatch assignment, guard acceptance, patrol start, proof upload, job completion, Dispatch proof review, report publishing, and client view/download events.
-- Added timeline panels to Guard Active Job, Guard Completed Jobs, Report Builder, Report Archive, and Client Reports preview.
-- Added local audit capture for key workflow actions without requiring new database tables.
-- Added Export Timeline CSV for selected jobs.
+- Built from v3.0.75 JOB TIMELINE / AUDIT TRAIL.
+- Polished the Client Dashboard Recent Reports right-rail cards.
+- Fixed Recent Reports cards being affected by the full Client Reports table CSS, which made the right-rail cards cramped and clipped.
+- Replaced raw Request # / UUID-style titles with clean client-facing titles like property Patrol Report.
+- Kept the report/request reference as a smaller reference line instead of the main title.
+- Improved spacing for property name, address, proof count, and published time.
+- Added proper wrapping/clamping so long report titles and addresses do not break the card layout.
+- Reduced excessive bottom padding on the Recent Reports panel.
+- Preserved v3.0.75 job timeline / audit trail.
 - Preserved v3.0.74 dashboard/report/proof count sync.
-- Preserved v3.0.73 workflow stage unification and v3.0.72 report/proof count clarity.
 - No URL inputs were added.
 - No new SQL required.
 
 Badge:
-v3.0.75 JOB TIMELINE / AUDIT TRAIL
+v3.0.76 CLIENT RECENT REPORTS UI POLISH
 
 SQL:
 No new SQL required.

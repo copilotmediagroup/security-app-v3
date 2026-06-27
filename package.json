@@ -1,8 +1,8 @@
 {
-  "name": "co-pilot-security-job-timeline-audit-trail",
-  "version": "3.0.75",
+  "name": "co-pilot-security-client-recent-reports-ui-polish",
+  "version": "3.0.76",
   "private": true,
-  "description": "Adds job timeline and audit trail panels across patrol jobs, report builder, report archive, and client reports while preserving v3.0.74 dashboard/report/proof data logic.",
+  "description": "Polishes the Client Dashboard Recent Reports cards so report titles, property names, addresses, proof counts, and published timestamps display cleanly while preserving v3.0.75 audit trail logic.",
   "scripts": {
     "dev": "node server.cjs",
     "start": "node server.cjs",
